@@ -1,0 +1,93 @@
+id: "E2E-08"
+name: micro_autonomous_playback
+server_type: michi-micro-server
+client_type: standalone
+
+checks:
+  - name: server_info
+    method: GET
+    path: /api/v1/server/info
+    server: micro
+    expected_status: 200
+
+  - name: playback_state_initial
+    method: GET
+    path: /api/v1/playback/state
+    server: micro
+    expected_status: 200
+    expected_json:
+      state: stopped
+
+  - name: queue_add_track
+    method: POST
+    path: /api/v1/queue/items
+    server: micro
+    body:
+      track_ids: []
+      position: next
+
+  - name: playback_control_play
+    method: POST
+    path: /api/v1/playback/control
+    server: micro
+    body:
+      command: play
+    expected_status: 200
+
+  - name: playback_state_playing
+    method: GET
+    path: /api/v1/playback/state
+    server: micro
+    expected_status: 200
+    expected_json:
+      state: playing
+
+  - name: playback_control_seek
+    method: POST
+    path: /api/v1/playback/control
+    server: micro
+    body:
+      command: seek
+      position_ms: 60000
+    expected_status: 200
+
+  - name: playback_control_volume
+    method: POST
+    path: /api/v1/playback/control
+    server: micro
+    body:
+      command: set_volume
+      volume: 50
+    expected_status: 200
+
+  - name: playback_control_pause
+    method: POST
+    path: /api/v1/playback/control
+    server: micro
+    body:
+      command: pause
+    expected_status: 200
+
+  - name: playback_state_paused
+    method: GET
+    path: /api/v1/playback/state
+    server: micro
+    expected_status: 200
+    expected_json:
+      state: paused
+
+  - name: playback_control_stop
+    method: POST
+    path: /api/v1/playback/control
+    server: micro
+    body:
+      command: stop
+    expected_status: 200
+
+  - name: playback_state_stopped
+    method: GET
+    path: /api/v1/playback/state
+    server: micro
+    expected_status: 200
+    expected_json:
+      state: stopped

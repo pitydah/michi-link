@@ -1,0 +1,85 @@
+id: "E2E-09"
+name: micro_stream_receiver
+server_type: michi-micro-server
+client_type: michi-music-stream-simulator
+
+checks:
+  - name: micro_server_info
+    method: GET
+    path: /api/v1/server/info
+    server: micro
+    expected_status: 200
+    expected_json:
+      service: michi-micro-server
+
+  - name: receiver_pair_start
+    method: POST
+    path: /api/v1/receiver/pair/start
+    server: micro
+    body:
+      device_name: "Stream Simulator"
+      device_type: "michi_stream_standard"
+      roles: ["audio_receiver"]
+      capabilities:
+        streaming_formats: ["flac", "mp3"]
+        max_bitrate: 320
+    expected_status: 200
+    extract:
+      receiver_pairing_code: pairing_code
+
+  - name: receiver_pair_confirm
+    method: POST
+    path: /api/v1/receiver/pair/confirm
+    server: micro
+    body:
+      device_name: "Stream Simulator"
+      pairing_code: "{{ var_receiver_pairing_code }}"
+    expected_status: 200
+    extract:
+      receiver_token: token
+
+  - name: receiver_heartbeat
+    method: POST
+    path: /api/v1/receiver/heartbeat
+    server: micro
+    body:
+      device_id: "rec-sim-001"
+      state: idle
+      volume: 50
+    expected_status: 200
+    expected_json:
+      success: true
+
+  - name: receiver_session_start
+    method: POST
+    path: /api/v1/receiver/session/start
+    server: micro
+    body:
+      stream_url: "http://localhost:8500/api/v1/stream/00000000-0000-0000-0000-000000000000"
+      token: "{{ var_receiver_token }}"
+      volume: 60
+    expected_status: 200
+    expected_json:
+      state: playing
+    extract:
+      receiver_session_id: session_id
+
+  - name: receiver_volume
+    method: POST
+    path: /api/v1/receiver/volume
+    server: micro
+    body:
+      volume: 70
+    expected_status: 200
+    expected_json:
+      volume: 70
+
+  - name: receiver_session_stop
+    method: POST
+    path: /api/v1/receiver/session/stop
+    server: micro
+    body:
+      session_id: "{{ var_receiver_session_id }}"
+    expected_status: 200
+    expected_json:
+      success: true

@@ -1,58 +1,111 @@
-# E2E Certification — Michi Link API v1.0.0-alpha
+# Michi Link E2E Certification
 
-## Propósito
+## Cómo ejecutar escenarios E2E
 
-Certificar que cada escenario end-to-end funciona entre dos proyectos Michi antes de declarar beta.
+### Prerrequisitos
 
-## Escenarios Oficiales
+```bash
+pip install requests pyyaml
+```
 
-| ID | Escenario | Server | Client | Prioridad |
-|----|-----------|--------|--------|-----------|
-| E2E-01 | Mobile ↔ Player pairing | Player | Mobile | Crítica |
-| E2E-02 | Mobile ↔ Player stream | Player | Mobile | Crítica |
-| E2E-03 | Mobile ↔ Player playback control | Player | Mobile | Crítica |
-| E2E-04 | Mobile ↔ Micro Server pairing | Micro Server | Mobile | Crítica |
-| E2E-05 | Mobile ↔ Micro Server download | Micro Server | Mobile | Crítica |
-| E2E-06 | Mobile ↔ Micro Server playback control | Micro Server | Mobile | Crítica |
-| E2E-07 | Player → Micro Server import | Player | Micro Server | Alta |
-| E2E-08 | Micro Server autonomous playback | Micro Server | — | Alta |
-| E2E-09 | Micro ↔ Stream receiver simulator | Micro Server | Simulator | Media |
+Todos los escenarios se ejecutan con `runner.py`:
 
-## Formato de Reporte
+```bash
+cd tests/e2e_certification
+python runner.py scenarios/<scenario>.yml --server-host <IP> --server-port <PORT>
+```
 
-Cada certificación produce un archivo JSON en `tests/e2e_contract/reports/`:
+### Escenario A: Mobile ↔ Player
+
+**Requisitos:**
+- Michi Music Player corriendo en la red local (ej: 192.168.1.100:8400).
+- Mobile test client (o curl manual si no hay client).
+
+**Ejecución:**
+
+```bash
+# Pairing
+python runner.py scenarios/mobile_player.yml --server-host 192.168.1.100 --server-port 8400 --certified-by dev@example.com
+
+# Playback control (requiere token del pairing anterior)
+python runner.py scenarios/mobile_player.yml --server-host 192.168.1.100 --server-port 8400 --token <TOKEN>
+```
+
+### Escenario B: Mobile ↔ Micro Server
+
+**Requisitos:**
+- Michi Micro Server corriendo (ej: 192.168.1.101:8500).
+- Token obtenido tras pairing manual (por ahora).
+
+**Ejecución:**
+
+```bash
+# Pairing + token refresh
+python runner.py scenarios/mobile_micro.yml --server-host 192.168.1.101 --server-port 8500 --certified-by dev@example.com
+
+# Download + sync
+python runner.py scenarios/mobile_micro.yml --server-host 192.168.1.101 --server-port 8500 --token <TOKEN>
+```
+
+### Escenario C: Player → Micro Server (Import)
+
+**Requisitos:**
+- Player y Micro Server en la misma red.
+- Ambos emparejados previamente.
+- Player tiene tracks para importar.
+
+**Ejecución:**
+
+```bash
+python runner.py scenarios/player_micro_import.yml --player-host 192.168.1.100 --player-port 8400 --micro-host 192.168.1.101 --micro-port 8500
+```
+
+### Escenario D: Micro Server → Stream
+
+**Requisitos:**
+- Micro Server corriendo.
+- Stream simulator (o firmware real).
+- Solo para certificación avanzada (no blocker beta).
+
+**Ejecución:**
+
+```bash
+python runner.py scenarios/micro_stream_receiver.yml --micro-host 192.168.1.101 --micro-port 8500
+```
+
+### Ver los reportes
+
+Los reportes se guardan en `tests/e2e_certification/reports/`:
+
+```bash
+ls tests/e2e_certification/reports/
+cat tests/e2e_certification/reports/mobile_player_pairing-20260715.json
+```
+
+### Interpretar resultados
+
+Cada check tiene status `pass`, `fail`, o `skip`. El reporte global es `pass` solo si todos los checks pasan.
 
 ```json
 {
   "scenario": "E2E-01",
   "name": "mobile_player_pairing",
   "status": "pass",
-  "server": { "type": "michi-music-player", "version": "0.1.0" },
-  "client": { "type": "michi-mobile", "version": "0.1.0" },
-  "timestamp": "2026-07-15T14:00:00Z",
   "checks": [
-    { "name": "discovery", "status": "pass", "detail": "UDP announce recibido" },
     { "name": "server_info", "status": "pass", "detail": "service: michi-music-player" },
-    { "name": "pair_start", "status": "pass", "detail": "pairing_code recibido" },
-    { "name": "pair_confirm", "status": "pass", "detail": "token obtenido" }
+    { "name": "pair_start", "status": "pass", "detail": "pairing_code received" }
   ],
-  "errors": [],
-  "certified_by": "desarrollador@example.com",
-  "certified_at": "2026-07-15T14:05:00Z"
+  "errors": []
 }
 ```
 
-## Proceso de Certificación
+### Niveles de certificación
 
-1. Ejecutar el escenario manualmente o con script.
-2. Generar reporte JSON según schema.
-3. Agregar reporte a `tests/e2e_contract/reports/{scenario}-{fecha}.json`.
-4. Actualizar `BETA_READINESS_CHECKLIST.md` con enlace al reporte.
-5. Si falla: crear issue en el repositorio responsable con el reporte adjunto.
-
-## Requisitos Mínimos para Certificar
-
-- Escenario ejecutado en red local real (no localhost).
-- Reporte generado sin errores.
-- Al menos dos ejecuciones exitosas en días diferentes.
-- Captura de pantalla o video opcional para escenarios con UI.
+| Nivel | Significado |
+|-------|-------------|
+| NOT_TESTED | No ejecutado |
+| UNIT_PASS | Pasa test unitario del proyecto |
+| MOCK_PASS | Pasa contra servidor mock |
+| MANUAL_PASS | Pasa manualmente con curl |
+| E2E_PASS | Pasa con runner.py contra servidor real |
+| FAIL | No pasa |

@@ -1,0 +1,54 @@
+id: "E2E-01"
+name: mobile_player_pairing
+server_type: michi-music-player
+client_type: michi-mobile
+
+checks:
+  - name: server_info
+    method: GET
+    path: /api/v1/server/info
+    server: player
+    expected_status: 200
+    expected_json:
+      service: michi-music-player
+    not_expected_fields:
+      - server_name
+      - device_id
+
+  - name: pair_start
+    method: POST
+    path: /api/v1/pair/start
+    server: player
+    body:
+      device_name: "Mobile Test"
+      device_type: "mobile"
+    expected_status: 200
+    extract:
+      pairing_code: pairing_code
+      device_id: device_id
+
+  - name: pair_confirm
+    method: POST
+    path: /api/v1/pair/confirm
+    server: player
+    body:
+      device_id: "{{ var_device_id }}"
+      pairing_code: "{{ var_pairing_code }}"
+    expected_status: 200
+    extract:
+      token: token
+
+  - name: auth_works
+    method: GET
+    path: /api/v1/tracks?limit=5
+    server: player
+    token: "{{ var_token }}"
+    expected_status: 200
+
+  - name: auth_fails_without_token
+    method: GET
+    path: /api/v1/tracks?limit=5
+    server: player
+    expected_status: 401
+    expected_json:
+      error.code: UNAUTHORIZED

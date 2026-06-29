@@ -1,0 +1,68 @@
+id: "E2E-04"
+name: mobile_micro_pairing
+server_type: michi-micro-server
+client_type: michi-mobile
+
+checks:
+  - name: server_info
+    method: GET
+    path: /api/v1/server/info
+    server: micro
+    expected_status: 200
+    expected_json:
+      service: michi-micro-server
+    not_expected_fields:
+      - server_name
+      - device_id
+
+  - name: pair_start
+    method: POST
+    path: /api/v1/pair/start
+    server: micro
+    body:
+      device_name: "Mobile Test"
+      device_type: "mobile"
+    expected_status: 200
+    extract:
+      pairing_code: code
+      pairing_id: pairing_id
+
+  - name: pair_confirm
+    method: POST
+    path: /api/v1/pair/confirm
+    server: micro
+    body:
+      pairing_id: "{{ var_pairing_id }}"
+      code: "{{ var_pairing_code }}"
+    expected_status: 200
+    extract:
+      device_token: device_token
+      refresh_token: refresh_token
+
+  - name: token_refresh
+    method: POST
+    path: /api/v1/token/refresh
+    server: micro
+    body:
+      refresh_token: "{{ var_refresh_token }}"
+    expected_status: 200
+    extract:
+      new_device_token: device_token
+
+  - name: auth_works
+    method: GET
+    path: /api/v1/tracks?limit=5
+    server: micro
+    token: "{{ var_new_device_token }}"
+    expected_status: 200
+
+  - name: permissions_include_download
+    method: POST
+    path: /api/v1/pair/confirm
+    server: micro
+    body:
+      pairing_id: "{{ var_pairing_id }}"
+      code: "{{ var_pairing_code }}"
+    expected_status: 200
+    expected_json:
+      permissions: ["download.read"]

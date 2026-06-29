@@ -1,0 +1,78 @@
+id: "E2E-07"
+name: player_micro_import
+server_type: michi-micro-server
+client_type: michi-music-player
+
+servers:
+  player_actual: "player"
+  micro_actual: "micro"
+
+checks:
+  - name: micro_server_info
+    method: GET
+    path: /api/v1/server/info
+    server: micro
+    expected_status: 200
+    expected_json:
+      service: michi-micro-server
+
+  - name: import_session
+    method: POST
+    path: /api/v1/import/session
+    server: micro
+    body:
+      total_tracks: 3
+      total_playlists: 0
+    expected_status: 200
+    extract:
+      session_id: session_id
+
+  - name: import_upload_01
+    method: POST
+    path: /api/v1/import/upload/{{ var_session_id }}
+    server: micro
+    body:
+      track_index: 0
+      filename: "test_track_01.flac"
+      hash: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+    expected_status: 200
+    expected_json:
+      accepted: true
+
+  - name: import_upload_02
+    method: POST
+    path: /api/v1/import/upload/{{ var_session_id }}
+    server: micro
+    body:
+      track_index: 1
+      filename: "test_track_02.flac"
+      hash: "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7"
+    expected_status: 200
+    expected_json:
+      accepted: true
+
+  - name: import_upload_03
+    method: POST
+    path: /api/v1/import/upload/{{ var_session_id }}
+    server: micro
+    body:
+      track_index: 2
+      filename: "test_track_03.flac"
+      hash: "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8"
+    expected_status: 200
+    expected_json:
+      accepted: true
+
+  - name: import_commit
+    method: POST
+    path: /api/v1/import/commit/{{ var_session_id }}
+    server: micro
+    expected_status: 200
+    expected_json:
+      tracks_imported: 3
+
+  - name: library_stats_updated
+    method: GET
+    path: /api/v1/library/stats
+    server: micro
+    expected_status: 200

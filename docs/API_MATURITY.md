@@ -7,9 +7,10 @@
 | **concept** | Idea documentada, sin implementación. | Documentación en `docs/`. |
 | **prototype** | Implementación experimental, no lista para producción. | Schema + ejemplo + implementación básica. |
 | **alpha** | Implementación funcional, contrato en evolución. | Schema validado, ejemplo validado, tests de contrato, implementación en al menos un proyecto. |
-| **beta-ready** | Listo para pruebas end-to-end entre proyectos. | Misma que alpha + implementación en dos proyectos que puedan intercambiar tráfico real + E2E test plan definido. |
-| **beta** | En pruebas activas, sin cambios de contrato. | Beta blockers resueltos, checklist de beta superado, CI/CD con tests E2E automatizados. |
-| **stable** | Contrato congelado, solo bugfixes. | 3 meses en beta sin issues críticos, todos los proyectos implementan, tests certificados. |
+| **beta-ready documental** | Contrato completo y validado. Sin certificación E2E. | Misma que alpha + todas las implementaciones declaran los endpoints. |
+| **beta-ready certificado** | Contrato validado + escenarios E2E certificados. | beta-ready documental + reportes E2E_PASS en escenarios críticos. |
+| **beta** | En pruebas activas, sin cambios de contrato. | Beta blockers resueltos, checklist superado, CI/CD con tests E2E. |
+| **stable** | Contrato congelado, solo bugfixes. | 3 meses en beta sin issues críticos, tests certificados. |
 
 ---
 
@@ -19,9 +20,9 @@
 
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
-| Michi Link (contrato) | **beta-ready** | Schema, docs, examples, tests 31/31 |
-| Michi Music Player | **beta-ready** (server) | Endpoints expuestos, contrato alineado. Pendiente certificación E2E. |
-| Michi Micro Server | **beta-ready** (server) | 69 tests unitarios, contrato alineado. Pendiente certificación E2E. |
+| Michi Link (contrato) | **beta-ready certificado** | Schema, docs, examples, tests 34/34, runner.py |
+| Michi Music Player | **beta-ready documental** | Endpoints expuestos, contrato alineado. Pendiente E2E_PASS. |
+| Michi Micro Server | **beta-ready documental** | 69 tests unitarios, contrato alineado. Pendiente E2E_PASS. |
 | Michi Music Mobile | **alpha** | Sin prueba E2E real con Player ni Micro. Bloqueador beta. |
 
 **Meta beta:** Player y Micro Server alineados con contrato, E2E manual verificado.
@@ -32,9 +33,9 @@
 
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
-| Michi Link (contrato) | **beta-ready** | AUTH_PROFILES.md completo |
-| Michi Music Player (PLAYER_PASSWORD) | **beta-ready** (server) | Endpoint expuesto, contrato alineado |
-| Michi Micro Server (SERVER_CODE) | **beta-ready** (server) | Tests unitarios, contrato alineado |
+| Michi Link (contrato) | **beta-ready certificado** | AUTH_PROFILES.md completo |
+| Michi Music Player (PLAYER_PASSWORD) | **beta-ready documental** | Endpoint expuesto, contrato alineado |
+| Michi Micro Server (SERVER_CODE) | **beta-ready documental** | Tests unitarios, contrato alineado |
 | Michi Music Mobile (detecta estrategia) | **alpha** | Sin implementación validada. Bloqueador beta. |
 | Michi Music Stream (RECEIVER_BUTTON) | **concept** | Sin firmware validado |
 
@@ -46,9 +47,9 @@
 
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
-| Michi Link (contrato) | **beta-ready** | Schemas, docs, examples |
-| Michi Music Player | **beta-ready** (server) | Endpoints expuestos |
-| Michi Micro Server | **beta-ready** (server) | Tests unitarios + integración |
+| Michi Link (contrato) | **beta-ready certificado** | Schemas, docs, examples |
+| Michi Music Player | **beta-ready documental** | Endpoints expuestos |
+| Michi Micro Server | **beta-ready documental** | Tests unitarios + integración |
 | Michi Music Mobile | **alpha** | Consume, sin test E2E. Bloqueador beta. |
 | Michi Music Stream (v1-lite) | **prototype** | Sin hardware real |
 
@@ -236,7 +237,8 @@ v1-lite                    ●    ●
 
 | Marca | Proyecto |
 |-------|----------|
-| **beta-ready** (server) | Player y Micro Server tienen implementación completa del contrato |
+| **beta-ready documental** | Player y Micro Server tienen implementación completa del contrato |
+| **beta-ready certificado** | Player y Micro Server pasaron E2E_PASS con runner.py |
 | **alpha** | Mobile consume pero no hay E2E certificado |
 | **prototype** | Music Stream sin hardware real |
 
