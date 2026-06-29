@@ -2,7 +2,7 @@
   "device_id": "rec-hifi-001",
   "device_name": "Michi Music Stream Hi-Fi",
   "device_type": "michi_stream_hifi",
-  "api_version": "1.0.0",
+  "api_version": "v1",
   "host": "192.168.1.60",
   "port": 9002,
   "firmware_version": "2.1.0",

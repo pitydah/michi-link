@@ -2,7 +2,7 @@
   "device_id": "rec-std-001",
   "device_name": "Michi Music Stream Standard",
   "device_type": "michi_stream_standard",
-  "api_version": "1.0.0",
+  "api_version": "v1",
   "host": "192.168.1.50",
   "port": 9001,
   "firmware_version": "1.2.1",

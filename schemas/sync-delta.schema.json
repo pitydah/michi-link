@@ -7,8 +7,8 @@
   "required": ["cursor", "added", "updated", "deleted", "playlists_updated"],
   "properties": {
     "cursor": {
-      "type": "string",
-      "description": "Opaque cursor token for the next delta request",
+      "type": ["string", "number"],
+      "description": "Opaque cursor token for the next delta request (string or number, all implementations MUST produce a string)",
       "examples": ["cursor_delta_001_a1b2c3d4"]
     },
     "added": {

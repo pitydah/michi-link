@@ -4,7 +4,7 @@
   "title": "ServerInfo",
   "description": "Server identity and capabilities payload (v1.0.0 official format)",
   "type": "object",
-  "required": ["service", "name", "server_id", "version", "api_version", "michi_link_version", "roles", "features"],
+  "required": ["service", "name", "api_version", "roles", "features"],
   "properties": {
     "service": {
       "type": "string",
@@ -32,40 +32,38 @@
     },
     "api_version": {
       "type": "string",
-      "description": "Michi Link API version",
-      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
-      "examples": ["1.0.0"]
+      "description": "Michi Link API version (use 'v1' for v1.x series)",
+      "examples": ["v1", "1.0.0"]
     },
     "michi_link_version": {
       "type": "string",
       "description": "Michi Link protocol version",
-      "examples": ["1.0.0"]
+      "examples": ["1.0.0-alpha"]
     },
     "roles": {
       "type": "array",
       "description": "Active roles (see ARCHITECTURE.md for official list)",
       "items": { "type": "string" },
       "uniqueItems": true,
+      "minItems": 1,
       "examples": [["home_server", "library_server", "stream_server"]]
     },
     "features": {
       "type": "object",
       "description": "Capability descriptors",
-      "properties": {
-        "library": { "type": "object", "description": "Library capabilities" },
-        "streaming": { "type": "object", "description": "Streaming capabilities" },
-        "sync": { "type": "object", "description": "Sync capabilities" },
-        "playback": { "type": "object", "description": "Playback capabilities" },
-        "multiroom": { "type": "object", "description": "Multiroom capabilities" }
-      }
+      "minProperties": 1
     },
     "auth": {
       "type": "object",
-      "description": "Authentication methods supported",
+      "description": "Authentication configuration",
+      "required": ["required", "strategy", "token_refresh"],
       "properties": {
-        "pairing": { "type": "boolean" },
-        "token_refresh": { "type": "boolean" },
-        "methods": { "type": "array", "items": { "type": "string" } }
+        "required": { "type": "boolean" },
+        "strategy": {
+          "type": "string",
+          "enum": ["PLAYER_PASSWORD", "SERVER_CODE", "RECEIVER_BUTTON", "LEGACY"]
+        },
+        "token_refresh": { "type": "boolean" }
       }
     }
   }

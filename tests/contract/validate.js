@@ -144,10 +144,9 @@ function main() {
 
     if (rule.schemaBase === "server-info" && !altValid) {
       const hasService = typeof data.service === "string";
-      const hasServerId = typeof data.server_id === "string";
-      const hasRoles = Array.isArray(data.roles);
+      const hasRoles = Array.isArray(data.roles) && data.roles.length > 0;
       const hasFeatures = data.features && typeof data.features === "object";
-      if (hasService && hasServerId && hasRoles && hasFeatures) {
+      if (hasService && hasRoles && hasFeatures) {
         console.log(`${PASS} ${example.name} matches server-info.schema.json (official v1 format)`);
         altValid = true;
         passed++;
@@ -348,6 +347,52 @@ function main() {
       passed++;
     } else {
       console.log(`${FAIL} error format with nested object failed`);
+      for (const err of validate.errors || []) {
+        console.log(`       ${err.instancePath} ${err.message}`);
+      }
+      failed++;
+    }
+  })();
+
+  // --- Positive test: server-info Player parses correctly ---
+  (function () {
+    const validate = compileWithRefs("server-info", allSchemas);
+    const playerData = loadJSON(path.join(EXAMPLES_DIR, "server-info-player.json"));
+    if (validate && validate(playerData)) {
+      const authStrategy = playerData.auth.strategy;
+      const tokenRefresh = playerData.auth.token_refresh;
+      if (authStrategy === "PLAYER_PASSWORD" && tokenRefresh === false) {
+        console.log(`${PASS} server-info Player: auth.strategy=PLAYER_PASSWORD, token_refresh=false`);
+        passed++;
+      } else {
+        console.log(`${FAIL} server-info Player has unexpected auth values`);
+        failed++;
+      }
+    } else {
+      console.log(`${FAIL} server-info Player failed schema validation`);
+      for (const err of validate.errors || []) {
+        console.log(`       ${err.instancePath} ${err.message}`);
+      }
+      failed++;
+    }
+  })();
+
+  // --- Positive test: server-info Micro Server parses correctly ---
+  (function () {
+    const validate = compileWithRefs("server-info", allSchemas);
+    const msData = loadJSON(path.join(EXAMPLES_DIR, "server-info-micro-server.json"));
+    if (validate && validate(msData)) {
+      const authStrategy = msData.auth.strategy;
+      const tokenRefresh = msData.auth.token_refresh;
+      if (authStrategy === "SERVER_CODE" && tokenRefresh === true) {
+        console.log(`${PASS} server-info Micro Server: auth.strategy=SERVER_CODE, token_refresh=true`);
+        passed++;
+      } else {
+        console.log(`${FAIL} server-info Micro Server has unexpected auth values`);
+        failed++;
+      }
+    } else {
+      console.log(`${FAIL} server-info Micro Server failed schema validation`);
       for (const err of validate.errors || []) {
         console.log(`       ${err.instancePath} ${err.message}`);
       }

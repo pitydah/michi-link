@@ -67,7 +67,16 @@ Todos los endpoints (excepto `/status` y los de pairing inicial) requieren un to
 Authorization: Bearer <token>
 ```
 
-Los tokens se obtienen mediante el flujo de pairing (`/pair/start`, `/pair/confirm`) y se renuevan vía `/token/refresh`.
+Los tokens se obtienen mediante el flujo de pairing (`/pair/start`, `/pair/confirm`) y se renuevan vía `/token/refresh` cuando el servidor lo soporta.
+
+Cada servidor declara su estrategia de autenticación en `GET /server/info` → `auth.strategy`. Ver [AUTH_PROFILES.md](AUTH_PROFILES.md) para la documentación completa de las estrategias:
+
+| Estrategia | Proyecto | token_refresh | Código |
+|------------|----------|---------------|--------|
+| `PLAYER_PASSWORD` | Michi Music Player | No | Contraseña configurada por el usuario |
+| `SERVER_CODE` | Michi Micro Server | Sí | Código temporal en pantalla |
+| `RECEIVER_BUTTON` | Michi Music Stream | No | Botón físico |
+| `LEGACY` | Transición | Variable | Fallback para clientes antiguos |
 
 ---
 
@@ -221,11 +230,14 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
 | `name` | string | Nombre legible del servidor (configurable por el usuario) |
 | `server_id` | string | UUID único del servidor |
 | `version` | string | Versión de la aplicación |
-| `api_version` | string | Versión de Michi Link API que implementa |
-| `michi_link_version` | string | Versión del protocolo Michi Link |
+| `api_version` | string | Versión de Michi Link API que implementa (ej: `v1`) |
+| `michi_link_version` | string | Versión del protocolo Michi Link (ej: `1.0.0-alpha`) |
 | `roles` | string[] | Roles activos del servidor (lista oficial en ARCHITECTURE.md) |
 | `features` | object | Capacidades detalladas del servidor |
-| `auth` | object | Información de autenticación disponible |
+| `auth` | object | Información de autenticación (ver AUTH_PROFILES.md) |
+| `auth.required` | boolean | Si la autenticación es obligatoria |
+| `auth.strategy` | string | Estrategia: `PLAYER_PASSWORD`, `SERVER_CODE`, `RECEIVER_BUTTON`, `LEGACY` |
+| `auth.token_refresh` | boolean | Si el servidor soporta `/token/refresh` |
 
 **Campos eliminados** (no usar): `server_name`, `server_version`, `device_id`, `capabilities`, roles genéricos como `core`, `sync_leader`, `library_service`.
 
@@ -237,8 +249,8 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
   "name": "Michi Micro Server",
   "server_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "version": "0.1.0",
-  "api_version": "1.0.0",
-  "michi_link_version": "1.0.0",
+  "api_version": "v1",
+  "michi_link_version": "1.0.0-alpha",
   "roles": ["home_server", "library_server", "stream_server"],
   "features": {
     "library": { "tracks": 12543, "albums": 1024, "artists": 512 },
@@ -246,7 +258,7 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
     "sync": { "enabled": true, "delta": true },
     "multiroom": { "enabled": true, "max_receivers": 8 }
   },
-  "auth": { "pairing": true, "token_refresh": true, "methods": ["bearer"] }
+  "auth": { "required": true, "strategy": "SERVER_CODE", "token_refresh": true }
 }
 ```
 
@@ -258,8 +270,8 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
   "name": "Michi Music Player",
   "server_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
   "version": "0.1.0",
-  "api_version": "1.0.0",
-  "michi_link_version": "1.0.0",
+  "api_version": "v1",
+  "michi_link_version": "1.0.0-alpha",
   "roles": ["desktop_player", "library_master", "sync_host", "sync_source", "stream_server"],
   "features": {
     "library": { "tracks": 8432, "albums": 687, "artists": 341 },
@@ -268,7 +280,7 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
     "playback": { "control": true, "queue": true, "shuffle": true, "repeat": ["off", "one", "all"] },
     "multiroom": { "enabled": true, "max_receivers": 16 }
   },
-  "auth": { "pairing": true, "token_refresh": true, "methods": ["bearer"] }
+  "auth": { "required": true, "strategy": "PLAYER_PASSWORD", "token_refresh": false }
 }
 ```
 

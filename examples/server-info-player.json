@@ -3,8 +3,8 @@
   "name": "Michi Music Player",
   "server_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
   "version": "0.1.0",
-  "api_version": "1.0.0",
-  "michi_link_version": "1.0.0",
+  "api_version": "v1",
+  "michi_link_version": "1.0.0-alpha",
   "roles": ["desktop_player", "library_master", "sync_host", "sync_source", "stream_server"],
   "features": {
     "library": { "tracks": 8432, "albums": 687, "artists": 341 },
@@ -13,5 +13,5 @@
     "playback": { "control": true, "queue": true, "shuffle": true, "repeat": ["off", "one", "all"] },
     "multiroom": { "enabled": true, "max_receivers": 16 }
   },
-  "auth": { "pairing": true, "token_refresh": true, "methods": ["bearer"] }
+  "auth": { "required": true, "strategy": "PLAYER_PASSWORD", "token_refresh": false }
 }

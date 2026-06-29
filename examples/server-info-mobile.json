@@ -3,13 +3,13 @@
   "name": "Michi Music Mobile",
   "server_id": "d3e4f5a6-b7c8-9012-defa-1234567890ab",
   "version": "0.1.0",
-  "api_version": "1.0.0",
-  "michi_link_version": "1.0.0",
+  "api_version": "v1",
+  "michi_link_version": "1.0.0-alpha",
   "roles": ["mobile_client", "offline_player", "remote_controller"],
   "features": {
     "sync": { "enabled": true, "delta": true },
     "playback": { "control": true, "queue": true, "remote_control": true },
     "offline": { "tracks": 342, "storage_bytes": 12000000000 }
   },
-  "auth": { "pairing": true, "token_refresh": true, "methods": ["bearer"] }
+  "auth": { "required": true, "strategy": "LEGACY", "token_refresh": true }
 }
