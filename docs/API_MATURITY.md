@@ -8,9 +8,21 @@
 | **prototype** | Implementación experimental, no lista para producción. | Schema + ejemplo + implementación básica. |
 | **alpha** | Implementación funcional, contrato en evolución. | Schema validado, ejemplo validado, tests de contrato, implementación en al menos un proyecto. |
 | **beta-ready documental** | Contrato completo y validado. Sin certificación E2E. | Misma que alpha + todas las implementaciones declaran los endpoints. |
-| **beta-ready certificado** | Contrato validado + escenarios E2E certificados. | beta-ready documental + reportes E2E_PASS en escenarios críticos. |
+| **beta-ready certificado** | Contrato validado + escenarios E2E certificados. | beta-ready documental + reportes E2E en escenarios críticos. |
 | **beta** | En pruebas activas, sin cambios de contrato. | Beta blockers resueltos, checklist superado, CI/CD con tests E2E. |
 | **stable** | Contrato congelado, solo bugfixes. | 3 meses en beta sin issues críticos, tests certificados. |
+
+## Certification levels
+
+| Código | Nivel | Entorno |
+|--------|-------|---------|
+| NOT_TESTED | No probado | — |
+| UNIT_PASS | Unit test | Test aislado |
+| MOCK_PASS | Mock de red | HTTP simulado |
+| LOCAL_E2E_PASS | Localhost real | `127.0.0.1` |
+| NETWORK_E2E_PASS | LAN real | `192.168.1.x` |
+| DEVICE_E2E_PASS | Hardware real | Físico |
+| FAIL | No pasa | Cualquiera |
 
 ---
 

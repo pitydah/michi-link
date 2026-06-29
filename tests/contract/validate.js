@@ -51,6 +51,7 @@ function mappingRules() {
     { pattern: /^import-preflight-request\.json$/, schemaBase: "import-preflight" },
     { pattern: /^import-preflight-response\.json$/, schemaBase: "import-preflight-response" },
     { pattern: /^import-commit-result\.json$/, schemaBase: "import-commit-result" },
+    { pattern: /^continue-on-server-request\.json$/, schemaBase: "continue-on-server" },
   ];
 }
 

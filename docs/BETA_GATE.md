@@ -15,8 +15,9 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 | Mobile ↔ Micro download | **NETWORK_E2E_PASS** | DEVICE_E2E_PASS |
 | Mobile ↔ Micro playback | **NETWORK_E2E_PASS** | DEVICE_E2E_PASS |
 | Player → Micro import | **LOCAL_E2E_PASS** | NETWORK_E2E_PASS |
+| Continue on Server | **LOCAL_E2E_PASS** | NETWORK_E2E_PASS |
 | Micro autonomous | **LOCAL_E2E_PASS** | NETWORK_E2E_PASS |
-| Micro ↔ Stream | MOCK_PASS (no blocker) | DEVICE_E2E_PASS |
+| Micro ↔ Stream Simulator | **MOCK_PASS** | NETWORK_E2E_PASS |
 
 ## Condiciones
 
@@ -48,7 +49,23 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/player_micro_import_*.json`
 
-### 4. Micro Autonomous Playback
+### 4. Continue on Server
+
+| Escenario | Mínimo requerido | Estado actual |
+|-----------|-----------------|---------------|
+| E2E-09: Continue on Server (import + queue + playback) | LOCAL_E2E_PASS | NOT_TESTED |
+
+**Evidencia:** Reporte en `tests/e2e_certification/reports/continue_on_server_*.json`
+
+### 5. Micro ↔ Stream Simulator
+
+| Escenario | Mínimo requerido | Estado actual |
+|-----------|-----------------|---------------|
+| E2E-10: Micro ↔ Stream pairing + session | MOCK_PASS | NOT_TESTED |
+
+**Evidencia:** Reporte en `tests/e2e_certification/reports/micro_stream_receiver_*.json`
+
+### 6. Micro Autonomous Playback
 
 | Escenario | Mínimo requerido | Estado actual |
 |-----------|-----------------|---------------|
@@ -56,7 +73,7 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/micro_autonomous_playback_*.json`
 
-### 5. Seguridad
+### 7. Seguridad
 
 | Condición | Mínimo requerido | Estado | Evidencia |
 |-----------|-----------------|--------|-----------|
@@ -65,8 +82,9 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 | Tokens hasheados (SHA-256) | UNIT_PASS | UNIT_PASS | crates/michi-link/src/auth.rs |
 | Tokens no expuestos en logs | LOCAL_E2E_PASS | NOT_TESTED | — |
 | Rollback import probado | LOCAL_E2E_PASS | NOT_TESTED | — |
+| Continue-on-Server fallback (Player retoma local si Micro falla) | LOCAL_E2E_PASS | NOT_TESTED | — |
 
-### 6. Contrato
+### 8. Contrato
 
 | Condición | Mínimo requerido | Estado | Evidencia |
 |-----------|-----------------|--------|-----------|
@@ -86,7 +104,9 @@ Condición                     Mínimo           Actual        ¿Gate passed?
 Mobile ↔ Player               NETWORK_E2E_PASS NOT_TESTED     ❌
 Mobile ↔ Micro                NETWORK_E2E_PASS NOT_TESTED     ❌
 Player → Micro import         LOCAL_E2E_PASS   NOT_TESTED     ❌
+Continue on Server            LOCAL_E2E_PASS   NOT_TESTED     ❌
 Micro autonomous playback     LOCAL_E2E_PASS   NOT_TESTED     ❌
+Micro ↔ Stream Simulator      MOCK_PASS        NOT_TESTED     ❌
 Seguridad                     UNIT_PASS        UNIT_PASS      ✅
 Contrato                      UNIT_PASS        UNIT_PASS      ✅
 ──────────────────────────────────────────────────────────────────────────
