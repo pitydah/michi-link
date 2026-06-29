@@ -53,6 +53,7 @@ function mappingRules() {
     { pattern: /^import-commit-result\.json$/, schemaBase: "import-commit-result" },
     { pattern: /^continue-on-server-request\.json$/, schemaBase: "continue-on-server" },
     { pattern: /^upload-result\.json$/, schemaBase: "import-upload-result" },
+    { pattern: /^upload-result-unconfirmed\.json$/, schemaBase: "import-upload-result" },
     { pattern: /^commit-mapping-result\.json$/, schemaBase: "import-commit-result" },
     { pattern: /^queue-transfer-request\.json$/, schemaBase: "queue-transfer" },
     { pattern: /^queue-transfer-response\.json$/, schemaBase: "queue-transfer-response" },

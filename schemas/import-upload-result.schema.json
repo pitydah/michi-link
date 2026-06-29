@@ -7,8 +7,19 @@
   "required": ["local_track_id", "remote_track_id", "status"],
   "properties": {
     "local_track_id": { "type": "string" },
-    "remote_track_id": { "type": "string" },
-    "status": { "type": "string", "enum": ["uploaded", "already_present"] },
-    "checksum": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+    "remote_track_id": {
+      "description": "Remote track UUID, or null when MAPPING_UNCONFIRMED",
+      "type": ["string", "null"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["uploaded", "already_present", "accepted"]
+    },
+    "checksum": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "warning": {
+      "type": "string",
+      "enum": ["MAPPING_UNCONFIRMED"],
+      "description": "Warning when remote_track_id could not be determined immediately"
+    }
   }
 }
