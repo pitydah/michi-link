@@ -1,0 +1,242 @@
+# API Maturity Model — Michi Link v1.0.0-alpha
+
+## Niveles
+
+| Nivel | Significado | Requisitos |
+|-------|-------------|------------|
+| **concept** | Idea documentada, sin implementación. | Documentación en `docs/`. |
+| **prototype** | Implementación experimental, no lista para producción. | Schema + ejemplo + implementación básica. |
+| **alpha** | Implementación funcional, contrato en evolución. | Schema validado, ejemplo validado, tests de contrato, implementación en al menos un proyecto. |
+| **beta-ready** | Listo para pruebas end-to-end entre proyectos. | Misma que alpha + implementación en dos proyectos que puedan intercambiar tráfico real + E2E test plan definido. |
+| **beta** | En pruebas activas, sin cambios de contrato. | Beta blockers resueltos, checklist de beta superado, CI/CD con tests E2E automatizados. |
+| **stable** | Contrato congelado, solo bugfixes. | 3 meses en beta sin issues críticos, todos los proyectos implementan, tests certificados. |
+
+---
+
+## Maturity por Área
+
+### 1. Server Info (`/server/info`, `/status`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | Schema, docs, examples, tests 31/31 |
+| Michi Music Player | **alpha** | Implementado manualmente, sin test E2E |
+| Michi Micro Server | **alpha** | Implementado con tests unitarios |
+
+**Meta beta:** Player y Micro Server alineados con contrato, E2E manual verificado.
+
+---
+
+### 2. Auth Profiles
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | AUTH_PROFILES.md completo |
+| Michi Music Player (PLAYER_PASSWORD) | **alpha** | Implementado, sin test E2E |
+| Michi Micro Server (SERVER_CODE) | **alpha** | Implementado con tests |
+| Michi Music Mobile (detecta estrategia) | **prototype** | Sin implementación validada |
+| Michi Music Stream (RECEIVER_BUTTON) | **concept** | Sin firmware validado |
+
+**Meta beta:** Mobile detecta estrategia, Player y Micro Server responden auth correcto.
+
+---
+
+### 3. Pairing (`/pair/start`, `/pair/confirm`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | Schemas, docs, examples |
+| Michi Music Player | **alpha** | Emparejamiento manual verificable |
+| Michi Micro Server | **alpha** | Tests unitarios + integración |
+| Michi Music Mobile | **prototype** | Consume, sin test E2E |
+| Michi Music Stream (v1-lite) | **prototype** | Sin hardware real |
+
+**Beta blocker:** Mobile ↔ Player y Mobile ↔ Micro deben funcionar.
+
+---
+
+### 4. Library (`/library/stats`, `/library/scan`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | |
+| Michi Music Player | **alpha** | Sin test E2E de scan remoto |
+| Michi Micro Server | **alpha** | Tests de stats y tracks |
+
+**Meta beta:** Player puede escanear y publicar stats que Mobile pueda leer.
+
+---
+
+### 5. Tracks, Albums, Artists, Search
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | Pagination, filtros documentados |
+| Michi Music Player | **alpha** | Endpoints expuestos manualmente |
+| Michi Micro Server | **alpha** | Tests de tracks, search, pagination |
+| Michi Music Mobile | **prototype** | Consume, sin test E2E |
+
+**Meta beta:** Mobile puede browse library de Player y Micro Server.
+
+---
+
+### 6. Streaming (`/stream/{id}`, `/download/{id}`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | Range, 206, 416 documentados |
+| Michi Music Player | **alpha** | Range tests existentes |
+| Michi Micro Server | **alpha** | Range + download con permisos |
+| Michi Music Mobile | **prototype** | Consume stream/download, sin test E2E |
+
+**Beta blocker:** Mobile ↔ Player stream, Mobile ↔ Micro download.
+
+---
+
+### 7. Artwork (`/artwork/{id}`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | |
+| Michi Music Player | **alpha** | Sirve artwork |
+| Michi Micro Server | **alpha** | Sirve artwork |
+| Michi Music Mobile | **prototype** | Consume, sin test E2E |
+
+**Beta blocker:** Mobile puede ver artwork de Player y Micro Server.
+
+---
+
+### 8. Sync (`/sync/manifest`, `/sync/manifest/delta`, `/sync/state`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | Cursor oficial, legacy soportado |
+| Michi Music Player | **alpha** | Exporta manifest |
+| Michi Micro Server | **alpha** | Manifest + delta + state con tests |
+| Michi Music Mobile | **prototype** | Consume sync, sin test E2E |
+
+**Beta blocker:** Mobile ↔ Micro sync completo (manifest, delta, state).
+
+---
+
+### 9. Playback (`/playback/state`, `/playback/control`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | Command oficial, action legacy |
+| Michi Music Player | **alpha** | Acepta command + action |
+| Michi Micro Server | **alpha** | Tests de control + legacy |
+| Michi Music Mobile | **prototype** | Envía control, sin test E2E |
+
+**Beta blocker:** Mobile ↔ Player control, Mobile ↔ Micro control.
+
+---
+
+### 10. Queue (`/queue`, `/queue/items`, `/queue/jump`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **beta-ready** | |
+| Michi Music Player | **alpha** | Endpoints expuestos |
+| Michi Micro Server | **alpha** | Items + jump con tests |
+| Michi Music Mobile | **prototype** | Consume, sin test E2E |
+
+**Beta blocker:** Mobile ↔ Player queue, Mobile ↔ Micro queue.
+
+---
+
+### 11. Import (`/import/session`, `/import/upload`, `/import/commit`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **alpha** | Schemas existen, sin examples de upload real |
+| Michi Music Player | **prototype** | Sin test E2E de import |
+| Michi Micro Server | **alpha** | Session + upload + commit con tests |
+
+**Beta blocker:** Player → Micro Server import completo.
+
+---
+
+### 12. Receivers (`/receivers/*`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **alpha** | Schemas, docs |
+| Michi Music Player | **planned** | Sin implementación |
+| Michi Micro Server | **partial** | CRUD básico sin integración real |
+| Michi Music Stream | **prototype** | Sin hardware real |
+
+**Meta beta:** No es blocker, pero debe progresar a alpha coordinado.
+
+---
+
+### 13. Events (`/events` WebSocket)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **alpha** | Documentado como secundario |
+| Michi Music Player | **stub** | Endpoint declarado, sin eventos |
+| Michi Micro Server | **alpha** | Broadcast básico de playback.state_changed |
+| Michi Music Mobile | **planned** | Sin consumo de eventos |
+
+**Meta beta:** No es blocker. Prioridad baja.
+
+---
+
+### 14. Rooms (`/rooms/*`)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **alpha** | Schemas, docs |
+| Todos | **planned** | Sin implementación real |
+
+**Meta beta:** No es blocker. Pospuesto para v1.1.
+
+---
+
+### 15. v1-lite (Receivers físicos)
+
+| Proyecto | Nivel | Notas |
+|----------|-------|-------|
+| Michi Link (contrato) | **alpha** | RECEIVERS_V1_LITE.md completo |
+| Michi Micro Server | **partial** | Consume, endpoints declarados |
+| Michi Music Stream | **prototype** | Sin firmware validado en hardware |
+
+**Beta blocker:** Micro Server ↔ Stream para poder avanzar a prototype real.
+
+---
+
+## Resumen Visual
+
+```
+Área                    Concept  Proto  Alpha  Beta-ready  Beta  Stable
+─────────────────────────────────────────────────────────────────────
+Server Info                               ●       ●
+Auth Profiles                             ●       ●
+Pairing                                   ●       ●
+Library                                   ●       ●
+Tracks/Albums/Search                      ●       ●
+Streaming                                 ●       ●
+Artwork                                   ●       ●
+Sync                                      ●       ●
+Playback                                  ●       ●
+Queue                                     ●       ●
+Import                       ●
+Receivers            ●        ●
+Events                                     ●
+Rooms                          ●
+v1-lite                    ●    ●
+```
+
+- **●** = nivel alcanzado por al menos un proyecto
+- Sin marca = no ha alcanzado ese nivel aún
+
+---
+
+## Próximos Pasos para Beta
+
+1. Resolver beta blockers (13 flujos críticos).
+2. Pasar checklist de beta readiness.
+3. Automatizar E2E tests para escenarios A, B, C.
+4. Certificar al menos un flujo completo por escenario.
+5. Congelar contrato v1.0.0-beta.
