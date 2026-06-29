@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "NOT_IMPLEMENTED",
+    "message": "El endpoint /api/v1/rooms no está implementado en este servidor.",
+    "details": {}
+  }
+}

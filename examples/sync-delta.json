@@ -1,0 +1,15 @@
+{
+  "cursor": "cursor_delta_001_a1b2c3d4",
+  "added": [
+    { "type": "track", "id": "track_004", "data": { "title": "New Song", "artist": "Luna Swift", "album": "Imaginary Cities", "duration_ms": 245000 } }
+  ],
+  "updated": [
+    { "type": "album", "id": "album_002", "data": { "title": "Neon Dreams (Remastered)", "year": 2025 } }
+  ],
+  "deleted": [
+    { "type": "track", "id": "track_003" }
+  ],
+  "playlists_updated": [
+    { "playlist_id": "playlist_001", "added": ["track_004"], "removed": ["track_003"] }
+  ]
+}

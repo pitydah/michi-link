@@ -95,8 +95,73 @@ Toda respuesta de error sigue la misma estructura:
 | `PAIRING_REQUIRED`         | El dispositivo no está emparejado.     |
 | `PAIRING_IN_PROGRESS`      | Ya hay un pairing en curso.            |
 | `PAIRING_EXPIRED`          | El código de pairing expiró.           |
+| `TRACK_NOT_FOUND`          | Track no encontrado en la biblioteca.  |
+| `RANGE_NOT_SATISFIABLE`    | Rango de bytes solicitado no válido.   |
+| `NOT_IMPLEMENTED`          | Endpoint o funcionalidad no implementada. |
 | `RATE_LIMITED`             | Demasiadas solicitudes.                |
 | `INTERNAL_ERROR`           | Error interno del servidor.            |
+
+**Ejemplos de errores:**
+
+```json
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "El cuerpo de la solicitud contiene campos inválidos.",
+    "details": { "field": "volume", "reason": "debe ser un entero entre 0 y 100" }
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Token ausente o inválido.",
+    "details": {}
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "El token no tiene el permiso 'stream.read'.",
+    "details": { "required_permission": "stream.read" }
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "NOT_IMPLEMENTED",
+    "message": "El endpoint /api/v1/receivers no está implementado en este servidor.",
+    "details": {}
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "TRACK_NOT_FOUND",
+    "message": "Track no encontrado.",
+    "details": { "track_id": "uuid-inexistente" }
+  }
+}
+```
+
+```json
+{
+  "error": {
+    "code": "RANGE_NOT_SATISFIABLE",
+    "message": "Rango de bytes solicitado no válido.",
+    "details": { "content_length": 35000000, "requested_range": "bytes=99999999-" }
+  }
+}
+```
 
 ---
 
@@ -146,26 +211,64 @@ Respuesta paginada:
 
 #### `GET /server/info`
 
-Obtiene la identidad, roles activos y capacidades del servidor.
+Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y capacidades del servidor.
 
-**Respuesta `200 OK`:**
+**Campos oficiales:**
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `service` | string | Identificador del servicio: `michi-player`, `michi-micro-server`, `michi-big-server` |
+| `name` | string | Nombre legible del servidor (configurable por el usuario) |
+| `server_id` | string | UUID único del servidor |
+| `version` | string | Versión de la aplicación |
+| `api_version` | string | Versión de Michi Link API que implementa |
+| `michi_link_version` | string | Versión del protocolo Michi Link |
+| `roles` | string[] | Roles activos del servidor (lista oficial en ARCHITECTURE.md) |
+| `features` | object | Capacidades detalladas del servidor |
+| `auth` | object | Información de autenticación disponible |
+
+**Campos eliminados** (no usar): `server_name`, `server_version`, `device_id`, `capabilities`, roles genéricos como `core`, `sync_leader`, `library_service`.
+
+**Respuesta `200 OK` (Michi Micro Server):**
 
 ```json
 {
-  "server_name": "Michi Link Server",
-  "server_version": "1.0.0",
+  "service": "michi-micro-server",
+  "name": "Michi Micro Server",
+  "server_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "version": "0.1.0",
   "api_version": "1.0.0",
-  "device_id": "uuid-del-servidor",
-  "roles": ["core", "sync_leader", "library_service"],
-  "capabilities": {
-    "streaming_formats": ["flac", "mp3", "ogg"],
-    "max_bitrate": 320,
-    "max_sample_rate": 192000,
-    "multiroom": true,
-    "transcoding": true,
-    "sync": true
+  "michi_link_version": "1.0.0",
+  "roles": ["home_server", "library_server", "stream_server"],
+  "features": {
+    "library": { "tracks": 12543, "albums": 1024, "artists": 512 },
+    "streaming": { "formats": ["flac", "mp3", "ogg"], "max_bitrate": 320, "max_sample_rate": 48000, "transcoding": true },
+    "sync": { "enabled": true, "delta": true },
+    "multiroom": { "enabled": true, "max_receivers": 8 }
   },
-  "uptime_seconds": 84720
+  "auth": { "pairing": true, "token_refresh": true, "methods": ["bearer"] }
+}
+```
+
+**Respuesta `200 OK` (Michi Music Player):**
+
+```json
+{
+  "service": "michi-player",
+  "name": "Michi Music Player",
+  "server_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "version": "0.1.0",
+  "api_version": "1.0.0",
+  "michi_link_version": "1.0.0",
+  "roles": ["desktop_player", "library_master", "sync_host", "sync_source", "stream_server"],
+  "features": {
+    "library": { "tracks": 8432, "albums": 687, "artists": 341 },
+    "streaming": { "formats": ["flac", "mp3", "ogg", "aac", "wav"], "max_bitrate": 1411, "max_sample_rate": 192000, "transcoding": true },
+    "sync": { "enabled": true, "delta": true, "host": true },
+    "playback": { "control": true, "queue": true, "shuffle": true, "repeat": ["off", "one", "all"] },
+    "multiroom": { "enabled": true, "max_receivers": 16 }
+  },
+  "auth": { "pairing": true, "token_refresh": true, "methods": ["bearer"] }
 }
 ```
 
@@ -994,14 +1097,14 @@ Obtiene el manifiesto completo de sincronización. Contiene todos los elementos 
 
 #### `GET /sync/manifest/delta`
 
-Obtiene un manifiesto diferencial desde una versión conocida. Útil para sincronización incremental.
+Obtiene un manifiesto diferencial desde un cursor conocido. Útil para sincronización incremental.
 
 **Parámetros de consulta:**
 
-| Parámetro | Tipo   | Obligatorio | Descripción                                                      |
-|-----------|--------|-------------|------------------------------------------------------------------|
-| `cursor`  | string | Sí          | Cursor opaco de la última sincronización (obtenido de la respuesta anterior o del manifest completo). |
-| `device_id` | string | No        | ID del dispositivo solicitante.                                  |
+| Parámetro | Tipo | Obligatorio | Descripción |
+|-----------|------|-------------|-------------|
+| `cursor` | string | Sí | Cursor opaco de la última sincronización (devuelto por `/sync/manifest` o por la respuesta delta anterior). |
+| `device_id` | string | Sí | ID del dispositivo solicitante. |
 
 > **Nota de compatibilidad:** Durante la transición se aceptan también `since` (timestamp ISO 8601) y `manifest_id` (ID de manifiesto). El campo oficial es `cursor`. Las nuevas implementaciones DEBEN usar `cursor`.
 
@@ -1009,18 +1112,18 @@ Obtiene un manifiesto diferencial desde una versión conocida. Útil para sincro
 
 ```json
 {
-  "cursor": "next_cursor_string",
+  "cursor": "cursor_delta_001_a1b2c3d4",
   "added": [
-    { "type": "track", "data": { ... } }
+    { "type": "track", "id": "track_nuevo_001", "data": { "title": "Nueva Canción", "artist": "Artista" } }
   ],
   "updated": [
-    { "type": "track", "data": { ... } }
+    { "type": "album", "id": "album_mod_001", "data": { "title": "Título Actualizado" } }
   ],
   "deleted": [
-    { "type": "track", "id": "uuid-track-eliminado" }
+    { "type": "track", "id": "track_eliminado_001" }
   ],
   "playlists_updated": [
-    { "playlist_id": "uuid-playlist", "added": [], "removed": [] }
+    { "playlist_id": "playlist_001", "added": ["track_004"], "removed": ["track_002"] }
   ]
 }
 ```

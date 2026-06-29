@@ -1,29 +1,18 @@
 {
+  "device_id": "rec-hifi-001",
+  "device_name": "Michi Music Stream Hi-Fi",
   "device_type": "michi_stream_hifi",
-  "id": "rec-hifi-001",
-  "name": "Michi Music Stream Hi-Fi",
-  "model": "hifi",
-  "version": "2.1.0",
-  "capabilities": ["audio", "volume", "heartbeat", "high_res"],
-  "status": "playing",
-  "volume": 65,
-  "firmware": {
-    "current": "2.1.0",
-    "latest": "2.2.0"
-  },
-  "hardware": {
-    "audio_output": "rca",
-    "dac": "pcm5242",
+  "api_version": "1.0.0",
+  "host": "192.168.1.60",
+  "port": 9002,
+  "firmware_version": "2.1.0",
+  "capabilities": {
+    "formats": ["pcm", "flac", "aac"],
     "sample_rates": [44100, 48000, 96000],
-    "bit_depth": 24,
-    "ram_kb": 4096,
-    "storage_kb": 16384
+    "bit_depths": [16, 24],
+    "max_channels": 2
   },
-  "network": {
-    "mac": "dd:ee:ff:44:55:66",
-    "ip": "192.168.1.60",
-    "port": 9002,
-    "wifi": "802.11 b/g/n",
-    "ethernet": true
-  }
+  "volume": 65,
+  "is_playing": true,
+  "session_id": "session_x1y2z3"
 }

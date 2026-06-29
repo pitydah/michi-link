@@ -2,126 +2,70 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/server-info.schema.json",
   "title": "ServerInfo",
-  "description": "Server identity and capabilities payload",
+  "description": "Server identity and capabilities payload (v1.0.0 official format)",
   "type": "object",
-  "required": ["device_id", "device_name", "device_type", "roles", "capabilities", "api_version", "host", "port"],
+  "required": ["service", "name", "server_id", "version", "api_version", "michi_link_version", "roles", "features"],
   "properties": {
-    "device_id": {
+    "service": {
       "type": "string",
-      "description": "Unique identifier for this device",
-      "minLength": 1,
-      "pattern": "^[a-zA-Z0-9_-]+$",
-      "examples": ["michi-server-01"]
+      "description": "Service identifier: michi-player, michi-micro-server, michi-big-server",
+      "enum": ["michi-player", "michi-micro-server", "michi-big-server", "michi-mobile", "michi-stream-standard", "michi-stream-hifi"],
+      "examples": ["michi-micro-server"]
     },
-    "device_name": {
+    "name": {
       "type": "string",
-      "description": "Human-readable device name",
+      "description": "Human-readable server name (user-configurable)",
       "minLength": 1,
       "maxLength": 128,
-      "examples": ["Living Room Server"]
+      "examples": ["Michi Micro Server"]
     },
-    "device_type": {
+    "server_id": {
       "type": "string",
-      "description": "Device type identifier",
-      "enum": ["michi_server", "michi_receiver", "michi_client", "michi_bridge"]
+      "description": "Unique server UUID",
+      "format": "uuid",
+      "examples": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
     },
-    "roles": {
-      "type": "array",
-      "description": "Roles this device fulfills",
-      "items": {
-        "type": "string",
-        "enum": ["server", "receiver", "controller", "source"]
-      },
-      "uniqueItems": true
-    },
-    "capabilities": {
-      "type": "object",
-      "description": "Feature flags and capability descriptors",
-      "properties": {
-        "audio_formats": {
-          "type": "array",
-          "description": "Supported audio formats",
-          "items": { "type": "string" },
-          "examples": [["flac", "mp3", "pcm", "aac"]]
-        },
-        "max_sample_rate": {
-          "type": "integer",
-          "description": "Maximum supported sample rate in Hz",
-          "minimum": 44100,
-          "examples": [192000]
-        },
-        "max_bit_depth": {
-          "type": "integer",
-          "description": "Maximum supported bit depth",
-          "minimum": 16,
-          "maximum": 32,
-          "examples": [24]
-        },
-        "max_channels": {
-          "type": "integer",
-          "description": "Maximum number of audio channels",
-          "minimum": 1,
-          "maximum": 8,
-          "examples": [2]
-        },
-        "sync_protocols": {
-          "type": "array",
-          "description": "Supported synchronisation protocols",
-          "items": { "type": "string" },
-          "examples": [["michi-sync-v1"]]
-        },
-        "transports": {
-          "type": "array",
-          "description": "Supported streaming transports",
-          "items": { "type": "string" },
-          "examples": [["tcp", "mqt"]]
-        }
-      }
+    "version": {
+      "type": "string",
+      "description": "Application version",
+      "examples": ["0.1.0"]
     },
     "api_version": {
       "type": "string",
-      "description": "API version string",
+      "description": "Michi Link API version",
       "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
       "examples": ["1.0.0"]
     },
-    "host": {
+    "michi_link_version": {
       "type": "string",
-      "description": "IP address or hostname",
-      "examples": ["192.168.1.100"]
+      "description": "Michi Link protocol version",
+      "examples": ["1.0.0"]
     },
-    "port": {
-      "type": "integer",
-      "description": "TCP port for API connections",
-      "minimum": 1,
-      "maximum": 65535,
-      "examples": [5741]
-    },
-    "uptime": {
-      "type": "integer",
-      "description": "Uptime in seconds since server start",
-      "minimum": 0,
-      "examples": [86400]
-    },
-    "pairs": {
+    "roles": {
       "type": "array",
-      "description": "List of currently paired devices",
-      "items": {
-        "type": "object",
-        "required": ["device_id", "device_name", "device_type"],
-        "properties": {
-          "device_id": {
-            "type": "string",
-            "description": "Paired device identifier"
-          },
-          "device_name": {
-            "type": "string",
-            "description": "Paired device display name"
-          },
-          "device_type": {
-            "type": "string",
-            "description": "Paired device type"
-          }
-        }
+      "description": "Active roles (see ARCHITECTURE.md for official list)",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "examples": [["home_server", "library_server", "stream_server"]]
+    },
+    "features": {
+      "type": "object",
+      "description": "Capability descriptors",
+      "properties": {
+        "library": { "type": "object", "description": "Library capabilities" },
+        "streaming": { "type": "object", "description": "Streaming capabilities" },
+        "sync": { "type": "object", "description": "Sync capabilities" },
+        "playback": { "type": "object", "description": "Playback capabilities" },
+        "multiroom": { "type": "object", "description": "Multiroom capabilities" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "description": "Authentication methods supported",
+      "properties": {
+        "pairing": { "type": "boolean" },
+        "token_refresh": { "type": "boolean" },
+        "methods": { "type": "array", "items": { "type": "string" } }
       }
     }
   }

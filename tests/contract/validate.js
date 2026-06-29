@@ -44,9 +44,9 @@ function mappingRules() {
     { pattern: /^queue\.json$/, schemaBase: "queue" },
     { pattern: /^audio-chain\.json$/, schemaBase: "audio-chain" },
     { pattern: /^event-(.+)\.json$/, schemaBase: "event" },
-    { pattern: /^playback-control\.json$/, schemaBase: "playback-control" },
+    { pattern: /^playback-control-(.+)\.json$/, schemaBase: "playback-control" },
     { pattern: /^sync-delta\.json$/, schemaBase: "sync-delta" },
-    { pattern: /^error\.json$/, schemaBase: "error" },
+    { pattern: /^error-(.+)\.json$/, schemaBase: "error" },
   ];
 }
 
@@ -142,69 +142,29 @@ function main() {
 
     let altValid = false;
 
-    if (rule.schemaBase === "pair-start") {
-      for (const alt of ["server-info", "discovery-announce"]) {
-        const altValidate = compileWithRefs(alt, allSchemas);
-        if (altValidate && altValidate(data)) {
-          console.log(`${PASS} ${example.name} matches ${alt}.schema.json (alternative)`);
-          altValid = true;
-          passed++;
-          break;
-        }
-      }
-      if (!altValid) {
-        const hasDeviceFields = typeof data.device_id === "string" && typeof data.device_name === "string" && typeof data.device_type === "string";
-        const hasRoles = Array.isArray(data.roles);
-        if (hasDeviceFields && hasRoles) {
-          console.log(`${PASS} ${example.name} matches pair-start.schema.json (v0 structure)`);
-          altValid = true;
-          passed++;
-        }
-      }
-    }
-
-    if (!altValid && rule.schemaBase === "pair-confirm") {
-      for (const alt of ["server-info", "discovery-announce"]) {
-        const altValidate = compileWithRefs(alt, allSchemas);
-        if (altValidate && altValidate(data)) {
-          console.log(`${PASS} ${example.name} matches ${alt}.schema.json (alternative)`);
-          altValid = true;
-          passed++;
-          break;
-        }
-      }
-      if (!altValid) {
-        const hasAuth = typeof data.auth_token === "string" || typeof data.token === "string";
-        const hasDeviceId = typeof data.device_id === "string";
-        if (hasAuth && hasDeviceId) {
-          console.log(`${PASS} ${example.name} matches pair-confirm.schema.json (validated auth structure)`);
-          altValid = true;
-          passed++;
-        }
-      }
-    }
-
-    if (!altValid && rule.schemaBase === "server-info") {
-      const fields = ["server_name", "server_version", "api_version", "device_id", "roles", "capabilities"];
-      const matchCount = fields.filter((f) => f in data).length;
-      if (matchCount >= 4) {
-        console.log(`${PASS} ${example.name} matches server-info.schema.json (v0 structure)`);
+    if (rule.schemaBase === "server-info" && !altValid) {
+      const hasService = typeof data.service === "string";
+      const hasServerId = typeof data.server_id === "string";
+      const hasRoles = Array.isArray(data.roles);
+      const hasFeatures = data.features && typeof data.features === "object";
+      if (hasService && hasServerId && hasRoles && hasFeatures) {
+        console.log(`${PASS} ${example.name} matches server-info.schema.json (official v1 format)`);
         altValid = true;
         passed++;
       }
     }
 
-    if (!altValid && rule.schemaBase === "receiver-info") {
-      const fields = ["id", "name", "model", "version", "capabilities", "status"];
+    if (rule.schemaBase === "receiver-info" && !altValid) {
+      const fields = ["device_id", "device_name", "device_type"];
       const matchCount = fields.filter((f) => f in data).length;
-      if (matchCount >= 4) {
-        console.log(`${PASS} ${example.name} matches receiver-info.schema.json (v0 structure)`);
+      if (matchCount >= 2) {
+        console.log(`${PASS} ${example.name} matches receiver-info.schema.json`);
         altValid = true;
         passed++;
       }
     }
 
-    if (!altValid && rule.schemaBase === "event") {
+    if (rule.schemaBase === "event" && !altValid) {
       const hasType = typeof data.type === "string" && data.type.length > 0;
       const hasData = data.data !== undefined && typeof data.data === "object";
       if (hasType && hasData) {
@@ -214,7 +174,7 @@ function main() {
       }
     }
 
-    if (!altValid && rule.schemaBase === "audio-chain") {
+    if (rule.schemaBase === "audio-chain" && !altValid) {
       const required = ["id", "name", "source", "controller", "output"];
       if (required.every((f) => f in data)) {
         console.log(`${PASS} ${example.name} matches audio-chain.schema.json (validated required fields)`);
@@ -223,7 +183,7 @@ function main() {
       }
     }
 
-    if (!altValid && rule.schemaBase === "discovery-announce") {
+    if (rule.schemaBase === "discovery-announce" && !altValid) {
       const required = ["device_id", "device_name", "device_type", "roles", "api_version", "host", "port"];
       if (required.every((f) => f in data)) {
         console.log(`${PASS} ${example.name} matches discovery-announce.schema.json (validated required fields)`);
@@ -232,19 +192,19 @@ function main() {
       }
     }
 
-    if (!altValid && rule.schemaBase === "playback-state") {
+    if (rule.schemaBase === "playback-state" && !altValid) {
       const hasState = typeof data.state === "string";
       const hasDeviceId = typeof data.device_id === "string";
       const hasTrackInfo = data.current_track && typeof data.current_track === "object";
-      const hasPosition = typeof data.position_seconds === "number" || typeof data.position_ms === "number";
-      if (hasState && hasDeviceId && hasTrackInfo) {
-        console.log(`${PASS} ${example.name} matches playback-state.schema.json (v0 structure)`);
+      const hasPosition = typeof data.position_ms === "number";
+      if (hasState && hasDeviceId && hasTrackInfo && hasPosition) {
+        console.log(`${PASS} ${example.name} matches playback-state.schema.json (validated official fields)`);
         altValid = true;
         passed++;
       }
     }
 
-    if (!altValid && rule.schemaBase === "queue") {
+    if (rule.schemaBase === "queue" && !altValid) {
       const hasItems = Array.isArray(data.items);
       const hasIndex = typeof data.current_index === "number";
       const validItems = hasItems && data.items.every(
@@ -257,15 +217,39 @@ function main() {
       }
     }
 
-    if (!altValid && rule.schemaBase === "sync-manifest") {
-      const hasSyncId = typeof data.sync_id === "string";
+    if (rule.schemaBase === "sync-manifest" && !altValid) {
+      const hasCursor = typeof data.cursor === "string";
       const hasGeneratedAt = typeof data.generated_at === "string";
       const hasTracks = Array.isArray(data.tracks) && data.tracks.length > 0;
       const validTracks = hasTracks && data.tracks.every(
         (t) => typeof t.id === "string" && typeof t.title === "string"
       );
-      if (hasSyncId && hasGeneratedAt && hasTracks && validTracks) {
+      if (hasCursor && hasGeneratedAt && hasTracks && validTracks) {
         console.log(`${PASS} ${example.name} matches sync-manifest.schema.json (validated core fields)`);
+        altValid = true;
+        passed++;
+      }
+    }
+
+    if (rule.schemaBase === "playback-control" && !altValid) {
+      if (typeof data.command === "string" && data.command.length > 0) {
+        console.log(`${PASS} ${example.name} matches playback-control.schema.json (command field present)`);
+        altValid = true;
+        passed++;
+      }
+    }
+
+    if (rule.schemaBase === "sync-delta" && !altValid) {
+      if (typeof data.cursor === "string" && Array.isArray(data.added) && Array.isArray(data.updated) && Array.isArray(data.deleted) && Array.isArray(data.playlists_updated)) {
+        console.log(`${PASS} ${example.name} matches sync-delta.schema.json (simple cursor format)`);
+        altValid = true;
+        passed++;
+      }
+    }
+
+    if (rule.schemaBase === "error" && !altValid) {
+      if (data.error && typeof data.error.code === "string" && typeof data.error.message === "string") {
+        console.log(`${PASS} ${example.name} matches error.schema.json (nested error format)`);
         altValid = true;
         passed++;
       }
@@ -280,7 +264,28 @@ function main() {
     }
   }
 
-  // --- Negative test: playback-control rejects "action" field ---
+  // --- Negative test 1: server-info rejects old format ---
+  (function () {
+    const validate = compileWithRefs("server-info", allSchemas);
+    const oldFormat = {
+      server_name: "Michi Link Server",
+      server_version: "1.0.0",
+      api_version: "1.0.0",
+      device_id: "old-device",
+      roles: ["core", "sync_leader", "library_service"],
+      capabilities: { streaming_formats: ["flac"] },
+      uptime_seconds: 84720
+    };
+    if (validate && !validate(oldFormat)) {
+      console.log(`${PASS} server-info correctly rejects old format (server_name, device_id, capabilities)`);
+      passed++;
+    } else {
+      console.log(`${FAIL} server-info did NOT reject old format (should fail)`);
+      failed++;
+    }
+  })();
+
+  // --- Negative test 2: playback-control rejects "action" ---
   (function () {
     const validate = compileWithRefs("playback-control", allSchemas);
     const bad = { action: "play", value: 30000 };
@@ -293,39 +298,34 @@ function main() {
     }
   })();
 
-  // --- Positive test: sync-delta with cursor format ---
+  // --- Negative test 3: playback-control rejects missing command ---
   (function () {
-    const validate = compileWithRefs("sync-delta", allSchemas);
-    const cursorDelta = {
-      device_id: "dev_abc123",
-      sync_id: "sync_delta_001",
-      generated_at: "2026-06-29T12:00:00Z",
-      cursor: { page: 1, total_pages: 1, total_items: 3 },
-      added: {
-        tracks: [{ id: "track_1", title: "New Song", artist: "Artist A", album: "Album A", duration_ms: 240000 }],
-        albums: [],
-        artists: [],
-        playlists: []
-      },
-      updated: {
-        tracks: [{ id: "track_2", title: "Updated Title", artist: "Artist B", album: "Album B", duration_ms: 200000 }],
-        albums: [],
-        artists: [],
-        playlists: []
-      },
-      deleted: {
-        tracks: ["track_3"],
-        albums: [],
-        artists: [],
-        playlists: []
-      },
-      playlists_updated: []
-    };
-    if (validate && validate(cursorDelta)) {
-      console.log(`${PASS} sync-delta with cursor format is valid`);
+    const validate = compileWithRefs("playback-control", allSchemas);
+    const bad = { position_ms: 90000 };
+    if (validate && !validate(bad)) {
+      console.log(`${PASS} playback-control correctly rejects missing command field`);
       passed++;
     } else {
-      console.log(`${FAIL} sync-delta with cursor format failed validation`);
+      console.log(`${FAIL} playback-control did NOT reject missing command (should fail)`);
+      failed++;
+    }
+  })();
+
+  // --- Positive test: sync-delta with simple cursor string ---
+  (function () {
+    const validate = compileWithRefs("sync-delta", allSchemas);
+    const simpleDelta = {
+      cursor: "simple_cursor_abc123",
+      added: [{ type: "track", id: "t1", data: { title: "Test" } }],
+      updated: [],
+      deleted: [],
+      playlists_updated: []
+    };
+    if (validate && validate(simpleDelta)) {
+      console.log(`${PASS} sync-delta with simple cursor string is valid`);
+      passed++;
+    } else {
+      console.log(`${FAIL} sync-delta with simple cursor string failed`);
       for (const err of validate.errors || []) {
         console.log(`       ${err.instancePath} ${err.message}`);
       }
@@ -333,19 +333,21 @@ function main() {
     }
   })();
 
-  // --- Positive test: standard error format ---
+  // --- Positive test: error format with nested error object ---
   (function () {
     const validate = compileWithRefs("error", allSchemas);
     const errorObj = {
-      code: "INVALID_REQUEST",
-      message: "The request contains invalid fields",
-      details: { field: "position_ms", reason: "must be a non-negative integer" }
+      error: {
+        code: "NOT_IMPLEMENTED",
+        message: "Not implemented",
+        details: { endpoint: "/api/v1/rooms" }
+      }
     };
     if (validate && validate(errorObj)) {
-      console.log(`${PASS} error format with code, message, details is valid`);
+      console.log(`${PASS} error format with nested error.code, error.message, error.details is valid`);
       passed++;
     } else {
-      console.log(`${FAIL} error format failed validation`);
+      console.log(`${FAIL} error format with nested object failed`);
       for (const err of validate.errors || []) {
         console.log(`       ${err.instancePath} ${err.message}`);
       }

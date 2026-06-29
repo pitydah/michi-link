@@ -1,19 +1,15 @@
 {
-  "server_name": "Michi Music Mobile",
-  "server_version": "1.0.0",
+  "service": "michi-mobile",
+  "name": "Michi Music Mobile",
+  "server_id": "d3e4f5a6-b7c8-9012-defa-1234567890ab",
+  "version": "0.1.0",
   "api_version": "1.0.0",
-  "device_id": "d3c4e5f6-a7b8-9012-cdef-123456789012",
+  "michi_link_version": "1.0.0",
   "roles": ["mobile_client", "offline_player", "remote_controller"],
-  "capabilities": {
-    "library_management": false,
-    "sync_host": false,
-    "streaming": true,
-    "playback_control": true,
-    "multiroom": false,
-    "transcoding": false,
-    "streaming_formats": ["mp3", "aac"],
-    "max_bitrate": 320,
-    "max_sample_rate": 48000
+  "features": {
+    "sync": { "enabled": true, "delta": true },
+    "playback": { "control": true, "queue": true, "remote_control": true },
+    "offline": { "tracks": 342, "storage_bytes": 12000000000 }
   },
-  "uptime_seconds": 3600
+  "auth": { "pairing": true, "token_refresh": true, "methods": ["bearer"] }
 }

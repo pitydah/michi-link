@@ -4,72 +4,55 @@
   "title": "SyncManifest",
   "description": "Full library manifest used for initial synchronisation or full resync",
   "type": "object",
-  "required": ["device_id", "sync_id", "generated_at", "tracks", "albums", "artists", "playlists"],
+  "required": ["cursor", "generated_at", "tracks"],
   "properties": {
-    "device_id": {
+    "cursor": {
       "type": "string",
-      "description": "Source device identifier",
-      "minLength": 1
-    },
-    "sync_id": {
-      "type": "string",
-      "description": "Unique identifier for this sync operation",
-      "minLength": 1,
-      "examples": ["sync_b7c8d9e0"]
+      "description": "Opaque cursor token for the first delta request",
+      "examples": ["initial_cursor_a1b2c3d4"]
     },
     "generated_at": {
       "type": "string",
       "description": "ISO 8601 timestamp when this manifest was generated",
       "format": "date-time",
-      "examples": ["2025-06-20T10:00:00Z"]
+      "examples": ["2026-06-29T12:00:00Z"]
     },
     "tracks": {
       "type": "array",
       "description": "Full list of track objects in the library",
       "items": {
-        "$ref": "track.schema.json"
+        "type": "object",
+        "required": ["id", "title", "artist"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "artist": { "type": "string" },
+          "album": { "type": "string" },
+          "duration_ms": { "type": "integer" },
+          "duration": { "type": "number" },
+          "track_number": { "type": "integer" },
+          "disc_number": { "type": "integer" },
+          "year": { "type": "integer" },
+          "format": { "type": "string" },
+          "size": { "type": "integer" },
+          "md5": { "type": "string" },
+          "artwork_md5": { "type": "string" },
+          "modified_at": { "type": "string", "format": "date-time" }
+        }
       }
     },
-    "albums": {
+    "albums": { "type": "array", "items": { "type": "object" } },
+    "artists": { "type": "array", "items": { "type": "object" } },
+    "playlists": { "type": "array", "items": { "type": "object" } },
+    "artworks": {
       "type": "array",
-      "description": "Full list of album objects in the library",
       "items": {
-        "$ref": "album.schema.json"
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "md5": { "type": "string" }
+        }
       }
-    },
-    "artists": {
-      "type": "array",
-      "description": "Full list of artist objects in the library",
-      "items": {
-        "$ref": "artist.schema.json"
-      }
-    },
-    "playlists": {
-      "type": "array",
-      "description": "Full list of playlist objects in the library",
-      "items": {
-        "$ref": "playlist.schema.json"
-      }
-    },
-    "total_tracks": {
-      "type": "integer",
-      "description": "Total number of tracks in the manifest",
-      "minimum": 0
-    },
-    "total_albums": {
-      "type": "integer",
-      "description": "Total number of albums in the manifest",
-      "minimum": 0
-    },
-    "total_artists": {
-      "type": "integer",
-      "description": "Total number of artists in the manifest",
-      "minimum": 0
-    },
-    "total_playlists": {
-      "type": "integer",
-      "description": "Total number of playlists in the manifest",
-      "minimum": 0
     }
   }
 }

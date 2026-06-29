@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "TRACK_NOT_FOUND",
+    "message": "Track no encontrado.",
+    "details": { "track_id": "track_inexistente_999" }
+  }
+}
