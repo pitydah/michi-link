@@ -20,8 +20,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | Schema, docs, examples, tests 31/31 |
-| Michi Music Player | **alpha** | Implementado manualmente, sin test E2E |
-| Michi Micro Server | **alpha** | Implementado con tests unitarios |
+| Michi Music Player | **beta-ready** (server) | Endpoints expuestos, contrato alineado. Pendiente certificación E2E. |
+| Michi Micro Server | **beta-ready** (server) | 69 tests unitarios, contrato alineado. Pendiente certificación E2E. |
+| Michi Music Mobile | **alpha** | Sin prueba E2E real con Player ni Micro. Bloqueador beta. |
 
 **Meta beta:** Player y Micro Server alineados con contrato, E2E manual verificado.
 
@@ -32,9 +33,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | AUTH_PROFILES.md completo |
-| Michi Music Player (PLAYER_PASSWORD) | **alpha** | Implementado, sin test E2E |
-| Michi Micro Server (SERVER_CODE) | **alpha** | Implementado con tests |
-| Michi Music Mobile (detecta estrategia) | **prototype** | Sin implementación validada |
+| Michi Music Player (PLAYER_PASSWORD) | **beta-ready** (server) | Endpoint expuesto, contrato alineado |
+| Michi Micro Server (SERVER_CODE) | **beta-ready** (server) | Tests unitarios, contrato alineado |
+| Michi Music Mobile (detecta estrategia) | **alpha** | Sin implementación validada. Bloqueador beta. |
 | Michi Music Stream (RECEIVER_BUTTON) | **concept** | Sin firmware validado |
 
 **Meta beta:** Mobile detecta estrategia, Player y Micro Server responden auth correcto.
@@ -46,9 +47,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | Schemas, docs, examples |
-| Michi Music Player | **alpha** | Emparejamiento manual verificable |
-| Michi Micro Server | **alpha** | Tests unitarios + integración |
-| Michi Music Mobile | **prototype** | Consume, sin test E2E |
+| Michi Music Player | **beta-ready** (server) | Endpoints expuestos |
+| Michi Micro Server | **beta-ready** (server) | Tests unitarios + integración |
+| Michi Music Mobile | **alpha** | Consume, sin test E2E. Bloqueador beta. |
 | Michi Music Stream (v1-lite) | **prototype** | Sin hardware real |
 
 **Beta blocker:** Mobile ↔ Player y Mobile ↔ Micro deben funcionar.
@@ -60,8 +61,8 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | |
-| Michi Music Player | **alpha** | Sin test E2E de scan remoto |
-| Michi Micro Server | **alpha** | Tests de stats y tracks |
+| Michi Music Player | **beta-ready** (server) | Endpoints expuestos |
+| Michi Micro Server | **beta-ready** (server) | Tests de stats y tracks |
 
 **Meta beta:** Player puede escanear y publicar stats que Mobile pueda leer.
 
@@ -72,9 +73,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | Pagination, filtros documentados |
-| Michi Music Player | **alpha** | Endpoints expuestos manualmente |
-| Michi Micro Server | **alpha** | Tests de tracks, search, pagination |
-| Michi Music Mobile | **prototype** | Consume, sin test E2E |
+| Michi Music Player | **beta-ready** (server) | Endpoints expuestos |
+| Michi Micro Server | **beta-ready** (server) | Tests de tracks, search, pagination |
+| Michi Music Mobile | **alpha** | Consume, sin test E2E |
 
 **Meta beta:** Mobile puede browse library de Player y Micro Server.
 
@@ -85,9 +86,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | Range, 206, 416 documentados |
-| Michi Music Player | **alpha** | Range tests existentes |
-| Michi Micro Server | **alpha** | Range + download con permisos |
-| Michi Music Mobile | **prototype** | Consume stream/download, sin test E2E |
+| Michi Music Player | **beta-ready** (server) | Range tests existentes |
+| Michi Micro Server | **beta-ready** (server) | Range + download con permisos |
+| Michi Music Mobile | **alpha** | Consume stream/download, sin test E2E |
 
 **Beta blocker:** Mobile ↔ Player stream, Mobile ↔ Micro download.
 
@@ -98,9 +99,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | |
-| Michi Music Player | **alpha** | Sirve artwork |
-| Michi Micro Server | **alpha** | Sirve artwork |
-| Michi Music Mobile | **prototype** | Consume, sin test E2E |
+| Michi Music Player | **beta-ready** (server) | Sirve artwork |
+| Michi Micro Server | **beta-ready** (server) | Sirve artwork |
+| Michi Music Mobile | **alpha** | Consume, sin test E2E |
 
 **Beta blocker:** Mobile puede ver artwork de Player y Micro Server.
 
@@ -111,9 +112,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | Cursor oficial, legacy soportado |
-| Michi Music Player | **alpha** | Exporta manifest |
-| Michi Micro Server | **alpha** | Manifest + delta + state con tests |
-| Michi Music Mobile | **prototype** | Consume sync, sin test E2E |
+| Michi Music Player | **beta-ready** (server) | Exporta manifest |
+| Michi Micro Server | **beta-ready** (server) | Manifest + delta + state con tests |
+| Michi Music Mobile | **alpha** | Consume sync, sin test E2E |
 
 **Beta blocker:** Mobile ↔ Micro sync completo (manifest, delta, state).
 
@@ -124,9 +125,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | Command oficial, action legacy |
-| Michi Music Player | **alpha** | Acepta command + action |
-| Michi Micro Server | **alpha** | Tests de control + legacy |
-| Michi Music Mobile | **prototype** | Envía control, sin test E2E |
+| Michi Music Player | **beta-ready** (server) | Acepta command + action |
+| Michi Micro Server | **beta-ready** (server) | Tests de control + legacy |
+| Michi Music Mobile | **alpha** | Envía control, sin test E2E |
 
 **Beta blocker:** Mobile ↔ Player control, Mobile ↔ Micro control.
 
@@ -137,9 +138,9 @@
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
 | Michi Link (contrato) | **beta-ready** | |
-| Michi Music Player | **alpha** | Endpoints expuestos |
-| Michi Micro Server | **alpha** | Items + jump con tests |
-| Michi Music Mobile | **prototype** | Consume, sin test E2E |
+| Michi Music Player | **beta-ready** (server) | Endpoints expuestos |
+| Michi Micro Server | **beta-ready** (server) | Items + jump con tests |
+| Michi Music Mobile | **alpha** | Consume, sin test E2E |
 
 **Beta blocker:** Mobile ↔ Player queue, Mobile ↔ Micro queue.
 
@@ -211,16 +212,16 @@
 ```
 Área                    Concept  Proto  Alpha  Beta-ready  Beta  Stable
 ─────────────────────────────────────────────────────────────────────
-Server Info                               ●       ●
-Auth Profiles                             ●       ●
-Pairing                                   ●       ●
-Library                                   ●       ●
-Tracks/Albums/Search                      ●       ●
-Streaming                                 ●       ●
-Artwork                                   ●       ●
-Sync                                      ●       ●
-Playback                                  ●       ●
-Queue                                     ●       ●
+Server Info                               ●        ●
+Auth Profiles                             ●        ●
+Pairing                                   ●        ●
+Library                                   ●        ●
+Tracks/Albums/Search                      ●        ●
+Streaming                                 ●        ●
+Artwork                                   ●        ●
+Sync                                      ●        ●
+Playback                                  ●        ●
+Queue                                     ●        ●
 Import                       ●
 Receivers            ●        ●
 Events                                     ●
@@ -231,12 +232,20 @@ v1-lite                    ●    ●
 - **●** = nivel alcanzado por al menos un proyecto
 - Sin marca = no ha alcanzado ese nivel aún
 
+### Leyenda de proyectos
+
+| Marca | Proyecto |
+|-------|----------|
+| **beta-ready** (server) | Player y Micro Server tienen implementación completa del contrato |
+| **alpha** | Mobile consume pero no hay E2E certificado |
+| **prototype** | Music Stream sin hardware real |
+
 ---
 
 ## Próximos Pasos para Beta
 
-1. Resolver beta blockers (13 flujos críticos).
-2. Pasar checklist de beta readiness.
+1. Resolver beta blockers (B-01 a B-08 en BETA_BLOCKERS.md).
+2. Pasar checklist de beta readiness con evidencia E2E.
 3. Automatizar E2E tests para escenarios A, B, C.
 4. Certificar al menos un flujo completo por escenario.
 5. Congelar contrato v1.0.0-beta.

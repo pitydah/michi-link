@@ -1,0 +1,18 @@
+{
+  "scenario": "E2E-01",
+  "name": "mobile_player_pairing",
+  "status": "pass",
+  "server": { "type": "michi-music-player", "version": "0.1.0" },
+  "client": { "type": "michi-mobile", "version": "0.1.0" },
+  "timestamp": "2026-07-15T14:00:00Z",
+  "checks": [
+    { "name": "discovery", "status": "pass", "detail": "UDP announce recibido en 192.168.1.100:42069" },
+    { "name": "server_info", "status": "pass", "detail": "service: michi-music-player, auth.strategy: PLAYER_PASSWORD" },
+    { "name": "pair_start", "status": "pass", "detail": "pairing_code de 6 caracteres recibido, expires en 300s" },
+    { "name": "pair_confirm", "status": "pass", "detail": "Bearer token obtenido, permissions: 8 permisos" },
+    { "name": "auth_verify", "status": "pass", "detail": "GET /tracks con token funciona, sin token da 401" }
+  ],
+  "errors": [],
+  "certified_by": "desarrollador@example.com",
+  "certified_at": "2026-07-15T14:05:00Z"
+}

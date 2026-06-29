@@ -1,0 +1,20 @@
+{
+  "scenario": "E2E-07",
+  "name": "player_micro_import",
+  "status": "pass",
+  "server": { "type": "michi-micro-server", "version": "0.1.0" },
+  "client": { "type": "michi-music-player", "version": "0.1.0" },
+  "timestamp": "2026-07-15T16:00:00Z",
+  "checks": [
+    { "name": "pairing", "status": "pass", "detail": "Player emparejado con Micro Server, token con permisos library.write" },
+    { "name": "import_session", "status": "pass", "detail": "session_id recibido, expires_at en 1 hora" },
+    { "name": "import_upload_track_01", "status": "pass", "detail": "track_id recibido, accepted: true" },
+    { "name": "import_upload_track_02", "status": "pass", "detail": "track_id recibido, accepted: true" },
+    { "name": "import_upload_track_03", "status": "pass", "detail": "track_id recibido, accepted: true" },
+    { "name": "import_commit", "status": "pass", "detail": "tracks_imported: 3, playlists_imported: 0" },
+    { "name": "library_verify", "status": "pass", "detail": "GET /library/stats refleja 3 tracks nuevos" }
+  ],
+  "errors": [],
+  "certified_by": "desarrollador@example.com",
+  "certified_at": "2026-07-15T16:10:00Z"
+}

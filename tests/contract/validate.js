@@ -47,6 +47,7 @@ function mappingRules() {
     { pattern: /^playback-control-(.+)\.json$/, schemaBase: "playback-control" },
     { pattern: /^sync-delta\.json$/, schemaBase: "sync-delta" },
     { pattern: /^error-(.+)\.json$/, schemaBase: "error" },
+    { pattern: /^e2e-(.+)\.json$/, schemaBase: "e2e-report" },
   ];
 }
 

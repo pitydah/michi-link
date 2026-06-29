@@ -1,0 +1,19 @@
+{
+  "scenario": "E2E-04",
+  "name": "mobile_micro_pairing",
+  "status": "fail",
+  "server": { "type": "michi-micro-server", "version": "0.1.0" },
+  "client": { "type": "michi-mobile", "version": "0.1.0" },
+  "timestamp": "2026-07-15T18:00:00Z",
+  "checks": [
+    { "name": "discovery", "status": "pass", "detail": "Micro Server detectado vía mDNS" },
+    { "name": "server_info", "status": "pass", "detail": "service: michi-micro-server, auth.strategy: SERVER_CODE" },
+    { "name": "pair_start", "status": "pass", "detail": "pairing_code recibido" },
+    { "name": "pair_confirm", "status": "fail", "detail": "Error 401 UNAUTHORIZED: pairing_code expiró antes de confirmar" }
+  ],
+  "errors": [
+    "pair_confirm falló: el código expiró (pasaron más de 5 min entre start y confirm)"
+  ],
+  "certified_by": "desarrollador@example.com",
+  "certified_at": "2026-07-15T18:05:00Z"
+}
