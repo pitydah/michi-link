@@ -1,8 +1,8 @@
 {
-  "session_id": "d4e5f6a7-b8c9-0123-defa-1234567890ab",
-  "tracks_imported": 1,
+  "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "tracks_imported": 2,
   "tracks_skipped": 1,
-  "total_tracks": 2,
+  "total_tracks": 3,
   "mapping": [
     {
       "local_track_id": "track_001",
@@ -12,9 +12,15 @@
     },
     {
       "local_track_id": "track_002",
+      "remote_track_id": "d4e5f6a7-b8c9-0123-defa-1234567890ab",
+      "status": "uploaded",
+      "match": "quick_hash"
+    },
+    {
+      "local_track_id": "track_003",
       "remote_track_id": "e5f6a7b8-c9d0-1234-efab-234567890abc",
       "status": "already_present",
-      "match": "quick_hash"
+      "match": "exact_hash"
     }
   ]
 }

@@ -6,8 +6,6 @@ Antes de iniciar una importación completa, el Player puede consultar al Micro S
 
 ## Endpoint: POST /api/v1/import/preflight
 
-**Estado:** Alpha (opcional para un import funcional, pero recomendado para evitar duplicados).
-
 **Auth:** Bearer token con permiso `library.write`.
 
 ### Request
@@ -16,23 +14,23 @@ Antes de iniciar una importación completa, el Player puede consultar al Micro S
 {
   "tracks": [
     {
-      "michi_track_id": "uuid-origen-001",
+      "local_track_id": "track_001",
+      "quick_hash": "a1b2c3d4",
       "content_hash": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
       "file_size": 42345678,
       "duration_ms": 245000,
-      "musicbrainz_track_id": "mbid-00000000-0000-0000-0000-000000000000",
       "title": "Neon Lights",
       "artist": "Luna Swift",
-      "album": "Imaginary Cities",
-      "album_artist": "Luna Swift",
-      "track_number": 1,
-      "disc_number": 1,
-      "year": 2025,
-      "genre": "Electronic",
-      "format": "flac",
-      "bitrate": 1411,
-      "sample_rate": 44100,
-      "channels": 2
+      "album": "Imaginary Cities"
+    },
+    {
+      "local_track_id": "track_002",
+      "quick_hash": "e5f6a7b8",
+      "file_size": 31200000,
+      "duration_ms": 198000,
+      "title": "Pulse Wave",
+      "artist": "Neon Pulse",
+      "album": "Neon Dreams"
     }
   ]
 }
@@ -43,36 +41,19 @@ Antes de iniciar una importación completa, el Player puede consultar al Micro S
 ```json
 {
   "preflight_id": "uuid-preflight",
-  "total": 10,
-  "already_present": 3,
-  "needs_upload": 6,
-  "conflicts": 1,
+  "total": 2,
   "results": [
     {
-      "index": 0,
+      "local_track_id": "track_001",
       "status": "already_present",
-      "michi_track_id": "uuid-unificado",
-      "server_track_id": "uuid-servidor",
-      "match_type": "exact_hash",
-      "confidence": 1.0
+      "remote_track_id": "server_track_uuid_abc",
+      "match": "exact_hash"
     },
     {
-      "index": 1,
+      "local_track_id": "track_002",
       "status": "needs_upload",
-      "michi_track_id": "uuid-origen-002",
-      "match_type": "not_found",
-      "confidence": 0.0
-    },
-    {
-      "index": 2,
-      "status": "conflict",
-      "michi_track_id": "uuid-origen-003",
-      "match_type": "duration_match",
-      "confidence": 0.6,
-      "conflicting_tracks": [
-        { "server_track_id": "uuid-servidor-003a", "title": "Neon Lights (Remix)", "confidence": 0.6 }
-      ],
-      "resolution": "skip"
+      "remote_track_id": null,
+      "match": "none"
     }
   ]
 }
@@ -80,24 +61,17 @@ Antes de iniciar una importación completa, el Player puede consultar al Micro S
 
 ### Estados por track
 
-| Estado | Significado | Acción recomendada |
-|--------|-------------|-------------------|
+| status | Significado | Acción |
+|--------|-------------|--------|
 | `already_present` | El track ya existe en el servidor | Saltar upload |
-| `needs_upload` | El track no existe, debe subirse | Incluir en import/upload |
-| `conflict` | Coincidencia ambigua | Revisar manualmente o resolver por regla |
+| `needs_upload` | El track no existe | Incluir en `POST /api/v1/import/track/upload` |
+| `conflict` | Coincidencia ambigua | Revisar manualmente |
 
-### Resolución automática de conflictos
+### Tipos de match en respuesta
 
-Si `resolution` no se especifica en el response, el cliente puede usar estas reglas:
-
-1. Si hay un `exact_hash` match, siempre es `already_present`.
-2. Si hay un `metadata_match` con confianza ≥ 0.9 y solo un candidato, es `already_present`.
-3. Si hay múltiples candidatos o confianza < 0.9, es `conflict`.
-
-## Integración con import existente
-
-El preflight es opcional pero altamente recomendado. Si no se usa:
-
-- El Micro Server puede detectar duplicados por `content_hash` durante import/upload.
-- Si detecta duplicado, responde `is_duplicate: true` y `track_id` del existente.
-- El Player decide si sobrescribe o salta.
+| match | Confianza | Significado |
+|-------|-----------|-------------|
+| `exact_hash` | 1.0 | Coincidencia exacta de contenido |
+| `quick_hash` | 0.95 | Hash rápido + tamaño coinciden |
+| `metadata_duration` | 0.7 | Metadatos + duración aproximada |
+| `none` | 0.0 | No encontrado |

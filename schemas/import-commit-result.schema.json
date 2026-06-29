@@ -4,7 +4,7 @@
   "title": "ImportCommitResult",
   "description": "Result of an import commit operation, including track mapping between source and server",
   "type": "object",
-  "required": ["session_id", "tracks_imported", "total_tracks"],
+  "required": ["session_id", "tracks_imported", "total_tracks", "mapping"],
   "properties": {
     "session_id": {
       "type": "string",
@@ -27,16 +27,23 @@
       "minimum": 0
     },
     "mapping": {
-      "type": "object",
-      "description": "Source track ID to server track ID mapping",
-      "additionalProperties": { "type": "string" },
-      "examples": [{ "source_track_001": "server_track_001" }]
+      "type": "array",
+      "description": "Track mapping entries (official format)",
+      "items": {
+        "type": "object",
+        "required": ["local_track_id", "remote_track_id", "status"],
+        "properties": {
+          "local_track_id": { "type": "string" },
+          "remote_track_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["uploaded", "already_present"] },
+          "match": { "type": "string", "enum": ["exact_hash", "quick_hash", "metadata_duration", "none"] }
+        }
+      }
     },
-    "michi_track_ids": {
+    "mapping_legacy": {
       "type": "object",
-      "description": "Server track ID to unified michi_track_id mapping",
-      "additionalProperties": { "type": "string" },
-      "examples": [{ "server_track_001": "michi_track_uuid_001" }]
+      "description": "Legacy mapping format (local_id → remote_id). Deprecated.",
+      "additionalProperties": { "type": "string" }
     }
   }
 }

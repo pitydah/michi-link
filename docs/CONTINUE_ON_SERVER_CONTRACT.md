@@ -5,12 +5,6 @@
 Permitir que Michi Music Player transfiera su sesión de reproducción actual a Michi Micro Server para que la música siga sonando cuando el PC se apaga.
 
 ## Flujo Completo
-
-```
-Player                              Micro Server
-  │                                      │
-  │  1. Resolver identidad de tracks     │
-  │  ──────────────────────────────────> │
   │  POST /api/v1/import/preflight       │
   │  <────────────────────────────────── │
   │                                      │
