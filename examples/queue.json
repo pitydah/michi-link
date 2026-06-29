@@ -1,0 +1,59 @@
+{
+  "id": "queue_music_001",
+  "current_index": 2,
+  "items": [
+    {
+      "id": "queue_item_001",
+      "track_id": "track_001",
+      "title": "Neon Lights",
+      "artist": "Luna Swift",
+      "duration_seconds": 245,
+      "cover_id": "artwork_001",
+      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
+      "added_at": "2026-06-29T11:55:00Z"
+    },
+    {
+      "id": "queue_item_002",
+      "track_id": "track_002",
+      "title": "Echoes in the Rain",
+      "artist": "The Echoes",
+      "duration_seconds": 313,
+      "cover_id": "artwork_002",
+      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
+      "added_at": "2026-06-29T11:56:00Z"
+    },
+    {
+      "id": "queue_item_003",
+      "track_id": "track_003",
+      "title": "Pulse Wave",
+      "artist": "Neon Pulse",
+      "duration_seconds": 198,
+      "cover_id": "artwork_002",
+      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
+      "added_at": "2026-06-29T11:57:00Z"
+    },
+    {
+      "id": "queue_item_004",
+      "track_id": "track_004",
+      "title": "Starlight Serenade",
+      "artist": "Luna Swift",
+      "duration_seconds": 276,
+      "cover_id": "artwork_001",
+      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
+      "added_at": "2026-06-29T11:58:00Z"
+    },
+    {
+      "id": "queue_item_005",
+      "track_id": "track_005",
+      "title": "Digital Horizon",
+      "artist": "Neon Pulse",
+      "duration_seconds": 221,
+      "cover_id": "artwork_002",
+      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
+      "added_at": "2026-06-29T11:59:00Z"
+    }
+  ],
+  "total_duration_seconds": 1253,
+  "shuffle": false,
+  "repeat": "off"
+}

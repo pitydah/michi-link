@@ -1,0 +1,7 @@
+{
+  "auth_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkM2M0ZTVmNi1hN2I4LTkwMTItY2RlZi0xMjM0NTY3ODkwMTIiLCJpc3MiOiJtaWNoaS1saW5rIiwiaWF0IjoxNzU0NzQyNDAwLCJleHAiOjE3NTUzNDcyMDAsInBlcm1pc3Npb25zIjpbImxpYnJhcnkucmVhZCIsInBsYXliYWNrLmNvbnRyb2wiLCJxdWV1ZS5yZWFkIiwicXVldWUud3JpdGUiXX0.signature",
+  "token_type": "bearer",
+  "expires_in": 604800,
+  "device_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
+  "permissions": ["library.read", "playback.control", "queue.read", "queue.write"]
+}

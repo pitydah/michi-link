@@ -1,0 +1,28 @@
+{
+  "id": "rec-hifi-001",
+  "name": "Michi Music Stream Hi-Fi",
+  "model": "hifi",
+  "version": "2.1.0",
+  "capabilities": ["audio", "volume", "heartbeat", "high_res"],
+  "status": "playing",
+  "volume": 65,
+  "firmware": {
+    "current": "2.1.0",
+    "latest": "2.2.0"
+  },
+  "hardware": {
+    "audio_output": "rca",
+    "dac": "pcm5242",
+    "sample_rates": [44100, 48000, 96000],
+    "bit_depth": 24,
+    "ram_kb": 4096,
+    "storage_kb": 16384
+  },
+  "network": {
+    "mac": "dd:ee:ff:44:55:66",
+    "ip": "192.168.1.60",
+    "port": 9002,
+    "wifi": "802.11 b/g/n",
+    "ethernet": true
+  }
+}

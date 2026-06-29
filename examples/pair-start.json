@@ -1,0 +1,10 @@
+{
+  "device_id": "d3c4e5f6-a7b8-9012-cdef-123456789012",
+  "device_name": "Michi Mobile",
+  "device_type": "mobile",
+  "roles": ["controller", "offline_player"],
+  "capabilities": {
+    "display": true,
+    "streaming": ["mp3", "aac"]
+  }
+}

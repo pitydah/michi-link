@@ -1,0 +1,19 @@
+{
+  "server_name": "Michi Music Player",
+  "server_version": "1.0.0",
+  "api_version": "1.0.0",
+  "device_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
+  "roles": ["desktop_player", "library_server", "sync_host", "stream_server"],
+  "capabilities": {
+    "library_management": true,
+    "sync_host": true,
+    "streaming": true,
+    "playback_control": true,
+    "multiroom": true,
+    "transcoding": true,
+    "streaming_formats": ["flac", "mp3", "ogg", "aac", "wav"],
+    "max_bitrate": 1411,
+    "max_sample_rate": 192000
+  },
+  "uptime_seconds": 172800
+}

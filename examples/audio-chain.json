@@ -1,0 +1,46 @@
+{
+  "id": "chain-party-001",
+  "name": "Fiesta Casa",
+  "source": {
+    "type": "playlist",
+    "config": {
+      "playlist_id": "pl-fiesta-2026",
+      "shuffle": true,
+      "mode": "all"
+    }
+  },
+  "controller": {
+    "type": "equalizer",
+    "config": {
+      "bands": [
+        {"freq": 60, "gain": 4},
+        {"freq": 230, "gain": 2},
+        {"freq": 910, "gain": 1},
+        {"freq": 4000, "gain": 0},
+        {"freq": 14000, "gain": 1}
+      ],
+      "preamplifier": -2
+    }
+  },
+  "output": {
+    "type": "multiroom",
+    "config": {
+      "outputs": [
+        {
+          "type": "room",
+          "config": {
+            "room_id": "sala-estar"
+          }
+        },
+        {
+          "type": "room",
+          "config": {
+            "room_id": "cocina"
+          }
+        }
+      ],
+      "sync_method": "master_clock"
+    }
+  },
+  "profile": "party"
+}

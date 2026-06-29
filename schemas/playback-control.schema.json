@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/playback-control.schema.json",
+  "title": "PlaybackControl",
+  "description": "Command to control playback on a remote device or session",
+  "type": "object",
+  "required": ["command"],
+  "properties": {
+    "command": {
+      "type": "string",
+      "description": "Playback control command",
+      "enum": ["play", "pause", "stop", "next", "previous", "seek", "set_volume", "toggle_shuffle", "toggle_repeat"]
+    },
+    "value": {
+      "description": "Parameter for commands that accept a value (seek_ms, volume level)",
+      "oneOf": [
+        {
+          "type": "integer",
+          "description": "Seek position in milliseconds or volume level",
+          "minimum": 0
+        },
+        {
+          "type": "string",
+          "description": "Repeat mode value",
+          "enum": ["off", "one", "all"]
+        },
+        {
+          "type": "boolean",
+          "description": "Shuffle toggle value"
+        }
+      ],
+      "examples": [30000, 80, "one", true]
+    }
+  }
+}

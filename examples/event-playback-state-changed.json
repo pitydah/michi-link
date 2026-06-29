@@ -1,0 +1,17 @@
+{
+  "type": "playback.state_changed",
+  "data": {
+    "state": "playing",
+    "track_id": "track_002",
+    "title": "Echoes in the Rain",
+    "artist": "The Echoes",
+    "album": "Neon Dreams",
+    "position_ms": 45000,
+    "duration_ms": 312800,
+    "volume": 80,
+    "shuffle": false,
+    "repeat": "off",
+    "device_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890"
+  },
+  "timestamp": "2026-06-29T12:00:00Z"
+}

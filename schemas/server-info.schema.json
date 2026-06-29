@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/server-info.schema.json",
+  "title": "ServerInfo",
+  "description": "Server identity and capabilities payload",
+  "type": "object",
+  "required": ["device_id", "device_name", "device_type", "roles", "capabilities", "api_version", "host", "port"],
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Unique identifier for this device",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "examples": ["michi-server-01"]
+    },
+    "device_name": {
+      "type": "string",
+      "description": "Human-readable device name",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Living Room Server"]
+    },
+    "device_type": {
+      "type": "string",
+      "description": "Device type identifier",
+      "enum": ["michi_server", "michi_receiver", "michi_client", "michi_bridge"]
+    },
+    "roles": {
+      "type": "array",
+      "description": "Roles this device fulfills",
+      "items": {
+        "type": "string",
+        "enum": ["server", "receiver", "controller", "source"]
+      },
+      "uniqueItems": true
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "Feature flags and capability descriptors",
+      "properties": {
+        "audio_formats": {
+          "type": "array",
+          "description": "Supported audio formats",
+          "items": { "type": "string" },
+          "examples": [["flac", "mp3", "pcm", "aac"]]
+        },
+        "max_sample_rate": {
+          "type": "integer",
+          "description": "Maximum supported sample rate in Hz",
+          "minimum": 44100,
+          "examples": [192000]
+        },
+        "max_bit_depth": {
+          "type": "integer",
+          "description": "Maximum supported bit depth",
+          "minimum": 16,
+          "maximum": 32,
+          "examples": [24]
+        },
+        "max_channels": {
+          "type": "integer",
+          "description": "Maximum number of audio channels",
+          "minimum": 1,
+          "maximum": 8,
+          "examples": [2]
+        },
+        "sync_protocols": {
+          "type": "array",
+          "description": "Supported synchronisation protocols",
+          "items": { "type": "string" },
+          "examples": [["michi-sync-v1"]]
+        },
+        "transports": {
+          "type": "array",
+          "description": "Supported streaming transports",
+          "items": { "type": "string" },
+          "examples": [["tcp", "mqt"]]
+        }
+      }
+    },
+    "api_version": {
+      "type": "string",
+      "description": "API version string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "examples": ["1.0.0"]
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname",
+      "examples": ["192.168.1.100"]
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port for API connections",
+      "minimum": 1,
+      "maximum": 65535,
+      "examples": [5741]
+    },
+    "uptime": {
+      "type": "integer",
+      "description": "Uptime in seconds since server start",
+      "minimum": 0,
+      "examples": [86400]
+    },
+    "pairs": {
+      "type": "array",
+      "description": "List of currently paired devices",
+      "items": {
+        "type": "object",
+        "required": ["device_id", "device_name", "device_type"],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Paired device identifier"
+          },
+          "device_name": {
+            "type": "string",
+            "description": "Paired device display name"
+          },
+          "device_type": {
+            "type": "string",
+            "description": "Paired device type"
+          }
+        }
+      }
+    }
+  }
+}

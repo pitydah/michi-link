@@ -1,0 +1,19 @@
+{
+  "server_name": "Michi Micro Server",
+  "server_version": "1.0.0",
+  "api_version": "1.0.0",
+  "device_id": "c2b3d4e5-f6a7-8901-bcde-f12345678901",
+  "roles": ["home_server", "library_server", "stream_server"],
+  "capabilities": {
+    "library_management": true,
+    "sync_host": true,
+    "streaming": true,
+    "playback_control": false,
+    "multiroom": true,
+    "transcoding": true,
+    "streaming_formats": ["flac", "mp3", "ogg"],
+    "max_bitrate": 320,
+    "max_sample_rate": 48000
+  },
+  "uptime_seconds": 604800
+}

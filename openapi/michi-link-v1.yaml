@@ -1,0 +1,5016 @@
+openapi: 3.0.3
+info:
+  title: Michi Link API
+  description: |
+    The Michi Link API provides a comprehensive interface for managing
+    multi-room audio systems. It supports device pairing, music library
+    management, playback control, queue manipulation, room grouping,
+    and real-time event streaming. All endpoints are versioned under /api/v1.
+
+    Authentication is performed via Bearer tokens obtained through the
+    pairing flow. Tokens must be sent in the Authorization header.
+  version: 1.0.0
+  contact:
+    name: Michi Link Support
+    url: https://michi.link/support
+    email: api@michi.link
+
+servers:
+  - url: http://{host}:{port}/api/v1
+    description: Local Michi Link server instance
+    variables:
+      host:
+        default: localhost
+        description: Hostname or IP address of the Michi Link server
+      port:
+        default: "8080"
+        description: Port number of the Michi Link server
+
+paths:
+  # ============================================================================
+  # SERVER
+  # ============================================================================
+  /server/info:
+    get:
+      tags:
+        - Server
+      summary: Get server information
+      description: Returns metadata about the Michi Link server instance including version, uptime, and capabilities.
+      operationId: getServerInfo
+      responses:
+        "200":
+          description: Server information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerInfo"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /server/ping:
+    get:
+      tags:
+        - Server
+      summary: Ping the server
+      description: Health check endpoint that returns a simple pong response to verify server availability.
+      operationId: pingServer
+      responses:
+        "200":
+          description: Server is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: pong
+                required:
+                  - status
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /server/clock:
+    get:
+      tags:
+        - Server
+      summary: Get server clock
+      description: Returns the current server time in ISO 8601 format, useful for time synchronization.
+      operationId: getServerClock
+      responses:
+        "200":
+          description: Server clock retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverTime:
+                    type: string
+                    format: date-time
+                    example: "2026-06-29T14:30:00Z"
+                required:
+                  - serverTime
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # PAIRING
+  # ============================================================================
+  /pair/start:
+    post:
+      tags:
+        - Pairing
+      summary: Start pairing
+      description: Initiates the pairing handshake with the Michi Link server. Returns a challenge that must be signed and sent back via the confirm endpoint.
+      operationId: startPairing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PairStartRequest"
+      responses:
+        "200":
+          description: Pairing challenge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairStartResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /pair/confirm:
+    post:
+      tags:
+        - Pairing
+      summary: Confirm pairing
+      description: Completes the pairing process by sending the signed challenge. Returns a bearer token for subsequent API calls.
+      operationId: confirmPairing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PairConfirmRequest"
+      responses:
+        "200":
+          description: Pairing confirmed, token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairConfirmResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /pair/token/refresh:
+    post:
+      tags:
+        - Pairing
+      summary: Refresh authentication token
+      description: Exchanges a refresh token for a new access token. Used when the current access token has expired.
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+      responses:
+        "200":
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenRefreshResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /pair/status:
+    get:
+      tags:
+        - Pairing
+      summary: Get pairing status
+      description: Returns the current pairing status of the client with the server.
+      operationId: getPairingStatus
+      responses:
+        "200":
+          description: Pairing status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paired:
+                    type: boolean
+                    description: Whether the client is currently paired
+                  deviceId:
+                    type: string
+                    description: The unique identifier of the paired device
+                  pairedAt:
+                    type: string
+                    format: date-time
+                    description: Timestamp when pairing occurred
+                required:
+                  - paired
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /pair/device:
+    delete:
+      tags:
+        - Pairing
+      summary: Unpair device
+      description: Removes the pairing association and invalidates all tokens for the specified device.
+      operationId: unpairDevice
+      parameters:
+        - name: deviceId
+          in: query
+          required: true
+          description: The unique identifier of the device to unpair
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Device unpaired successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # LIBRARY
+  # ============================================================================
+  /library/stats:
+    get:
+      tags:
+        - Library
+      summary: Get library statistics
+      description: Returns aggregate statistics about the music library including total tracks, albums, artists, and total duration.
+      operationId: getLibraryStats
+      responses:
+        "200":
+          description: Library statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /library/scan:
+    post:
+      tags:
+        - Library
+      summary: Trigger library scan
+      description: Initiates a full or incremental scan of the configured music directories to update the library.
+      operationId: triggerLibraryScan
+      parameters:
+        - name: incremental
+          in: query
+          required: false
+          description: If true, performs an incremental scan instead of a full scan
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "202":
+          description: Scan initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scanId:
+                    type: string
+                    format: uuid
+                    description: Unique identifier for the scan operation
+                  status:
+                    type: string
+                    example: started
+                required:
+                  - scanId
+                  - status
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: A scan is already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: A library scan is already in progress
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /library/scan/{scanId}:
+    get:
+      tags:
+        - Library
+      summary: Get scan status
+      description: Returns the current status and progress of a library scan operation.
+      operationId: getScanStatus
+      parameters:
+        - name: scanId
+          in: path
+          required: true
+          description: The unique identifier of the scan
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Scan status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scanId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - scanning
+                      - completed
+                      - failed
+                  progress:
+                    type: number
+                    format: float
+                    description: Progress percentage (0-100)
+                  startedAt:
+                    type: string
+                    format: date-time
+                  completedAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  error:
+                    type: string
+                    nullable: true
+                required:
+                  - scanId
+                  - status
+                  - progress
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # TRACKS
+  # ============================================================================
+  /tracks:
+    get:
+      tags:
+        - Tracks
+      summary: List tracks
+      description: Retrieves a paginated list of all tracks in the library. Supports sorting and filtering by various criteria.
+      operationId: listTracks
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: sort
+          in: query
+          required: false
+          description: Field to sort by
+          schema:
+            type: string
+            enum:
+              - title
+              - artist
+              - album
+              - duration
+              - trackNumber
+              - createdAt
+            default: title
+        - name: order
+          in: query
+          required: false
+          description: Sort order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+        - name: genre
+          in: query
+          required: false
+          description: Filter by genre
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: false
+          description: Filter by release year
+          schema:
+            type: integer
+        - name: search
+          in: query
+          required: false
+          description: Search query for filtering tracks
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of tracks
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Track"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags:
+        - Tracks
+      summary: Add track metadata
+      description: Adds or updates metadata for a track in the library.
+      operationId: addTrack
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Track"
+      responses:
+        "201":
+          description: Track created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Track"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Track with this ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/responses/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /tracks/{trackId}:
+    get:
+      tags:
+        - Tracks
+      summary: Get track
+      description: Returns detailed metadata for a specific track by its unique identifier.
+      operationId: getTrack
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          description: The unique identifier of the track
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Track details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Track"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - Tracks
+      summary: Update track
+      description: Updates the metadata of an existing track.
+      operationId: updateTrack
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          description: The unique identifier of the track
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Track"
+      responses:
+        "200":
+          description: Track updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Track"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - Tracks
+      summary: Delete track
+      description: Removes a track from the library by its unique identifier.
+      operationId: deleteTrack
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          description: The unique identifier of the track
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Track deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # ALBUMS
+  # ============================================================================
+  /albums:
+    get:
+      tags:
+        - Albums
+      summary: List albums
+      description: Retrieves a paginated list of all albums in the library.
+      operationId: listAlbums
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: sort
+          in: query
+          required: false
+          description: Field to sort by
+          schema:
+            type: string
+            enum:
+              - title
+              - artist
+              - year
+              - createdAt
+            default: title
+        - name: order
+          in: query
+          required: false
+          description: Sort order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+        - name: search
+          in: query
+          required: false
+          description: Search query for filtering albums
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of albums
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Album"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /albums/{albumId}:
+    get:
+      tags:
+        - Albums
+      summary: Get album
+      description: Returns detailed metadata for a specific album, including its track listing.
+      operationId: getAlbum
+      parameters:
+        - name: albumId
+          in: path
+          required: true
+          description: The unique identifier of the album
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Album details with tracks
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Album"
+                  - type: object
+                    properties:
+                      tracks:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Track"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - Albums
+      summary: Update album
+      description: Updates the metadata of an existing album.
+      operationId: updateAlbum
+      parameters:
+        - name: albumId
+          in: path
+          required: true
+          description: The unique identifier of the album
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Album"
+      responses:
+        "200":
+          description: Album updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Album"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - Albums
+      summary: Delete album
+      description: Removes an album and all its tracks from the library.
+      operationId: deleteAlbum
+      parameters:
+        - name: albumId
+          in: path
+          required: true
+          description: The unique identifier of the album
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Album deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /albums/{albumId}/tracks:
+    get:
+      tags:
+        - Albums
+      summary: List album tracks
+      description: Returns the track listing for a specific album.
+      operationId: getAlbumTracks
+      parameters:
+        - name: albumId
+          in: path
+          required: true
+          description: The unique identifier of the album
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Album track listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  albumId:
+                    type: string
+                    format: uuid
+                  tracks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Track"
+                required:
+                  - albumId
+                  - tracks
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # ARTISTS
+  # ============================================================================
+  /artists:
+    get:
+      tags:
+        - Artists
+      summary: List artists
+      description: Retrieves a paginated list of all artists in the library.
+      operationId: listArtists
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: sort
+          in: query
+          required: false
+          description: Field to sort by
+          schema:
+            type: string
+            enum:
+              - name
+              - albumCount
+              - trackCount
+              - createdAt
+            default: name
+        - name: order
+          in: query
+          required: false
+          description: Sort order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+        - name: search
+          in: query
+          required: false
+          description: Search query for filtering artists
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of artists
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Artist"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /artists/{artistId}:
+    get:
+      tags:
+        - Artists
+      summary: Get artist
+      description: Returns detailed information about a specific artist.
+      operationId: getArtist
+      parameters:
+        - name: artistId
+          in: path
+          required: true
+          description: The unique identifier of the artist
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Artist details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Artist"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - Artists
+      summary: Update artist
+      description: Updates the metadata of an existing artist.
+      operationId: updateArtist
+      parameters:
+        - name: artistId
+          in: path
+          required: true
+          description: The unique identifier of the artist
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Artist"
+      responses:
+        "200":
+          description: Artist updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Artist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - Artists
+      summary: Delete artist
+      description: Removes an artist and all associated tracks from the library.
+      operationId: deleteArtist
+      parameters:
+        - name: artistId
+          in: path
+          required: true
+          description: The unique identifier of the artist
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Artist deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /artists/{artistId}/albums:
+    get:
+      tags:
+        - Artists
+      summary: List artist albums
+      description: Returns all albums by a specific artist.
+      operationId: getArtistAlbums
+      parameters:
+        - name: artistId
+          in: path
+          required: true
+          description: The unique identifier of the artist
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Artist albums
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  artistId:
+                    type: string
+                    format: uuid
+                  albums:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Album"
+                required:
+                  - artistId
+                  - albums
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /artists/{artistId}/tracks:
+    get:
+      tags:
+        - Artists
+      summary: List artist tracks
+      description: Returns all tracks by a specific artist.
+      operationId: getArtistTracks
+      parameters:
+        - name: artistId
+          in: path
+          required: true
+          description: The unique identifier of the artist
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Artist tracks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  artistId:
+                    type: string
+                    format: uuid
+                  tracks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Track"
+                required:
+                  - artistId
+                  - tracks
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # SEARCH
+  # ============================================================================
+  /search:
+    get:
+      tags:
+        - Search
+      summary: Search library
+      description: Performs a unified search across tracks, albums, and artists in the library.
+      operationId: searchLibrary
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: The search query string
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          description: Comma-separated list of content types to search
+          schema:
+            type: string
+            default: track,album,artist
+            example: track,album
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per result category
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResults"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # STREAMING
+  # ============================================================================
+  /stream/{trackId}:
+    get:
+      tags:
+        - Streaming
+      summary: Stream track
+      description: |
+        Streams the audio data for a specific track. Supports byte-range requests
+        for seeking and partial content delivery. Returns the raw audio file with
+        appropriate Content-Type headers based on the track's encoding format.
+      operationId: streamTrack
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          description: The unique identifier of the track to stream
+          schema:
+            type: string
+            format: uuid
+        - name: Range
+          in: header
+          required: false
+          description: Byte range request for partial content delivery (e.g., bytes=0-1023)
+          schema:
+            type: string
+            example: bytes=0-1023
+        - name: transcode
+          in: query
+          required: false
+          description: Request transcoding to a specific format
+          schema:
+            type: string
+            enum:
+              - mp3
+              - flac
+              - ogg
+              - aac
+              - wav
+        - name: bitrate
+          in: query
+          required: false
+          description: Target bitrate for transcoding in kbps
+          schema:
+            type: integer
+            minimum: 64
+            maximum: 320
+            example: 192
+      responses:
+        "200":
+          description: Full audio content
+          headers:
+            Content-Type:
+              schema:
+                type: string
+              description: MIME type of the audio stream
+            Content-Length:
+              schema:
+                type: integer
+                format: int64
+              description: Total size of the audio content in bytes
+            Accept-Ranges:
+              schema:
+                type: string
+                default: bytes
+              description: Indicates that byte range requests are supported
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: Partial audio content (byte range request)
+          headers:
+            Content-Type:
+              schema:
+                type: string
+              description: MIME type of the audio stream
+            Content-Range:
+              schema:
+                type: string
+              description: The byte range included in this response (e.g., bytes 0-1023/1234567)
+            Content-Length:
+              schema:
+                type: integer
+                format: int64
+              description: Size of the partial content in bytes
+            Accept-Ranges:
+              schema:
+                type: string
+                default: bytes
+              description: Indicates that byte range requests are supported
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "416":
+          description: Range not satisfiable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Range not satisfiable
+                  contentLength:
+                    type: integer
+                    format: int64
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stream/{trackId}/info:
+    get:
+      tags:
+        - Streaming
+      summary: Get stream info
+      description: Returns metadata about the audio stream for a track without delivering the audio data itself.
+      operationId: getStreamInfo
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          description: The unique identifier of the track
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Stream information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trackId:
+                    type: string
+                    format: uuid
+                  duration:
+                    type: number
+                    format: float
+                    description: Duration in seconds
+                  size:
+                    type: integer
+                    format: int64
+                    description: File size in bytes
+                  contentType:
+                    type: string
+                    description: MIME type of the audio
+                  bitrate:
+                    type: integer
+                    description: Bitrate in kbps
+                  sampleRate:
+                    type: integer
+                    description: Sample rate in Hz
+                  channels:
+                    type: integer
+                    description: Number of audio channels
+                  format:
+                    type: string
+                    description: Audio format (mp3, flac, etc.)
+                required:
+                  - trackId
+                  - duration
+                  - size
+                  - contentType
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stream/{trackId}/cover:
+    get:
+      tags:
+        - Streaming
+      summary: Get track cover art
+      description: Returns the embedded cover art image for a specific track.
+      operationId: getTrackCover
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          description: The unique identifier of the track
+          schema:
+            type: string
+            format: uuid
+        - name: size
+          in: query
+          required: false
+          description: Desired image size (small, medium, large)
+          schema:
+            type: string
+            enum:
+              - small
+              - medium
+              - large
+            default: large
+      responses:
+        "200":
+          description: Cover art image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "301":
+          description: Redirect to album cover art
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL to the album cover art
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stream/album/{albumId}/cover:
+    get:
+      tags:
+        - Streaming
+      summary: Get album cover art
+      description: Returns the cover art image for a specific album.
+      operationId: getAlbumCover
+      parameters:
+        - name: albumId
+          in: path
+          required: true
+          description: The unique identifier of the album
+          schema:
+            type: string
+            format: uuid
+        - name: size
+          in: query
+          required: false
+          description: Desired image size (small, medium, large)
+          schema:
+            type: string
+            enum:
+              - small
+              - medium
+              - large
+            default: large
+      responses:
+        "200":
+          description: Cover art image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /stream/artist/{artistId}/image:
+    get:
+      tags:
+        - Streaming
+      summary: Get artist image
+      description: Returns the profile image for a specific artist.
+      operationId: getArtistImage
+      parameters:
+        - name: artistId
+          in: path
+          required: true
+          description: The unique identifier of the artist
+          schema:
+            type: string
+            format: uuid
+        - name: size
+          in: query
+          required: false
+          description: Desired image size (small, medium, large)
+          schema:
+            type: string
+            enum:
+              - small
+              - medium
+              - large
+            default: large
+      responses:
+        "200":
+          description: Artist image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # PLAYBACK
+  # ============================================================================
+  /playback/state:
+    get:
+      tags:
+        - Playback
+      summary: Get playback state
+      description: Returns the current playback state including the currently playing track, position, and status.
+      operationId: getPlaybackState
+      responses:
+        "200":
+          description: Current playback state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playback/control:
+    post:
+      tags:
+        - Playback
+      summary: Control playback
+      description: Sends a control command to the active playback session (play, pause, stop, next, previous, seek).
+      operationId: controlPlayback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaybackControlRequest"
+      responses:
+        "200":
+          description: Command accepted and new state returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Playback conflict - no active session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: No active playback session
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playback/now-playing:
+    get:
+      tags:
+        - Playback
+      summary: Get now playing
+      description: Returns the currently playing track with full metadata.
+      operationId: getNowPlaying
+      responses:
+        "200":
+          description: Currently playing track
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  track:
+                    $ref: "#/components/schemas/Track"
+                    nullable: true
+                  progressMs:
+                    type: integer
+                    description: Current playback position in milliseconds
+                  durationMs:
+                    type: integer
+                    description: Total track duration in milliseconds
+                  isPlaying:
+                    type: boolean
+                  shuffleEnabled:
+                    type: boolean
+                  repeatMode:
+                    type: string
+                    enum:
+                      - off
+                      - one
+                      - all
+                required:
+                  - track
+                  - progressMs
+                  - durationMs
+                  - isPlaying
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playback/session:
+    post:
+      tags:
+        - Playback
+      summary: Create playback session
+      description: Creates a new playback session on a specified device or room.
+      operationId: createPlaybackSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaybackSessionRequest"
+      responses:
+        "201":
+          description: Playback session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                    description: The unique identifier for the playback session
+                  status:
+                    type: string
+                    example: created
+                required:
+                  - sessionId
+                  - status
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Device or room is already in use
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Device is already in an active session
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - Playback
+      summary: Destroy playback session
+      description: Ends and cleans up the current playback session.
+      operationId: destroyPlaybackSession
+      responses:
+        "204":
+          description: Session destroyed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playback/session/{sessionId}:
+    get:
+      tags:
+        - Playback
+      summary: Get session info
+      description: Returns information about a specific playback session.
+      operationId: getPlaybackSession
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: The unique identifier of the playback session
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Session information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                  deviceId:
+                    type: string
+                    nullable: true
+                  roomId:
+                    type: string
+                    nullable: true
+                  status:
+                    type: string
+                    enum:
+                      - active
+                      - paused
+                      - stopped
+                      - ended
+                  startedAt:
+                    type: string
+                    format: date-time
+                  lastActivityAt:
+                    type: string
+                    format: date-time
+                required:
+                  - sessionId
+                  - status
+                  - startedAt
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playback/volume:
+    get:
+      tags:
+        - Playback
+      summary: Get volume
+      description: Returns the current volume level for the active playback session.
+      operationId: getVolume
+      responses:
+        "200":
+          description: Current volume
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  volume:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                    description: Volume level (0-100)
+                  muted:
+                    type: boolean
+                required:
+                  - volume
+                  - muted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - Playback
+      summary: Set volume
+      description: Sets the volume level for the active playback session.
+      operationId: setVolume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                volume:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Volume level (0-100)
+              required:
+                - volume
+      responses:
+        "200":
+          description: Volume updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  volume:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  muted:
+                    type: boolean
+                required:
+                  - volume
+                  - muted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playback/volume/mute:
+    post:
+      tags:
+        - Playback
+      summary: Toggle mute
+      description: Toggles the mute state for the active playback session.
+      operationId: toggleMute
+      responses:
+        "200":
+          description: Mute state toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  muted:
+                    type: boolean
+                required:
+                  - muted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playback/sync/state:
+    post:
+      tags:
+        - Playback
+      summary: Sync playback state
+      description: Synchronizes the playback state across multiple devices in a group. Used for multi-room synchronization.
+      operationId: syncPlaybackState
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncStateRequest"
+      responses:
+        "200":
+          description: Sync state acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: synced
+                  serverTime:
+                    type: string
+                    format: date-time
+                  latencyMs:
+                    type: integer
+                required:
+                  - status
+                  - serverTime
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # QUEUE
+  # ============================================================================
+  /queue:
+    get:
+      tags:
+        - Queue
+      summary: Get queue
+      description: Returns the current playback queue with all items, including now playing, upcoming, and history.
+      operationId: getQueue
+      responses:
+        "200":
+          description: Current queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - Queue
+      summary: Replace queue
+      description: Replaces the entire playback queue with a new set of tracks.
+      operationId: replaceQueue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tracks:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    description: Track IDs in the desired order
+              required:
+                - tracks
+      responses:
+        "200":
+          description: Queue replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /queue/add:
+    post:
+      tags:
+        - Queue
+      summary: Add to queue
+      description: Adds one or more tracks to the playback queue at the specified position.
+      operationId: addToQueue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueueAddRequest"
+      responses:
+        "200":
+          description: Items added to queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /queue/remove:
+    delete:
+      tags:
+        - Queue
+      summary: Remove from queue
+      description: Removes one or more items from the playback queue by their queue item IDs.
+      operationId: removeFromQueue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                itemIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                    description: Queue item IDs to remove
+              required:
+                - itemIds
+      responses:
+        "200":
+          description: Items removed from queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /queue/clear:
+    post:
+      tags:
+        - Queue
+      summary: Clear queue
+      description: Removes all upcoming items from the queue. Does not affect the currently playing track.
+      operationId: clearQueue
+      responses:
+        "200":
+          description: Queue cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /queue/jump:
+    post:
+      tags:
+        - Queue
+      summary: Jump to item
+      description: Jumps to a specific item in the queue, making it the current track.
+      operationId: jumpToQueueItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueueJumpRequest"
+      responses:
+        "200":
+          description: Jumped to item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /queue/reorder:
+    post:
+      tags:
+        - Queue
+      summary: Reorder queue
+      description: Reorders items within the queue by moving one or more items from one position to another.
+      operationId: reorderQueue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueueReorderRequest"
+      responses:
+        "200":
+          description: Queue reordered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /queue/shuffle:
+    post:
+      tags:
+        - Queue
+      summary: Toggle shuffle
+      description: Toggles shuffle mode for the queue. When enabled, tracks play in random order.
+      operationId: toggleShuffle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: Whether shuffle should be enabled
+              required:
+                - enabled
+      responses:
+        "200":
+          description: Shuffle state updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shuffleEnabled:
+                    type: boolean
+                required:
+                  - shuffleEnabled
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /queue/repeat:
+    post:
+      tags:
+        - Queue
+      summary: Set repeat mode
+      description: Changes the repeat mode for the queue (off, repeat one, or repeat all).
+      operationId: setRepeatMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  enum:
+                    - off
+                    - one
+                    - all
+                  description: The repeat mode to set
+              required:
+                - mode
+      responses:
+        "200":
+          description: Repeat mode updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  repeatMode:
+                    type: string
+                    enum:
+                      - off
+                      - one
+                      - all
+                required:
+                  - repeatMode
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /queue/history:
+    get:
+      tags:
+        - Queue
+      summary: Get queue history
+      description: Returns the history of previously played tracks.
+      operationId: getQueueHistory
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Queue history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        trackId:
+                          type: string
+                          format: uuid
+                        track:
+                          $ref: "#/components/schemas/Track"
+                        playedAt:
+                          type: string
+                          format: date-time
+                        playedDuration:
+                          type: integer
+                          description: Duration played in milliseconds
+                      required:
+                        - trackId
+                        - playedAt
+                required:
+                  - page
+                  - limit
+                  - total
+                  - items
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # PLAYLISTS
+  # ============================================================================
+  /playlists:
+    get:
+      tags:
+        - Playlists
+      summary: List playlists
+      description: Retrieves a paginated list of all playlists in the library.
+      operationId: listPlaylists
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: sort
+          in: query
+          required: false
+          description: Field to sort by
+          schema:
+            type: string
+            enum:
+              - name
+              - trackCount
+              - updatedAt
+              - createdAt
+            default: name
+        - name: order
+          in: query
+          required: false
+          description: Sort order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+        - name: search
+          in: query
+          required: false
+          description: Search query for filtering playlists
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of playlists
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Playlist"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags:
+        - Playlists
+      summary: Create playlist
+      description: Creates a new empty playlist with the specified name and optional description.
+      operationId: createPlaylist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaylistCreateRequest"
+      responses:
+        "201":
+          description: Playlist created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playlists/{playlistId}:
+    get:
+      tags:
+        - Playlists
+      summary: Get playlist
+      description: Returns detailed information about a specific playlist including its track listing.
+      operationId: getPlaylist
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          description: The unique identifier of the playlist
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Playlist details with tracks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - Playlists
+      summary: Update playlist
+      description: Updates the metadata (name, description) of an existing playlist.
+      operationId: updatePlaylist
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          description: The unique identifier of the playlist
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaylistUpdateRequest"
+      responses:
+        "200":
+          description: Playlist updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - Playlists
+      summary: Delete playlist
+      description: Permanently removes a playlist from the library.
+      operationId: deletePlaylist
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          description: The unique identifier of the playlist
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Playlist deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playlists/{playlistId}/tracks:
+    get:
+      tags:
+        - Playlists
+      summary: List playlist tracks
+      description: Returns the track listing for a specific playlist with pagination.
+      operationId: getPlaylistTracks
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          description: The unique identifier of the playlist
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Playlist tracks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  playlistId:
+                    type: string
+                    format: uuid
+                  tracks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Track"
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  total:
+                    type: integer
+                required:
+                  - playlistId
+                  - tracks
+                  - page
+                  - limit
+                  - total
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags:
+        - Playlists
+      summary: Add tracks to playlist
+      description: Adds one or more tracks to the end of a playlist.
+      operationId: addTracksToPlaylist
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          description: The unique identifier of the playlist
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaylistTracksUpdateRequest"
+      responses:
+        "200":
+          description: Tracks added to playlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - Playlists
+      summary: Replace playlist tracks
+      description: Replaces all tracks in the playlist with a new set of tracks.
+      operationId: replacePlaylistTracks
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          description: The unique identifier of the playlist
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaylistTracksUpdateRequest"
+      responses:
+        "200":
+          description: Playlist tracks replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - Playlists
+      summary: Remove tracks from playlist
+      description: Removes specific tracks from a playlist by their indices or track IDs.
+      operationId: removeTracksFromPlaylist
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          description: The unique identifier of the playlist
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trackIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: Track IDs to remove from the playlist
+                positions:
+                  type: array
+                  items:
+                    type: integer
+                  description: 0-based positions of tracks to remove
+              anyOf:
+                - required:
+                    - trackIds
+                - required:
+                    - positions
+      responses:
+        "200":
+          description: Tracks removed from playlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /playlists/{playlistId}/reorder:
+    post:
+      tags:
+        - Playlists
+      summary: Reorder playlist tracks
+      description: Reorders tracks within a playlist by moving a range of tracks to a new position.
+      operationId: reorderPlaylistTracks
+      parameters:
+        - name: playlistId
+          in: path
+          required: true
+          description: The unique identifier of the playlist
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rangeStart:
+                  type: integer
+                  description: 0-based index of the first track to move
+                rangeLength:
+                  type: integer
+                  description: Number of tracks to move
+                  default: 1
+                insertBefore:
+                  type: integer
+                  description: 0-based index where the tracks should be inserted
+              required:
+                - rangeStart
+                - insertBefore
+      responses:
+        "200":
+          description: Playlist tracks reordered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playlist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # DEVICES
+  # ============================================================================
+  /devices:
+    get:
+      tags:
+        - Devices
+      summary: List devices
+      description: Returns all registered devices on the network.
+      operationId: listDevices
+      responses:
+        "200":
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DeviceInfo"
+                required:
+                  - devices
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /devices/{deviceId}:
+    get:
+      tags:
+        - Devices
+      summary: Get device
+      description: Returns detailed information about a specific registered device.
+      operationId: getDevice
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: The unique identifier of the device
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # SYNC
+  # ============================================================================
+  /sync/manifest:
+    get:
+      tags:
+        - Sync
+      summary: Get sync manifest
+      description: Returns the current manifest version for the library, used to determine if a client's local cache is out of date.
+      operationId: getSyncManifest
+      responses:
+        "200":
+          description: Sync manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncManifest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /sync/delta:
+    post:
+      tags:
+        - Sync
+      summary: Get sync delta
+      description: Returns the changes (additions, updates, deletions) since a given manifest version.
+      operationId: getSyncDelta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncDelta"
+      responses:
+        "200":
+          description: Delta of changes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  manifest:
+                    $ref: "#/components/schemas/SyncManifest"
+                  changes:
+                    type: object
+                    properties:
+                      tracks:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Track"
+                      albums:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Album"
+                      artists:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Artist"
+                      playlists:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Playlist"
+                  deletions:
+                    type: object
+                    properties:
+                      trackIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      albumIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      artistIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                      playlistIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                required:
+                  - manifest
+                  - changes
+                  - deletions
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # ROOMS
+  # ============================================================================
+  /rooms:
+    get:
+      tags:
+        - Rooms
+      summary: List rooms
+      description: Returns all configured rooms in the system.
+      operationId: listRooms
+      responses:
+        "200":
+          description: List of rooms
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rooms:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Room"
+                required:
+                  - rooms
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags:
+        - Rooms
+      summary: Create room
+      description: Creates a new room that can group multiple devices for synchronized playback.
+      operationId: createRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomCreateRequest"
+      responses:
+        "201":
+          description: Room created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /rooms/{roomId}:
+    get:
+      tags:
+        - Rooms
+      summary: Get room
+      description: Returns detailed information about a specific room.
+      operationId: getRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: The unique identifier of the room
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Room details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - Rooms
+      summary: Update room
+      description: Updates the configuration of an existing room, including its name and member devices.
+      operationId: updateRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: The unique identifier of the room
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomUpdateRequest"
+      responses:
+        "200":
+          description: Room updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - Rooms
+      summary: Delete room
+      description: Permanently removes a room and disbands the device group.
+      operationId: deleteRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: The unique identifier of the room
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Room deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /rooms/{roomId}/play:
+    post:
+      tags:
+        - Rooms
+      summary: Play in room
+      description: Starts playback in a specific room with the given tracks or playlist.
+      operationId: playInRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: The unique identifier of the room
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomPlayRequest"
+      responses:
+        "200":
+          description: Playback started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackState"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /rooms/{roomId}/devices:
+    get:
+      tags:
+        - Rooms
+      summary: List room devices
+      description: Returns all devices that are members of a specific room.
+      operationId: getRoomDevices
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: The unique identifier of the room
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Room devices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roomId:
+                    type: string
+                    format: uuid
+                  devices:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DeviceInfo"
+                required:
+                  - roomId
+                  - devices
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags:
+        - Rooms
+      summary: Add device to room
+      description: Adds a device to a room for synchronized multi-room playback.
+      operationId: addDeviceToRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: The unique identifier of the room
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceId:
+                  type: string
+                  format: uuid
+                  description: The unique identifier of the device to add
+              required:
+                - deviceId
+      responses:
+        "200":
+          description: Device added to room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Device is already in another room
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Device is already assigned to a room
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - Rooms
+      summary: Remove device from room
+      description: Removes a device from a room without deleting the room itself.
+      operationId: removeDeviceFromRoom
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: The unique identifier of the room
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceId:
+                  type: string
+                  format: uuid
+                  description: The unique identifier of the device to remove
+              required:
+                - deviceId
+      responses:
+        "200":
+          description: Device removed from room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # EVENTS (SSE)
+  # ============================================================================
+  /events:
+    get:
+      tags:
+        - Events
+      summary: Subscribe to events
+      description: |
+        Establishes a Server-Sent Events (SSE) connection to receive real-time
+        events from the Michi Link server. Events include playback state changes,
+        queue updates, library modifications, device status changes, and errors.
+        The connection is long-lived and events are pushed as they occur.
+      operationId: subscribeToEvents
+      parameters:
+        - name: types
+          in: query
+          required: false
+          description: Comma-separated list of event types to subscribe to. If omitted, all events are received.
+          schema:
+            type: string
+            example: playback,queue,library
+        - name: heartbeat
+          in: query
+          required: false
+          description: Heartbeat interval in seconds (keeps the connection alive)
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 120
+            default: 30
+      responses:
+        "200":
+          description: SSE event stream
+          headers:
+            Content-Type:
+              schema:
+                type: string
+                default: text/event-stream
+              description: Server-Sent Events content type
+            Cache-Control:
+              schema:
+                type: string
+                default: no-cache
+              description: Prevents caching of the event stream
+            Connection:
+              schema:
+                type: string
+                default: keep-alive
+              description: Persistent connection
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE formatted event stream
+              example: |
+                event: playback
+                data: {"type":"playback","state":"playing","trackId":"abc-123"}
+
+                event: queue
+                data: {"type":"queue","action":"add","itemId":"def-456"}
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # RECEIVERS
+  # ============================================================================
+  /receivers:
+    get:
+      tags:
+        - Receivers
+      summary: List receivers
+      description: Returns all discovered and registered audio receivers on the network.
+      operationId: listReceivers
+      responses:
+        "200":
+          description: List of receivers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  receivers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DeviceInfo"
+                required:
+                  - receivers
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /receivers/discover:
+    post:
+      tags:
+        - Receivers
+      summary: Discover receivers
+      description: Triggers network discovery for new audio receivers. Returns a list of discovered devices.
+      operationId: discoverReceivers
+      parameters:
+        - name: timeout
+          in: query
+          required: false
+          description: Discovery timeout in seconds
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 30
+            default: 5
+      responses:
+        "200":
+          description: Discovered receivers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  discovered:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DeviceInfo"
+                required:
+                  - discovered
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /receivers/{receiverId}:
+    get:
+      tags:
+        - Receivers
+      summary: Get receiver
+      description: Returns detailed information about a specific audio receiver.
+      operationId: getReceiver
+      parameters:
+        - name: receiverId
+          in: path
+          required: true
+          description: The unique identifier of the receiver
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Receiver details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # RECEIVER LITE
+  # ============================================================================
+  /receiver-lite/info:
+    get:
+      tags:
+        - ReceiverLite
+      summary: Get receiver-lite info
+      description: Returns capability and status information for ReceiverLite instances.
+      operationId: getReceiverLiteInfo
+      responses:
+        "200":
+          description: ReceiverLite information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiverInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /receiver-lite/session:
+    post:
+      tags:
+        - ReceiverLite
+      summary: Create receiver-lite session
+      description: Creates a lightweight playback session for a ReceiverLite endpoint.
+      operationId: createReceiverLiteSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiverSessionRequest"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: active
+                required:
+                  - sessionId
+                  - status
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags:
+        - ReceiverLite
+      summary: Destroy receiver-lite session
+      description: Ends an active ReceiverLite playback session.
+      operationId: destroyReceiverLiteSession
+      responses:
+        "204":
+          description: Session destroyed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /receiver-lite/heartbeat:
+    post:
+      tags:
+        - ReceiverLite
+      summary: Send heartbeat
+      description: Sends a periodic heartbeat to keep the ReceiverLite session alive and report status.
+      operationId: sendReceiverLiteHeartbeat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiverHeartbeat"
+      responses:
+        "200":
+          description: Heartbeat acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  serverTime:
+                    type: string
+                    format: date-time
+                required:
+                  - status
+                  - serverTime
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /receiver-lite/volume:
+    put:
+      tags:
+        - ReceiverLite
+      summary: Set receiver-lite volume
+      description: Sets the volume level on a specific ReceiverLite endpoint.
+      operationId: setReceiverLiteVolume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiverVolumeRequest"
+      responses:
+        "200":
+          description: Volume updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  volume:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  muted:
+                    type: boolean
+                required:
+                  - volume
+                  - muted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /receiver-lite/firmware:
+    get:
+      tags:
+        - ReceiverLite
+      summary: Get firmware info
+      description: Returns the current firmware version and update availability for ReceiverLite.
+      operationId: getReceiverLiteFirmware
+      responses:
+        "200":
+          description: Firmware information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiverFirmware"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags:
+        - ReceiverLite
+      summary: Update firmware
+      description: Initiates a firmware update on the ReceiverLite device.
+      operationId: updateReceiverLiteFirmware
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL to the firmware update file
+                checksum:
+                  type: string
+                  description: SHA-256 checksum of the firmware file
+              required:
+                - url
+                - checksum
+      responses:
+        "202":
+          description: Firmware update initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: updating
+                  startedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - status
+                  - startedAt
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Update already in progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Firmware update already in progress
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /receiver-lite/config:
+    get:
+      tags:
+        - ReceiverLite
+      summary: Get receiver-lite config
+      description: Returns the current configuration of the ReceiverLite device.
+      operationId: getReceiverLiteConfig
+      responses:
+        "200":
+          description: Configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deviceName:
+                    type: string
+                  audioOutput:
+                    type: string
+                    enum:
+                      - hdmi
+                      - optical
+                      - analog
+                      - bluetooth
+                  sampleRate:
+                    type: integer
+                    example: 48000
+                  bitDepth:
+                    type: integer
+                    example: 24
+                  bufferSize:
+                    type: integer
+                    example: 2048
+                  volumeControl:
+                    type: boolean
+                  autoSync:
+                    type: boolean
+                required:
+                  - deviceName
+                  - audioOutput
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags:
+        - ReceiverLite
+      summary: Update receiver-lite config
+      description: Updates the configuration of the ReceiverLite device.
+      operationId: updateReceiverLiteConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceName:
+                  type: string
+                audioOutput:
+                  type: string
+                  enum:
+                    - hdmi
+                    - optical
+                    - analog
+                    - bluetooth
+                sampleRate:
+                  type: integer
+                  enum:
+                    - 44100
+                    - 48000
+                    - 96000
+                bitDepth:
+                  type: integer
+                  enum:
+                    - 16
+                    - 24
+                    - 32
+                bufferSize:
+                  type: integer
+                  minimum: 128
+                  maximum: 8192
+                volumeControl:
+                  type: boolean
+                autoSync:
+                  type: boolean
+      responses:
+        "200":
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: applied
+                  requiresReboot:
+                    type: boolean
+                required:
+                  - status
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Bearer token obtained from the pairing flow.
+        Include in the Authorization header as: Authorization: Bearer <token>
+
+  responses:
+    Error:
+      description: Standard error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Bad request - invalid parameters or request body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Unauthorized - missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Forbidden - the authenticated user does not have permission
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: Too many requests - rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    # --------------------------------------------------------------------------
+    # ERROR
+    # --------------------------------------------------------------------------
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: A human-readable error message
+        code:
+          type: integer
+          description: Internal error code for programmatic handling
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error context
+      required:
+        - error
+
+    # --------------------------------------------------------------------------
+    # SERVER INFO
+    # --------------------------------------------------------------------------
+    ServerInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Server name
+          example: Michi Link Server
+        version:
+          type: string
+          description: Server software version
+          example: 1.2.3
+        build:
+          type: string
+          description: Build identifier
+          example: 20260601-1200-abcd1234
+        uptime:
+          type: integer
+          description: Server uptime in seconds
+          example: 86400
+        apiVersion:
+          type: string
+          description: Supported API version
+          example: v1
+        libraryId:
+          type: string
+          format: uuid
+          description: Unique identifier for this library instance
+        capabilities:
+          type: array
+          description: List of server capabilities
+          items:
+            type: string
+          example:
+            - streaming
+            - transcoding
+            - multiroom
+            - playlists
+            - sync
+        deviceCount:
+          type: integer
+          description: Number of registered devices
+        roomCount:
+          type: integer
+          description: Number of configured rooms
+        trackCount:
+          type: integer
+          description: Total tracks in library
+        albumCount:
+          type: integer
+          description: Total albums in library
+        artistCount:
+          type: integer
+          description: Total artists in library
+      required:
+        - name
+        - version
+        - apiVersion
+        - libraryId
+
+    # --------------------------------------------------------------------------
+    # DEVICE INFO
+    # --------------------------------------------------------------------------
+    DeviceInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique device identifier
+        name:
+          type: string
+          description: Human-readable device name
+        type:
+          type: string
+          description: Device type
+          enum:
+            - receiver
+            - receiver_lite
+            - controller
+            - mobile
+            - desktop
+            - web
+        model:
+          type: string
+          description: Device model identifier
+        manufacturer:
+          type: string
+          description: Device manufacturer
+        firmwareVersion:
+          type: string
+          description: Current firmware version
+        ipAddress:
+          type: string
+          format: ipv4
+          description: Device IP address on the network
+        macAddress:
+          type: string
+          description: Device MAC address
+        status:
+          type: string
+          description: Current device status
+          enum:
+            - online
+            - offline
+            - busy
+            - unavailable
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: Device capabilities
+        lastSeen:
+          type: string
+          format: date-time
+          description: Timestamp of last communication
+        roomId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Room this device is assigned to, if any
+        volume:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Current volume level
+        muted:
+          type: boolean
+          description: Whether the device is muted
+        pairedAt:
+          type: string
+          format: date-time
+          description: When the device was paired
+      required:
+        - id
+        - name
+        - type
+        - status
+
+    # --------------------------------------------------------------------------
+    # PAIR START
+    # --------------------------------------------------------------------------
+    PairStartRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the requesting device
+        deviceName:
+          type: string
+          description: Human-readable name of the requesting device
+        deviceType:
+          type: string
+          description: Type of device requesting pairing
+          enum:
+            - controller
+            - mobile
+            - desktop
+            - web
+            - receiver
+            - receiver_lite
+        publicKey:
+          type: string
+          description: Base64-encoded public key for challenge signing
+      required:
+        - deviceId
+        - deviceName
+        - deviceType
+        - publicKey
+
+    PairStartResponse:
+      type: object
+      properties:
+        pairingId:
+          type: string
+          format: uuid
+          description: Unique identifier for this pairing attempt
+        challenge:
+          type: string
+          description: Base64-encoded challenge to be signed
+        expiresAt:
+          type: string
+          format: date-time
+          description: Challenge expiration timestamp
+      required:
+        - pairingId
+        - challenge
+        - expiresAt
+
+    # --------------------------------------------------------------------------
+    # PAIR CONFIRM
+    # --------------------------------------------------------------------------
+    PairConfirmRequest:
+      type: object
+      properties:
+        pairingId:
+          type: string
+          format: uuid
+          description: The pairing ID received from the start response
+        signedChallenge:
+          type: string
+          description: Base64-encoded signed challenge
+        clientCertificate:
+          type: string
+          description: Optional client certificate for mutual TLS
+      required:
+        - pairingId
+        - signedChallenge
+
+    PairConfirmResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token for API authentication
+        refreshToken:
+          type: string
+          description: Token used to obtain a new access token
+        expiresIn:
+          type: integer
+          description: Access token validity duration in seconds
+        tokenType:
+          type: string
+          example: Bearer
+          description: Token type for the Authorization header
+        deviceId:
+          type: string
+          format: uuid
+          description: Confirmed device identifier
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+        - tokenType
+        - deviceId
+
+    # --------------------------------------------------------------------------
+    # TOKEN REFRESH
+    # --------------------------------------------------------------------------
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          description: The refresh token obtained during pairing
+      required:
+        - refreshToken
+
+    TokenRefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: New JWT access token
+        expiresIn:
+          type: integer
+          description: Access token validity duration in seconds
+        tokenType:
+          type: string
+          example: Bearer
+      required:
+        - accessToken
+        - expiresIn
+        - tokenType
+
+    # --------------------------------------------------------------------------
+    # LIBRARY STATS
+    # --------------------------------------------------------------------------
+    LibraryStats:
+      type: object
+      properties:
+        totalTracks:
+          type: integer
+          description: Total number of tracks in the library
+        totalAlbums:
+          type: integer
+          description: Total number of albums in the library
+        totalArtists:
+          type: integer
+          description: Total number of artists in the library
+        totalPlaylists:
+          type: integer
+          description: Total number of playlists
+        totalDuration:
+          type: number
+          format: float
+          description: Total duration of all tracks in seconds
+        totalSize:
+          type: integer
+          format: int64
+          description: Total file size of all tracks in bytes
+        genres:
+          type: array
+          items:
+            type: string
+          description: List of unique genres in the library
+        lastScanned:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last library scan
+        lastUpdated:
+          type: string
+          format: date-time
+          description: Timestamp of the last library update
+      required:
+        - totalTracks
+        - totalAlbums
+        - totalArtists
+        - totalDuration
+
+    # --------------------------------------------------------------------------
+    # TRACK
+    # --------------------------------------------------------------------------
+    Track:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique track identifier
+        title:
+          type: string
+          description: Track title
+        artist:
+          type: string
+          description: Artist name
+        artistId:
+          type: string
+          format: uuid
+          description: Artist unique identifier
+        album:
+          type: string
+          description: Album name
+        albumId:
+          type: string
+          format: uuid
+          description: Album unique identifier
+        albumArtist:
+          type: string
+          description: Album artist (may differ from track artist)
+        trackNumber:
+          type: integer
+          description: Track number on the album
+        discNumber:
+          type: integer
+          description: Disc number for multi-disc albums
+        duration:
+          type: number
+          format: float
+          description: Track duration in seconds
+        year:
+          type: integer
+          description: Release year
+        genre:
+          type: string
+          description: Track genre
+        format:
+          type: string
+          description: Audio file format
+          example: flac
+        bitrate:
+          type: integer
+          description: Audio bitrate in kbps
+        sampleRate:
+          type: integer
+          description: Audio sample rate in Hz
+        channels:
+          type: integer
+          description: Number of audio channels
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes
+        filePath:
+          type: string
+          description: Relative path to the audio file
+        hasCover:
+          type: boolean
+          description: Whether the track has embedded cover art
+        rating:
+          type: integer
+          minimum: 0
+          maximum: 5
+          description: User rating (0-5)
+        playCount:
+          type: integer
+          description: Number of times played
+        lastPlayed:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of last playback
+        createdAt:
+          type: string
+          format: date-time
+          description: When the track was added to the library
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the track metadata was last updated
+      required:
+        - id
+        - title
+        - artist
+        - album
+
+    # --------------------------------------------------------------------------
+    # ALBUM
+    # --------------------------------------------------------------------------
+    Album:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique album identifier
+        title:
+          type: string
+          description: Album title
+        artist:
+          type: string
+          description: Album artist name
+        artistId:
+          type: string
+          format: uuid
+          description: Artist unique identifier
+        year:
+          type: integer
+          description: Release year
+        genre:
+          type: string
+          description: Album genre
+        trackCount:
+          type: integer
+          description: Number of tracks on the album
+        duration:
+          type: number
+          format: float
+          description: Total album duration in seconds
+        hasCover:
+          type: boolean
+          description: Whether the album has cover art
+        coverPath:
+          type: string
+          description: Path to the cover art file
+        createdAt:
+          type: string
+          format: date-time
+          description: When the album was added to the library
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the album metadata was last updated
+      required:
+        - id
+        - title
+        - artist
+
+    # --------------------------------------------------------------------------
+    # ARTIST
+    # --------------------------------------------------------------------------
+    Artist:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique artist identifier
+        name:
+          type: string
+          description: Artist name
+        albumCount:
+          type: integer
+          description: Number of albums by this artist
+        trackCount:
+          type: integer
+          description: Number of tracks by this artist
+        genre:
+          type: string
+          description: Primary genre
+        hasImage:
+          type: boolean
+          description: Whether the artist has a profile image
+        imagePath:
+          type: string
+          description: Path to the artist image file
+        biography:
+          type: string
+          description: Artist biography text
+        createdAt:
+          type: string
+          format: date-time
+          description: When the artist was added to the library
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the artist metadata was last updated
+      required:
+        - id
+        - name
+
+    # --------------------------------------------------------------------------
+    # SEARCH RESULTS
+    # --------------------------------------------------------------------------
+    SearchResults:
+      type: object
+      properties:
+        query:
+          type: string
+          description: The original search query
+        tracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Track"
+          description: Matching tracks
+        albums:
+          type: array
+          items:
+            $ref: "#/components/schemas/Album"
+          description: Matching albums
+        artists:
+          type: array
+          items:
+            $ref: "#/components/schemas/Artist"
+          description: Matching artists
+        playlists:
+          type: array
+          items:
+            $ref: "#/components/schemas/Playlist"
+          description: Matching playlists
+        totalTracks:
+          type: integer
+          description: Total number of matching tracks
+        totalAlbums:
+          type: integer
+          description: Total number of matching albums
+        totalArtists:
+          type: integer
+          description: Total number of matching artists
+        totalPlaylists:
+          type: integer
+          description: Total number of matching playlists
+      required:
+        - query
+        - tracks
+        - albums
+        - artists
+        - totalTracks
+        - totalAlbums
+        - totalArtists
+
+    # --------------------------------------------------------------------------
+    # PLAYLIST
+    # --------------------------------------------------------------------------
+    Playlist:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique playlist identifier
+        name:
+          type: string
+          description: Playlist name
+        description:
+          type: string
+          nullable: true
+          description: Playlist description
+        ownerId:
+          type: string
+          format: uuid
+          description: Identifier of the playlist owner
+        ownerName:
+          type: string
+          description: Name of the playlist owner
+        isPublic:
+          type: boolean
+          description: Whether the playlist is publicly accessible
+        trackCount:
+          type: integer
+          description: Number of tracks in the playlist
+        duration:
+          type: number
+          format: float
+          description: Total duration in seconds
+        tracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Track"
+          description: List of tracks in the playlist
+        createdAt:
+          type: string
+          format: date-time
+          description: When the playlist was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the playlist was last modified
+      required:
+        - id
+        - name
+        - ownerId
+        - trackCount
+        - createdAt
+
+    # --------------------------------------------------------------------------
+    # PLAYLIST CREATE REQUEST
+    # --------------------------------------------------------------------------
+    PlaylistCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name for the new playlist
+        description:
+          type: string
+          description: Optional description for the playlist
+        isPublic:
+          type: boolean
+          description: Whether the playlist should be public
+          default: false
+        trackIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Initial track IDs to add to the playlist
+      required:
+        - name
+
+    # --------------------------------------------------------------------------
+    # PLAYLIST UPDATE REQUEST
+    # --------------------------------------------------------------------------
+    PlaylistUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated playlist name
+        description:
+          type: string
+          nullable: true
+          description: Updated playlist description
+        isPublic:
+          type: boolean
+          description: Updated public visibility setting
+      minProperties: 1
+
+    # --------------------------------------------------------------------------
+    # PLAYLIST TRACKS UPDATE REQUEST
+    # --------------------------------------------------------------------------
+    PlaylistTracksUpdateRequest:
+      type: object
+      properties:
+        trackIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Track IDs to add or set
+      required:
+        - trackIds
+
+    # --------------------------------------------------------------------------
+    # SYNC MANIFEST
+    # --------------------------------------------------------------------------
+    SyncManifest:
+      type: object
+      properties:
+        version:
+          type: integer
+          description: Current manifest version number
+        tracksChecksum:
+          type: string
+          description: Checksum of all track data
+        albumsChecksum:
+          type: string
+          description: Checksum of all album data
+        artistsChecksum:
+          type: string
+          description: Checksum of all artist data
+        playlistsChecksum:
+          type: string
+          description: Checksum of all playlist data
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the manifest was last updated
+      required:
+        - version
+        - tracksChecksum
+        - albumsChecksum
+        - artistsChecksum
+        - playlistsChecksum
+
+    # --------------------------------------------------------------------------
+    # SYNC DELTA
+    # --------------------------------------------------------------------------
+    SyncDelta:
+      type: object
+      properties:
+        fromVersion:
+          type: integer
+          description: The manifest version the client currently has
+      required:
+        - fromVersion
+
+    # --------------------------------------------------------------------------
+    # SYNC STATE REQUEST
+    # --------------------------------------------------------------------------
+    SyncStateRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: The playback session to synchronize
+        trackId:
+          type: string
+          format: uuid
+          description: Currently playing track ID
+        positionMs:
+          type: integer
+          description: Current playback position in milliseconds
+        state:
+          type: string
+          enum:
+            - playing
+            - paused
+            - stopped
+          description: Current playback state
+        timestamp:
+          type: string
+          format: date-time
+          description: Client timestamp for latency calculation
+      required:
+        - sessionId
+        - trackId
+        - positionMs
+        - state
+        - timestamp
+
+    # --------------------------------------------------------------------------
+    # PLAYBACK STATE
+    # --------------------------------------------------------------------------
+    PlaybackState:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: Active playback session identifier
+        state:
+          type: string
+          enum:
+            - playing
+            - paused
+            - stopped
+            - loading
+          description: Current playback state
+        track:
+          $ref: "#/components/schemas/Track"
+          nullable: true
+          description: Currently playing track
+        positionMs:
+          type: integer
+          description: Current position in milliseconds
+        durationMs:
+          type: integer
+          description: Track duration in milliseconds
+        volume:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Current volume level
+        muted:
+          type: boolean
+          description: Whether audio is muted
+        shuffleEnabled:
+          type: boolean
+          description: Whether shuffle is active
+        repeatMode:
+          type: string
+          enum:
+            - off
+            - one
+            - all
+          description: Current repeat mode
+        deviceId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Active playback device
+        roomId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Active playback room
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the state was last updated
+      required:
+        - sessionId
+        - state
+        - positionMs
+        - durationMs
+        - volume
+        - muted
+        - shuffleEnabled
+        - repeatMode
+
+    # --------------------------------------------------------------------------
+    # PLAYBACK CONTROL REQUEST
+    # --------------------------------------------------------------------------
+    PlaybackControlRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          description: The control action to perform
+          enum:
+            - play
+            - pause
+            - stop
+            - next
+            - previous
+            - seek
+            - restart
+        positionMs:
+          type: integer
+          description: Target position in milliseconds (required for seek action)
+      required:
+        - action
+
+    # --------------------------------------------------------------------------
+    # PLAYBACK SESSION REQUEST
+    # --------------------------------------------------------------------------
+    PlaybackSessionRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+          description: Device to create the session on
+        roomId:
+          type: string
+          format: uuid
+          description: Room to create the session in
+        startPlaying:
+          type: boolean
+          description: Whether to start playback immediately
+          default: false
+        trackId:
+          type: string
+          format: uuid
+          description: Initial track to play
+        trackIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Initial queue of track IDs
+        playlistId:
+          type: string
+          format: uuid
+          description: Playlist to load into the queue
+      anyOf:
+        - required:
+            - deviceId
+        - required:
+            - roomId
+
+    # --------------------------------------------------------------------------
+    # QUEUE
+    # --------------------------------------------------------------------------
+    Queue:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: Associated playback session
+        nowPlaying:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: Queue item identifier
+            track:
+              $ref: "#/components/schemas/Track"
+            positionMs:
+              type: integer
+            durationMs:
+              type: integer
+          description: Currently playing item
+        upcoming:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Queue item identifier
+              track:
+                $ref: "#/components/schemas/Track"
+          description: Upcoming items in the queue
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              track:
+                $ref: "#/components/schemas/Track"
+              playedAt:
+                type: string
+                format: date-time
+          description: Recently played items
+        shuffleEnabled:
+          type: boolean
+        repeatMode:
+          type: string
+          enum:
+            - off
+            - one
+            - all
+        totalUpcoming:
+          type: integer
+          description: Total number of upcoming items
+        totalDuration:
+          type: number
+          format: float
+          description: Total duration of upcoming items in seconds
+      required:
+        - sessionId
+        - nowPlaying
+        - upcoming
+        - history
+        - shuffleEnabled
+        - repeatMode
+
+    # --------------------------------------------------------------------------
+    # QUEUE ADD REQUEST
+    # --------------------------------------------------------------------------
+    QueueAddRequest:
+      type: object
+      properties:
+        trackIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Track IDs to add to the queue
+        position:
+          type: integer
+          description: 0-based position to insert the tracks at. Use -1 or omit to add to the end.
+          minimum: -1
+          default: -1
+        playNext:
+          type: boolean
+          description: If true, insert after the currently playing track
+          default: false
+      required:
+        - trackIds
+
+    # --------------------------------------------------------------------------
+    # QUEUE JUMP REQUEST
+    # --------------------------------------------------------------------------
+    QueueJumpRequest:
+      type: object
+      properties:
+        itemId:
+          type: string
+          format: uuid
+          description: The queue item ID to jump to
+      required:
+        - itemId
+
+    # --------------------------------------------------------------------------
+    # QUEUE REORDER REQUEST
+    # --------------------------------------------------------------------------
+    QueueReorderRequest:
+      type: object
+      properties:
+        itemIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Queue item IDs to move, in the order they should appear
+        insertBefore:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Queue item ID before which the items should be inserted.
+            Use null to move to the end.
+      required:
+        - itemIds
+
+    # --------------------------------------------------------------------------
+    # ROOM
+    # --------------------------------------------------------------------------
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique room identifier
+        name:
+          type: string
+          description: Room name
+        description:
+          type: string
+          nullable: true
+          description: Room description
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceInfo"
+          description: Devices assigned to this room
+        deviceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: IDs of devices assigned to this room
+        isActive:
+          type: boolean
+          description: Whether the room has active playback
+        playbackState:
+          $ref: "#/components/schemas/PlaybackState"
+          nullable: true
+          description: Current playback state for the room
+        createdAt:
+          type: string
+          format: date-time
+          description: When the room was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the room was last modified
+      required:
+        - id
+        - name
+        - deviceIds
+        - isActive
+
+    # --------------------------------------------------------------------------
+    # ROOM CREATE REQUEST
+    # --------------------------------------------------------------------------
+    RoomCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name for the new room
+        description:
+          type: string
+          description: Optional room description
+        deviceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Initial device IDs to include in the room
+      required:
+        - name
+
+    # --------------------------------------------------------------------------
+    # ROOM UPDATE REQUEST
+    # --------------------------------------------------------------------------
+    RoomUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated room name
+        description:
+          type: string
+          nullable: true
+          description: Updated room description
+      minProperties: 1
+
+    # --------------------------------------------------------------------------
+    # ROOM PLAY REQUEST
+    # --------------------------------------------------------------------------
+    RoomPlayRequest:
+      type: object
+      properties:
+        trackId:
+          type: string
+          format: uuid
+          description: Track ID to play immediately
+        trackIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Track IDs to queue
+        playlistId:
+          type: string
+          format: uuid
+          description: Playlist ID to play
+        shuffle:
+          type: boolean
+          description: Whether to enable shuffle
+        repeatMode:
+          type: string
+          enum:
+            - off
+            - one
+            - all
+          description: Repeat mode to set
+      anyOf:
+        - required:
+            - trackId
+        - required:
+            - trackIds
+        - required:
+            - playlistId
+
+    # --------------------------------------------------------------------------
+    # EVENT
+    # --------------------------------------------------------------------------
+    Event:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Event type category
+          enum:
+            - playback
+            - queue
+            - library
+            - device
+            - room
+            - pairing
+            - sync
+            - error
+        action:
+          type: string
+          description: Specific action that triggered the event
+        data:
+          type: object
+          additionalProperties: true
+          description: Event payload data
+        timestamp:
+          type: string
+          format: date-time
+          description: When the event occurred
+        source:
+          type: string
+          description: Source component that generated the event
+      required:
+        - type
+        - action
+        - timestamp
+
+    # --------------------------------------------------------------------------
+    # PAGINATED RESPONSE
+    # --------------------------------------------------------------------------
+    PaginatedResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number (1-based)
+        limit:
+          type: integer
+          description: Maximum items per page
+        total:
+          type: integer
+          description: Total number of items across all pages
+        totalPages:
+          type: integer
+          description: Total number of pages
+        hasNext:
+          type: boolean
+          description: Whether there is a next page
+        hasPrev:
+          type: boolean
+          description: Whether there is a previous page
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+
+    # --------------------------------------------------------------------------
+    # RECEIVER INFO (ReceiverLite)
+    # --------------------------------------------------------------------------
+    ReceiverInfo:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+          description: Unique receiver identifier
+        deviceName:
+          type: string
+          description: Receiver device name
+        model:
+          type: string
+          description: Receiver hardware model
+        firmwareVersion:
+          type: string
+          description: Current firmware version
+        protocolVersion:
+          type: string
+          description: Supported protocol version
+        status:
+          type: string
+          enum:
+            - idle
+            - active
+            - busy
+            - offline
+          description: Current receiver status
+        sessionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Active session identifier, if any
+        uptime:
+          type: integer
+          description: Uptime in seconds
+        capabilities:
+          type: object
+          properties:
+            transcoding:
+              type: array
+              items:
+                type: string
+              description: Supported output formats
+            maxSampleRate:
+              type: integer
+              description: Maximum supported sample rate
+            maxBitDepth:
+              type: integer
+              description: Maximum supported bit depth
+            channels:
+              type: integer
+              description: Number of audio channels
+            volumeControl:
+              type: boolean
+              description: Whether hardware volume control is supported
+          description: Receiver capabilities
+        network:
+          type: object
+          properties:
+            ipAddress:
+              type: string
+            macAddress:
+              type: string
+            signalStrength:
+              type: integer
+              description: WiFi signal strength percentage (0-100)
+          description: Network information
+      required:
+        - deviceId
+        - deviceName
+        - firmwareVersion
+        - status
+
+    # --------------------------------------------------------------------------
+    # RECEIVER SESSION REQUEST
+    # --------------------------------------------------------------------------
+    ReceiverSessionRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+          description: Receiver device to create session on
+        trackId:
+          type: string
+          format: uuid
+          description: Initial track to play
+        trackIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Initial queue of tracks
+        playlistId:
+          type: string
+          format: uuid
+          description: Playlist to load
+        startPlaying:
+          type: boolean
+          default: true
+          description: Whether to start playback immediately
+        syncGroup:
+          type: string
+          format: uuid
+          nullable: true
+          description: Sync group for multi-device synchronization
+      required:
+        - deviceId
+
+    # --------------------------------------------------------------------------
+    # RECEIVER HEARTBEAT
+    # --------------------------------------------------------------------------
+    ReceiverHeartbeat:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: Active session identifier
+        state:
+          type: string
+          enum:
+            - playing
+            - paused
+            - stopped
+            - buffering
+          description: Current playback state
+        positionMs:
+          type: integer
+          description: Current playback position in milliseconds
+        bufferLevel:
+          type: number
+          format: float
+          description: Buffer level as percentage (0-100)
+        volume:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Current volume level
+        latencyMs:
+          type: integer
+          description: Current network latency in milliseconds
+        timestamp:
+          type: string
+          format: date-time
+          description: Client timestamp
+      required:
+        - sessionId
+        - state
+        - positionMs
+
+    # --------------------------------------------------------------------------
+    # RECEIVER VOLUME REQUEST
+    # --------------------------------------------------------------------------
+    ReceiverVolumeRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: Active session identifier
+        volume:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Volume level to set (0-100)
+        muted:
+          type: boolean
+          description: Whether to mute or unmute
+      required:
+        - sessionId
+
+    # --------------------------------------------------------------------------
+    # RECEIVER FIRMWARE
+    # --------------------------------------------------------------------------
+    ReceiverFirmware:
+      type: object
+      properties:
+        currentVersion:
+          type: string
+          description: Currently installed firmware version
+        latestVersion:
+          type: string
+          nullable: true
+          description: Latest available firmware version
+        updateAvailable:
+          type: boolean
+          description: Whether a firmware update is available
+        releaseDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Release date of the latest version
+        changelog:
+          type: string
+          nullable: true
+          description: Changelog for the available update
+        updateUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to download the firmware update
+        checksum:
+          type: string
+          nullable: true
+          description: SHA-256 checksum of the update file
+        lastChecked:
+          type: string
+          format: date-time
+          nullable: true
+          description: When updates were last checked
+        lastUpdated:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the firmware was last updated
+      required:
+        - currentVersion
+        - updateAvailable
+
+security:
+  - BearerAuth: []

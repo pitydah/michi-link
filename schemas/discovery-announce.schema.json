@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/discovery-announce.schema.json",
+  "title": "DiscoveryAnnounce",
+  "description": "UDP broadcast/ multicast announce payload for device discovery",
+  "type": "object",
+  "required": ["device_id", "device_name", "device_type", "roles", "api_version", "host", "port"],
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Unique identifier for this device",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "examples": ["michi-server-01"]
+    },
+    "device_name": {
+      "type": "string",
+      "description": "Human-readable device name",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Living Room Server"]
+    },
+    "device_type": {
+      "type": "string",
+      "description": "Device type identifier",
+      "enum": ["michi_server", "michi_receiver", "michi_client", "michi_bridge"]
+    },
+    "roles": {
+      "type": "array",
+      "description": "Roles this device fulfills on the network",
+      "items": {
+        "type": "string",
+        "enum": ["server", "receiver", "controller", "source"]
+      },
+      "uniqueItems": true
+    },
+    "api_version": {
+      "type": "string",
+      "description": "API version string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "examples": ["1.0.0"]
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname",
+      "examples": ["192.168.1.100"]
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port for API connections",
+      "minimum": 1,
+      "maximum": 65535,
+      "examples": [5741]
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "Brief capability flags for quick filtering",
+      "properties": {
+        "audio_formats": {
+          "type": "array",
+          "description": "Supported audio formats",
+          "items": { "type": "string" },
+          "examples": [["flac", "mp3"]]
+        },
+        "sync": {
+          "type": "boolean",
+          "description": "Whether multi-device sync is supported"
+        }
+      }
+    }
+  }
+}

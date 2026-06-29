@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-confirm.schema.json",
+  "title": "PairConfirm",
+  "description": "Confirms a pairing handshake and establishes a trust relationship",
+  "type": "object",
+  "required": ["device_id", "device_name", "device_type", "pin_proof", "token"],
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Responding device identifier",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "device_name": {
+      "type": "string",
+      "description": "Responding device display name",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "device_type": {
+      "type": "string",
+      "description": "Responding device type",
+      "enum": ["michi_server", "michi_receiver", "michi_client", "michi_bridge"]
+    },
+    "pin_proof": {
+      "type": "string",
+      "description": "Hash or proof derived from the pairing PIN to prove knowledge",
+      "minLength": 1
+    },
+    "token": {
+      "type": "string",
+      "description": "Session token to use for authenticated requests",
+      "minLength": 1,
+      "examples": ["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"]
+    }
+  }
+}

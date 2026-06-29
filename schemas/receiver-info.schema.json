@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/receiver-info.schema.json",
+  "title": "ReceiverInfo",
+  "description": "Lightweight receiver device info used in v1-lite protocol",
+  "type": "object",
+  "required": ["device_id", "device_name", "device_type", "api_version", "host", "port"],
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Unique receiver identifier",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "examples": ["receiver_kitchen_01"]
+    },
+    "device_name": {
+      "type": "string",
+      "description": "Human-readable receiver name",
+      "minLength": 1,
+      "maxLength": 128,
+      "examples": ["Kitchen Receiver"]
+    },
+    "device_type": {
+      "type": "string",
+      "description": "Receiver device type (quality tier)",
+      "enum": ["michi_stream_standard", "michi_stream_hifi"]
+    },
+    "api_version": {
+      "type": "string",
+      "description": "API version string",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "examples": ["1.0.0"]
+    },
+    "host": {
+      "type": "string",
+      "description": "IP address or hostname",
+      "examples": ["192.168.1.101"]
+    },
+    "port": {
+      "type": "integer",
+      "description": "TCP port for API connections",
+      "minimum": 1,
+      "maximum": 65535,
+      "examples": [5742]
+    },
+    "firmware_version": {
+      "type": "string",
+      "description": "Receiver firmware version",
+      "examples": ["2.1.0"]
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "Receiver capability flags",
+      "properties": {
+        "sample_rates": {
+          "type": "array",
+          "description": "Supported sample rates in Hz",
+          "items": { "type": "integer" },
+          "examples": [[44100, 48000, 96000]]
+        },
+        "bit_depths": {
+          "type": "array",
+          "description": "Supported bit depths",
+          "items": { "type": "integer" },
+          "examples": [[16, 24]]
+        },
+        "max_channels": {
+          "type": "integer",
+          "description": "Maximum audio channels",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "formats": {
+          "type": "array",
+          "description": "Supported audio formats",
+          "items": { "type": "string" },
+          "examples": [["pcm", "flac"]]
+        }
+      }
+    },
+    "volume": {
+      "type": "integer",
+      "description": "Current volume level (0–100)",
+      "minimum": 0,
+      "maximum": 100,
+      "examples": [50]
+    },
+    "is_playing": {
+      "type": "boolean",
+      "description": "Whether the receiver is currently playing audio"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Active playback session identifier",
+      "examples": ["session_x1y2z3"]
+    }
+  }
+}

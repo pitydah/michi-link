@@ -1,0 +1,17 @@
+{
+  "state": "playing",
+  "current_track": {
+    "id": "track_001",
+    "title": "Neon Lights",
+    "artist": "Luna Swift",
+    "album": "Imaginary Cities",
+    "duration_seconds": 245,
+    "cover_id": "artwork_001"
+  },
+  "position_seconds": 78,
+  "volume": 80,
+  "device_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
+  "queue_id": "queue_music_001",
+  "shuffle": false,
+  "repeat": "off"
+}

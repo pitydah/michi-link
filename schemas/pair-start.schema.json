@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/pair-start.schema.json",
+  "title": "PairStart",
+  "description": "Initiates a pairing handshake between two devices",
+  "type": "object",
+  "required": ["device_id", "device_name", "device_type", "pin_proof"],
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Initiating device identifier",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "device_name": {
+      "type": "string",
+      "description": "Initiating device display name",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "device_type": {
+      "type": "string",
+      "description": "Initiating device type",
+      "enum": ["michi_server", "michi_receiver", "michi_client", "michi_bridge"]
+    },
+    "pin_proof": {
+      "type": "string",
+      "description": "Hash or proof derived from the pairing PIN for verification",
+      "minLength": 1,
+      "examples": ["e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]
+    }
+  }
+}
