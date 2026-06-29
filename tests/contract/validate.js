@@ -48,6 +48,9 @@ function mappingRules() {
     { pattern: /^sync-delta\.json$/, schemaBase: "sync-delta" },
     { pattern: /^error-(.+)\.json$/, schemaBase: "error" },
     { pattern: /^e2e-(.+)\.json$/, schemaBase: "e2e-report" },
+    { pattern: /^import-preflight-request\.json$/, schemaBase: "import-preflight" },
+    { pattern: /^import-preflight-response\.json$/, schemaBase: "import-preflight-response" },
+    { pattern: /^import-commit-result\.json$/, schemaBase: "import-commit-result" },
   ];
 }
 

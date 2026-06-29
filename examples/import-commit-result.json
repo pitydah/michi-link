@@ -1,0 +1,12 @@
+{
+  "session_id": "d4e5f6a7-b8c9-0123-defa-1234567890ab",
+  "tracks_imported": 1,
+  "tracks_skipped": 1,
+  "total_tracks": 2,
+  "mapping": {
+    "b2c3d4e5-f6a7-8901-bcde-f12345678901": "c3d4e5f6-a7b8-9012-cdef-123456789012"
+  },
+  "michi_track_ids": {
+    "c3d4e5f6-a7b8-9012-cdef-123456789012": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+  }
+}
