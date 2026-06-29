@@ -226,16 +226,16 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
-| `service` | string | Identificador del servicio: `michi-player`, `michi-micro-server`, `michi-big-server` |
+| `service` | string | Identificador del servicio: `michi-music-player`, `michi-micro-server`, `michi-big-server` |
 | `name` | string | Nombre legible del servidor (configurable por el usuario) |
 | `server_id` | string | UUID único del servidor |
 | `version` | string | Versión de la aplicación |
 | `api_version` | string | Versión de Michi Link API que implementa (ej: `v1`) |
-| `michi_link_version` | string | Versión del protocolo Michi Link (ej: `1.0.0-alpha`) |
+| `michi_link_version` | string | Versión del protocolo Michi Link (ej: `1.0.0-alpha`). DEBE ser string. |
 | `roles` | string[] | Roles activos del servidor (lista oficial en ARCHITECTURE.md) |
-| `features` | object | Capacidades detalladas del servidor |
+| `features` | object | Indicadores booleanos de capacidades. En v1.0.0-alpha son valores `true`/`false`. Los detalles extendidos irán en un futuro endpoint `/api/v1/capabilities` o en una versión posterior. |
 | `auth` | object | Información de autenticación (ver AUTH_PROFILES.md) |
-| `auth.required` | boolean | Si la autenticación es obligatoria |
+| `auth.required` | boolean | Si la autenticación es obligatoria (`true` para todos los servidores v1) |
 | `auth.strategy` | string | Estrategia: `PLAYER_PASSWORD`, `SERVER_CODE`, `RECEIVER_BUTTON`, `LEGACY` |
 | `auth.token_refresh` | boolean | Si el servidor soporta `/token/refresh` |
 
@@ -253,10 +253,14 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
   "michi_link_version": "1.0.0-alpha",
   "roles": ["home_server", "library_server", "stream_server"],
   "features": {
-    "library": { "tracks": 12543, "albums": 1024, "artists": 512 },
-    "streaming": { "formats": ["flac", "mp3", "ogg"], "max_bitrate": 320, "max_sample_rate": 48000, "transcoding": true },
-    "sync": { "enabled": true, "delta": true },
-    "multiroom": { "enabled": true, "max_receivers": 8 }
+    "library": true,
+    "search": true,
+    "streaming": true,
+    "sync_manifest": true,
+    "playback": true,
+    "queue": true,
+    "artwork": true,
+    "events": true
   },
   "auth": { "required": true, "strategy": "SERVER_CODE", "token_refresh": true }
 }
@@ -266,7 +270,7 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
 
 ```json
 {
-  "service": "michi-player",
+  "service": "michi-music-player",
   "name": "Michi Music Player",
   "server_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
   "version": "0.1.0",
@@ -274,11 +278,14 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
   "michi_link_version": "1.0.0-alpha",
   "roles": ["desktop_player", "library_master", "sync_host", "sync_source", "stream_server"],
   "features": {
-    "library": { "tracks": 8432, "albums": 687, "artists": 341 },
-    "streaming": { "formats": ["flac", "mp3", "ogg", "aac", "wav"], "max_bitrate": 1411, "max_sample_rate": 192000, "transcoding": true },
-    "sync": { "enabled": true, "delta": true, "host": true },
-    "playback": { "control": true, "queue": true, "shuffle": true, "repeat": ["off", "one", "all"] },
-    "multiroom": { "enabled": true, "max_receivers": 16 }
+    "library": true,
+    "search": true,
+    "streaming": true,
+    "sync_manifest": true,
+    "playback": true,
+    "queue": true,
+    "artwork": true,
+    "events": false
   },
   "auth": { "required": true, "strategy": "PLAYER_PASSWORD", "token_refresh": false }
 }

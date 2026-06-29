@@ -7,9 +7,10 @@
   "michi_link_version": "1.0.0-alpha",
   "roles": ["mobile_client", "offline_player", "remote_controller"],
   "features": {
-    "sync": { "enabled": true, "delta": true },
-    "playback": { "control": true, "queue": true, "remote_control": true },
-    "offline": { "tracks": 342, "storage_bytes": 12000000000 }
+    "sync_manifest": true,
+    "playback": true,
+    "queue": true,
+    "events": false
   },
   "auth": { "required": true, "strategy": "LEGACY", "token_refresh": true }
 }

@@ -7,10 +7,14 @@
   "michi_link_version": "1.0.0-alpha",
   "roles": ["home_server", "library_server", "stream_server"],
   "features": {
-    "library": { "tracks": 12543, "albums": 1024, "artists": 512 },
-    "streaming": { "formats": ["flac", "mp3", "ogg"], "max_bitrate": 320, "max_sample_rate": 48000, "transcoding": true },
-    "sync": { "enabled": true, "delta": true },
-    "multiroom": { "enabled": true, "max_receivers": 8 }
+    "library": true,
+    "search": true,
+    "streaming": true,
+    "sync_manifest": true,
+    "playback": true,
+    "queue": true,
+    "artwork": true,
+    "events": true
   },
   "auth": { "required": true, "strategy": "SERVER_CODE", "token_refresh": true }
 }

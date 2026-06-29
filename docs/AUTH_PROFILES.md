@@ -2,6 +2,8 @@
 
 Michi Link define cuatro estrategias de autenticación (auth profiles). Cada proyecto elige la estrategia según su hardware, UX y modelo de seguridad.
 
+**Regla fundamental:** Todo servidor DEBE incluir `auth.required: true` en `/server/info`. Si un servidor no entrega `auth`, debe tratarse como incompatible con v1.0.0-alpha.
+
 ---
 
 ## PLAYER_PASSWORD

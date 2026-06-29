@@ -2,14 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/server-info.schema.json",
   "title": "ServerInfo",
-  "description": "Server identity and capabilities payload (v1.0.0 official format)",
+  "description": "Server identity and capabilities payload (v1.0.0-alpha official format)",
   "type": "object",
-  "required": ["service", "name", "api_version", "roles", "features"],
+  "required": ["service", "name", "api_version", "michi_link_version", "roles", "features", "auth"],
   "properties": {
     "service": {
       "type": "string",
-      "description": "Service identifier: michi-player, michi-micro-server, michi-big-server",
-      "enum": ["michi-player", "michi-micro-server", "michi-big-server", "michi-mobile", "michi-stream-standard", "michi-stream-hifi"],
+      "description": "Service identifier",
+      "enum": ["michi-music-player", "michi-micro-server", "michi-big-server", "michi-mobile", "michi-stream-standard", "michi-stream-hifi"],
       "examples": ["michi-micro-server"]
     },
     "name": {
@@ -37,7 +37,7 @@
     },
     "michi_link_version": {
       "type": "string",
-      "description": "Michi Link protocol version",
+      "description": "Michi Link protocol version. MUST be a string.",
       "examples": ["1.0.0-alpha"]
     },
     "roles": {
@@ -50,20 +50,23 @@
     },
     "features": {
       "type": "object",
-      "description": "Capability descriptors",
-      "minProperties": 1
+      "description": "Simple boolean capability flags in v1.0.0-alpha. Extended capabilities may be added in a future /api/v1/capabilities endpoint.",
+      "additionalProperties": { "type": "boolean" },
+      "minProperties": 1,
+      "examples": [{ "library": true, "search": true, "streaming": true, "sync_manifest": true, "playback": true, "queue": true, "artwork": true, "events": false }]
     },
     "auth": {
       "type": "object",
-      "description": "Authentication configuration",
+      "description": "Authentication configuration. REQUIRED for all servers.",
       "required": ["required", "strategy", "token_refresh"],
       "properties": {
-        "required": { "type": "boolean" },
+        "required": { "type": "boolean", "description": "Whether authentication is mandatory. Always true for v1." },
         "strategy": {
           "type": "string",
+          "description": "Auth strategy (see AUTH_PROFILES.md)",
           "enum": ["PLAYER_PASSWORD", "SERVER_CODE", "RECEIVER_BUTTON", "LEGACY"]
         },
-        "token_refresh": { "type": "boolean" }
+        "token_refresh": { "type": "boolean", "description": "Whether /token/refresh is supported" }
       }
     }
   }

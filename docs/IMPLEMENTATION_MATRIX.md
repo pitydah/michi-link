@@ -9,6 +9,7 @@
 | **stub** | Endpoint declarado pero devuelve 501/empty. |
 | **legacy-wrapper** | Endpoint implementado con campos antiguos que requieren adaptación al contrato oficial. |
 | **planned** | Endpoint planificado pero sin implementación. |
+| **prototype** | Endpoint implementado como prototipo, sin validación en hardware real ni pruebas de producción. |
 | **not-applicable** | El proyecto no implementa ni consume este endpoint (por su rol en el ecosistema). |
 | **consume** | El proyecto consume el endpoint de otro servidor, no lo implementa. |
 
@@ -16,10 +17,10 @@
 
 | # | Endpoint | Método | Contrato Oficial | Player | Micro Server | Mobile | Music Stream | Observaciones | Prioridad |
 |---|----------|--------|------------------|--------|-------------|--------|-------------|---------------|-----------|
-| 1 | `/server/info` | GET | `service`, `name`, `server_id`, `version`, `api_version`, `michi_link_version`, `roles[]`, `features{}`, `auth{strategy}` | **stable** | **stable** | not-applicable | not-applicable | Player service: `michi-player`, MS: `michi-micro-server`. Auth strategy difiere: PLAYER_PASSWORD vs SERVER_CODE. | Crítica |
+| 1 | `/server/info` | GET | `service`, `name`, `server_id`, `version`, `api_version`, `michi_link_version`, `roles[]`, `features{}`, `auth{strategy}` | **stable** | **stable** | not-applicable | not-applicable | Player service: `michi-music-player`, MS: `michi-micro-server`. Auth strategy difiere: PLAYER_PASSWORD vs SERVER_CODE. | Crítica |
 | 2 | `/status` | GET | `{ status, version, uptime_seconds, timestamp }` | **stable** | **stable** | not-applicable | not-applicable | Endpoint público, sin auth | Alta |
-| 3 | `/pair/start` | POST | `{ device_name, device_type }` → `{ pairing_code, device_id }` | **stable** | **stable** | **consume** | **stable** (v1-lite) | | Crítica |
-| 4 | `/pair/confirm` | POST | `{ device_id, pairing_code }` → `{ token, refresh_token, device_id, server_id }` | **stable** | **stable** | **consume** | **stable** (v1-lite) | | Crítica |
+| 3 | `/pair/start` | POST | `{ device_name, device_type }` → `{ pairing_code, device_id }` | **stable** | **stable** | **consume** | **prototype** (v1-lite) | | Crítica |
+| 4 | `/pair/confirm` | POST | `{ device_id, pairing_code }` → `{ token, refresh_token, device_id, server_id }` | **stable** | **stable** | **consume** | **prototype** (v1-lite) | | Crítica |
 | 5 | `/token/refresh` | POST | `{ refresh_token }` → `{ token, refresh_token }` | **not-applicable** | **stable** | **consume** | not-applicable | Player no implementa token_refresh; usa sesión persistente. Micro Server sí. Mobile debe tolerar ausencia. | Alta |
 | 6 | `/devices/revoke` | POST | `{ device_id }` → `{ success }` | **planned** | **stable** | not-applicable | not-applicable | | Media |
 | 7 | `/library/stats` | GET | → `{ total_tracks, total_albums, total_artists, total_playlists }` | **stable** | **stable** | not-applicable | not-applicable | | Alta |
@@ -64,14 +65,14 @@
 | 46 | `/rooms/{id}` | DELETE | → 204 | **planned** | **planned** | **planned** | not-applicable | | Baja |
 | 47 | `/rooms/{id}/play` | POST | `{ queue_id }` → multiroom session | **planned** | **planned** | **planned** | not-applicable | | Baja |
 | 48 | `/events` | WS | WebSocket → eventos tiempo real | **stub** | **partial** | **planned** | not-applicable | Player: stub (endpoint declarado, sin implementación). MS: broadcast básico de playback.state_changed. | Media |
-| 49 | `/receiver/info` | GET | v1-lite → identidad | not-applicable | **partial** (consume) | not-applicable | **initial** (prototype) | Firmware Stream implementación inicial. | Alta |
-| 50 | `/receiver/pair/start` | POST | v1-lite → pairing | not-applicable | **partial** (consume) | not-applicable | **initial** (prototype) | | Alta |
-| 51 | `/receiver/pair/confirm` | POST | v1-lite → confirm | not-applicable | **partial** (consume) | not-applicable | **initial** (prototype) | | Alta |
-| 52 | `/receiver/heartbeat` | POST | v1-lite cada 10s | not-applicable | **partial** (consume) | not-applicable | **initial** (prototype) | | Alta |
-| 53 | `/receiver/session/start` | POST | v1-lite → recibe URL stream | not-applicable | **partial** (consume) | not-applicable | **initial** (prototype) | | Alta |
-| 54 | `/receiver/session/stop` | POST | v1-lite → stop | not-applicable | **partial** (consume) | not-applicable | **initial** (prototype) | | Alta |
-| 55 | `/receiver/volume` | POST | v1-lite `{ volume }` | not-applicable | **partial** (consume) | not-applicable | **initial** (prototype) | | Alta |
-| 56 | `/receiver/firmware` | GET | v1-lite → version info | not-applicable | **partial** (consume) | not-applicable | **initial** (prototype) | | Media |
+| 49 | `/receiver/info` | GET | v1-lite → identidad | not-applicable | **partial** (consume) | not-applicable | **prototype** | Firmware Stream: implementación inicial, sin validación en hardware real. | Alta |
+| 50 | `/receiver/pair/start` | POST | v1-lite → pairing | not-applicable | **partial** (consume) | not-applicable | **prototype** | | Alta |
+| 51 | `/receiver/pair/confirm` | POST | v1-lite → confirm | not-applicable | **partial** (consume) | not-applicable | **prototype** | | Alta |
+| 52 | `/receiver/heartbeat` | POST | v1-lite cada 10s | not-applicable | **partial** (consume) | not-applicable | **prototype** | | Alta |
+| 53 | `/receiver/session/start` | POST | v1-lite → recibe URL stream | not-applicable | **partial** (consume) | not-applicable | **prototype** | | Alta |
+| 54 | `/receiver/session/stop` | POST | v1-lite → stop | not-applicable | **partial** (consume) | not-applicable | **prototype** | | Alta |
+| 55 | `/receiver/volume` | POST | v1-lite `{ volume }` | not-applicable | **partial** (consume) | not-applicable | **prototype** | | Alta |
+| 56 | `/receiver/firmware` | GET | v1-lite → version info | not-applicable | **partial** (consume) | not-applicable | **prototype** | | Media |
 
 ---
 

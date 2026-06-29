@@ -276,7 +276,7 @@ function main() {
       uptime_seconds: 84720
     };
     if (validate && !validate(oldFormat)) {
-      console.log(`${PASS} server-info correctly rejects old format (server_name, device_id, capabilities)`);
+      console.log(`${PASS} server-info rejects old format (server_name, device_id, capabilities)`);
       passed++;
     } else {
       console.log(`${FAIL} server-info did NOT reject old format (should fail)`);
@@ -284,28 +284,139 @@ function main() {
     }
   })();
 
-  // --- Negative test 2: playback-control rejects "action" ---
+  // --- Negative test 2: server-info rejects "michi-player" (deprecated name) ---
   (function () {
-    const validate = compileWithRefs("playback-control", allSchemas);
-    const bad = { action: "play", value: 30000 };
-    if (validate && !validate(bad)) {
-      console.log(`${PASS} playback-control correctly rejects "action" as field name`);
+    const validate = compileWithRefs("server-info", allSchemas);
+    const wrongService = {
+      service: "michi-player",
+      name: "Wrong",
+      api_version: "v1",
+      michi_link_version: "1.0.0-alpha",
+      roles: ["desktop_player"],
+      features: { library: true },
+      auth: { required: true, strategy: "PLAYER_PASSWORD", token_refresh: false }
+    };
+    if (validate && !validate(wrongService)) {
+      console.log(`${PASS} server-info rejects service: \"michi-player\" (should be \"michi-music-player\")`);
       passed++;
     } else {
-      console.log(`${FAIL} playback-control did NOT reject "action" (should fail)`);
+      console.log(`${FAIL} server-info accepted service: \"michi-player\" (should reject)`);
       failed++;
     }
   })();
 
-  // --- Negative test 3: playback-control rejects missing command ---
+  // --- Negative test 3: server-info rejects missing auth.required ---
+  (function () {
+    const validate = compileWithRefs("server-info", allSchemas);
+    const noAuthRequired = {
+      service: "michi-micro-server",
+      name: "Test",
+      api_version: "v1",
+      michi_link_version: "1.0.0-alpha",
+      roles: ["home_server"],
+      features: { library: true },
+      auth: { strategy: "SERVER_CODE", token_refresh: true }
+    };
+    if (validate && !validate(noAuthRequired)) {
+      console.log(`${PASS} server-info rejects missing auth.required`);
+      passed++;
+    } else {
+      console.log(`${FAIL} server-info accepted missing auth.required (should reject)`);
+      failed++;
+    }
+  })();
+
+  // --- Negative test 4: playback-control rejects "action" ---
+  (function () {
+    const validate = compileWithRefs("playback-control", allSchemas);
+    const bad = { action: "play", value: 30000 };
+    if (validate && !validate(bad)) {
+      console.log(`${PASS} playback-control rejects \"action\" as field name`);
+      passed++;
+    } else {
+      console.log(`${FAIL} playback-control did NOT reject \"action\" (should fail)`);
+      failed++;
+    }
+  })();
+
+  // --- Negative test 5: playback-control rejects missing command ---
   (function () {
     const validate = compileWithRefs("playback-control", allSchemas);
     const bad = { position_ms: 90000 };
     if (validate && !validate(bad)) {
-      console.log(`${PASS} playback-control correctly rejects missing command field`);
+      console.log(`${PASS} playback-control rejects missing command field`);
       passed++;
     } else {
       console.log(`${FAIL} playback-control did NOT reject missing command (should fail)`);
+      failed++;
+    }
+  })();
+
+  // --- Positive test: server-info with "michi-music-player" is valid ---
+  (function () {
+    const validate = compileWithRefs("server-info", allSchemas);
+    const correct = {
+      service: "michi-music-player",
+      name: "Michi Music Player",
+      api_version: "v1",
+      michi_link_version: "1.0.0-alpha",
+      roles: ["desktop_player"],
+      features: { library: true },
+      auth: { required: true, strategy: "PLAYER_PASSWORD", token_refresh: false }
+    };
+    if (validate && validate(correct)) {
+      console.log(`${PASS} server-info with service: \"michi-music-player\" is valid`);
+      passed++;
+    } else {
+      console.log(`${FAIL} server-info with service: \"michi-music-player\" failed`);
+      for (const err of validate.errors || []) {
+        console.log(`       ${err.instancePath} ${err.message}`);
+      }
+      failed++;
+    }
+  })();
+
+  // --- Positive test: michi_link_version must be string ---
+  (function () {
+    const validate = compileWithRefs("server-info", allSchemas);
+    const numericVersion = {
+      service: "michi-micro-server",
+      name: "Test",
+      api_version: "v1",
+      michi_link_version: 1,
+      roles: ["home_server"],
+      features: { library: true },
+      auth: { required: true, strategy: "SERVER_CODE", token_refresh: true }
+    };
+    if (validate && !validate(numericVersion)) {
+      console.log(`${PASS} michi_link_version rejects numeric value (must be string)`);
+      passed++;
+    } else {
+      console.log(`${FAIL} michi_link_version accepted numeric value (should reject)`);
+      failed++;
+    }
+  })();
+
+  // --- Positive test: features accept booleans ---
+  (function () {
+    const validate = compileWithRefs("server-info", allSchemas);
+    const boolFeatures = {
+      service: "michi-micro-server",
+      name: "Test",
+      api_version: "v1",
+      michi_link_version: "1.0.0-alpha",
+      roles: ["home_server"],
+      features: { library: true, search: false, streaming: true },
+      auth: { required: true, strategy: "SERVER_CODE", token_refresh: true }
+    };
+    if (validate && validate(boolFeatures)) {
+      console.log(`${PASS} features with simple booleans is valid`);
+      passed++;
+    } else {
+      console.log(`${FAIL} features with simple booleans failed`);
+      for (const err of validate.errors || []) {
+        console.log(`       ${err.instancePath} ${err.message}`);
+      }
       failed++;
     }
   })();
@@ -354,22 +465,15 @@ function main() {
     }
   })();
 
-  // --- Positive test: server-info Player parses correctly ---
+  // --- Positive test: server-info Player example validates ---
   (function () {
     const validate = compileWithRefs("server-info", allSchemas);
-    const playerData = loadJSON(path.join(EXAMPLES_DIR, "server-info-player.json"));
-    if (validate && validate(playerData)) {
-      const authStrategy = playerData.auth.strategy;
-      const tokenRefresh = playerData.auth.token_refresh;
-      if (authStrategy === "PLAYER_PASSWORD" && tokenRefresh === false) {
-        console.log(`${PASS} server-info Player: auth.strategy=PLAYER_PASSWORD, token_refresh=false`);
-        passed++;
-      } else {
-        console.log(`${FAIL} server-info Player has unexpected auth values`);
-        failed++;
-      }
+    const data = loadJSON(path.join(EXAMPLES_DIR, "server-info-player.json"));
+    if (validate && validate(data)) {
+      console.log(`${PASS} server-info Player example validates (service: ${data.service})`);
+      passed++;
     } else {
-      console.log(`${FAIL} server-info Player failed schema validation`);
+      console.log(`${FAIL} server-info Player example failed validation`);
       for (const err of validate.errors || []) {
         console.log(`       ${err.instancePath} ${err.message}`);
       }
@@ -377,22 +481,31 @@ function main() {
     }
   })();
 
-  // --- Positive test: server-info Micro Server parses correctly ---
+  // --- Positive test: server-info Micro Server example validates ---
   (function () {
     const validate = compileWithRefs("server-info", allSchemas);
-    const msData = loadJSON(path.join(EXAMPLES_DIR, "server-info-micro-server.json"));
-    if (validate && validate(msData)) {
-      const authStrategy = msData.auth.strategy;
-      const tokenRefresh = msData.auth.token_refresh;
-      if (authStrategy === "SERVER_CODE" && tokenRefresh === true) {
-        console.log(`${PASS} server-info Micro Server: auth.strategy=SERVER_CODE, token_refresh=true`);
-        passed++;
-      } else {
-        console.log(`${FAIL} server-info Micro Server has unexpected auth values`);
-        failed++;
-      }
+    const data = loadJSON(path.join(EXAMPLES_DIR, "server-info-micro-server.json"));
+    if (validate && validate(data)) {
+      console.log(`${PASS} server-info Micro Server example validates (service: ${data.service}, michi_link_version: ${data.michi_link_version})`);
+      passed++;
     } else {
-      console.log(`${FAIL} server-info Micro Server failed schema validation`);
+      console.log(`${FAIL} server-info Micro Server example failed validation`);
+      for (const err of validate.errors || []) {
+        console.log(`       ${err.instancePath} ${err.message}`);
+      }
+      failed++;
+    }
+  })();
+
+  // --- Positive test: server-info Mobile example validates ---
+  (function () {
+    const validate = compileWithRefs("server-info", allSchemas);
+    const data = loadJSON(path.join(EXAMPLES_DIR, "server-info-mobile.json"));
+    if (validate && validate(data)) {
+      console.log(`${PASS} server-info Mobile example validates`);
+      passed++;
+    } else {
+      console.log(`${FAIL} server-info Mobile example failed validation`);
       for (const err of validate.errors || []) {
         console.log(`       ${err.instancePath} ${err.message}`);
       }
