@@ -35,7 +35,9 @@ paths:
       tags:
         - Server
       summary: Get server information
-      description: Returns metadata about the Michi Link server instance including version, uptime, and capabilities.
+      description: |
+        Returns metadata about the Michi Link server instance including version, uptime, and capabilities.
+        This endpoint is public and does not require authentication.
       operationId: getServerInfo
       responses:
         "200":
@@ -47,12 +49,45 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /status:
+    get:
+      tags:
+        - Server
+      summary: Server health check
+      description: |
+        Public health check endpoint. Returns server status without requiring authentication.
+        This is the official health check; /server/ping and /server/clock are deprecated.
+      operationId: getServerStatus
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  uptime:
+                    type: integer
+                    description: Server uptime in seconds
+                  version:
+                    type: string
+                    description: Server software version
+                required:
+                  - status
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /server/ping:
     get:
       tags:
         - Server
       summary: Ping the server
-      description: Health check endpoint that returns a simple pong response to verify server availability.
+      description: |
+        Health check endpoint that returns a simple pong response to verify server availability.
+        Note: This endpoint is deprecated. Use GET /status instead.
       operationId: pingServer
       responses:
         "200":
@@ -75,7 +110,9 @@ paths:
       tags:
         - Server
       summary: Get server clock
-      description: Returns the current server time in ISO 8601 format, useful for time synchronization.
+      description: |
+        Returns the current server time in ISO 8601 format, useful for time synchronization.
+        Note: This endpoint is deprecated. Use GET /status instead.
       operationId: getServerClock
       responses:
         "200":
@@ -2632,7 +2669,7 @@ paths:
       tags:
         - Sync
       summary: Get sync delta
-      description: Returns the changes (additions, updates, deletions) since a given manifest version.
+      description: Returns the changes (additions, updates, deletions) since a given cursor.
       operationId: getSyncDelta
       requestBody:
         required: true
@@ -2648,9 +2685,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  manifest:
-                    $ref: "#/components/schemas/SyncManifest"
-                  changes:
+                  cursor:
+                    type: string
+                    description: Opaque cursor for subsequent delta requests
+                  added:
                     type: object
                     properties:
                       tracks:
@@ -2665,11 +2703,22 @@ paths:
                         type: array
                         items:
                           $ref: "#/components/schemas/Artist"
-                      playlists:
+                  updated:
+                    type: object
+                    properties:
+                      tracks:
                         type: array
                         items:
-                          $ref: "#/components/schemas/Playlist"
-                  deletions:
+                          $ref: "#/components/schemas/Track"
+                      albums:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Album"
+                      artists:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Artist"
+                  deleted:
                     type: object
                     properties:
                       trackIds:
@@ -2687,15 +2736,16 @@ paths:
                         items:
                           type: string
                           format: uuid
-                      playlistIds:
-                        type: array
-                        items:
-                          type: string
-                          format: uuid
+                  playlists_updated:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Playlist"
+                    description: Playlists that were added or updated since the cursor
                 required:
-                  - manifest
-                  - changes
-                  - deletions
+                  - cursor
+                  - added
+                  - updated
+                  - deleted
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -3023,7 +3073,7 @@ paths:
           $ref: "#/components/responses/InternalError"
 
   # ============================================================================
-  # EVENTS (SSE)
+  # EVENTS (WebSocket)
   # ============================================================================
   /events:
     get:
@@ -3031,10 +3081,12 @@ paths:
         - Events
       summary: Subscribe to events
       description: |
-        Establishes a Server-Sent Events (SSE) connection to receive real-time
-        events from the Michi Link server. Events include playback state changes,
-        queue updates, library modifications, device status changes, and errors.
-        The connection is long-lived and events are pushed as they occur.
+        WebSocket endpoint for real-time event notifications. Establishes a
+        WebSocket connection to receive events from the Michi Link server.
+        Events include playback state changes, queue updates, library
+        modifications, device status changes, and errors. The connection is
+        long-lived and events are pushed as they occur.  This is NOT a primary
+        API transport; all standard API operations use the REST endpoints.
       operationId: subscribeToEvents
       parameters:
         - name: types
@@ -3054,35 +3106,17 @@ paths:
             maximum: 120
             default: 30
       responses:
-        "200":
-          description: SSE event stream
+        "101":
+          description: WebSocket connection upgraded
           headers:
-            Content-Type:
+            Upgrade:
               schema:
                 type: string
-                default: text/event-stream
-              description: Server-Sent Events content type
-            Cache-Control:
-              schema:
-                type: string
-                default: no-cache
-              description: Prevents caching of the event stream
+                default: websocket
             Connection:
               schema:
                 type: string
-                default: keep-alive
-              description: Persistent connection
-          content:
-            text/event-stream:
-              schema:
-                type: string
-                description: SSE formatted event stream
-              example: |
-                event: playback
-                data: {"type":"playback","state":"playing","trackId":"abc-123"}
-
-                event: queue
-                data: {"type":"queue","action":"add","itemId":"def-456"}
+                default: Upgrade
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
@@ -4257,14 +4291,47 @@ components:
         - trackIds
 
     # --------------------------------------------------------------------------
+    # PERMISSIONS
+    # --------------------------------------------------------------------------
+    Permissions:
+      type: object
+      description: Bitfield-style permissions for token scoping
+      properties:
+        scopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - library.read
+              - library.write
+              - playback.read
+              - playback.write
+              - queue.read
+              - queue.write
+              - playlist.read
+              - playlist.write
+              - device.read
+              - device.write
+              - room.read
+              - room.write
+              - pairing.read
+              - pairing.write
+              - download.read
+          description: Permission scopes granted to the token
+          example:
+            - library.read
+            - playback.write
+            - download.read
+
+    # --------------------------------------------------------------------------
     # SYNC MANIFEST
     # --------------------------------------------------------------------------
     SyncManifest:
       type: object
       properties:
-        version:
-          type: integer
-          description: Current manifest version number
+        cursor:
+          type: string
+          description: Opaque cursor string representing the current manifest state. Pass this to /sync/delta to get changes since this version.
         tracksChecksum:
           type: string
           description: Checksum of all track data
@@ -4282,7 +4349,7 @@ components:
           format: date-time
           description: When the manifest was last updated
       required:
-        - version
+        - cursor
         - tracksChecksum
         - albumsChecksum
         - artistsChecksum
@@ -4294,11 +4361,11 @@ components:
     SyncDelta:
       type: object
       properties:
-        fromVersion:
-          type: integer
-          description: The manifest version the client currently has
+        cursor:
+          type: string
+          description: Opaque cursor from a previous SyncManifest or delta response
       required:
-        - fromVersion
+        - cursor
 
     # --------------------------------------------------------------------------
     # SYNC STATE REQUEST
@@ -4410,23 +4477,17 @@ components:
     # --------------------------------------------------------------------------
     PlaybackControlRequest:
       type: object
+      required: [command]
       properties:
-        action:
+        command:
           type: string
-          description: The control action to perform
-          enum:
-            - play
-            - pause
-            - stop
-            - next
-            - previous
-            - seek
-            - restart
-        positionMs:
-          type: integer
-          description: Target position in milliseconds (required for seek action)
-      required:
-        - action
+          enum: [play, pause, toggle, stop, next, previous, seek, set_volume, mute, unmute, shuffle, repeat]
+        value:
+          oneOf:
+            - type: integer
+            - type: string
+            - type: "null"
+          description: Parameter value for seek (ms), volume (0-100), shuffle (bool), repeat (off/one/all)
 
     # --------------------------------------------------------------------------
     # PLAYBACK SESSION REQUEST

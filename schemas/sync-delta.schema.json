@@ -2,9 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/sync-delta.schema.json",
   "title": "SyncDelta",
-  "description": "Incremental changes since last synchronisation to keep peers in sync",
+  "description": "Incremental changes since last synchronisation to keep peers in sync, using cursor-based pagination",
   "type": "object",
-  "required": ["device_id", "sync_id", "generated_at", "changes"],
+  "required": ["device_id", "sync_id", "generated_at", "cursor", "added", "updated", "deleted", "playlists_updated"],
   "properties": {
     "device_id": {
       "type": "string",
@@ -26,84 +26,98 @@
       "description": "ISO 8601 timestamp when this delta was generated",
       "format": "date-time"
     },
-    "changes": {
+    "cursor": {
       "type": "object",
-      "description": "Set of changes grouped by entity type",
-      "required": ["tracks", "albums", "artists", "playlists"],
+      "description": "Cursor state for paginated sync iteration",
+      "required": ["page", "total_pages", "total_items"],
       "properties": {
-        "tracks": {
-          "type": "object",
-          "description": "Track changes",
-          "properties": {
-            "added": {
-              "type": "array",
-              "items": { "$ref": "track.schema.json" }
-            },
-            "updated": {
-              "type": "array",
-              "items": { "$ref": "track.schema.json" }
-            },
-            "removed": {
-              "type": "array",
-              "items": { "type": "string", "description": "Track ID" }
-            }
-          }
+        "page": {
+          "type": "integer",
+          "description": "Current page number (1-indexed)",
+          "minimum": 1
         },
-        "albums": {
-          "type": "object",
-          "description": "Album changes",
-          "properties": {
-            "added": {
-              "type": "array",
-              "items": { "$ref": "album.schema.json" }
-            },
-            "updated": {
-              "type": "array",
-              "items": { "$ref": "album.schema.json" }
-            },
-            "removed": {
-              "type": "array",
-              "items": { "type": "string", "description": "Album ID" }
-            }
-          }
+        "total_pages": {
+          "type": "integer",
+          "description": "Total number of pages",
+          "minimum": 1
         },
-        "artists": {
-          "type": "object",
-          "description": "Artist changes",
-          "properties": {
-            "added": {
-              "type": "array",
-              "items": { "$ref": "artist.schema.json" }
-            },
-            "updated": {
-              "type": "array",
-              "items": { "$ref": "artist.schema.json" }
-            },
-            "removed": {
-              "type": "array",
-              "items": { "type": "string", "description": "Artist ID" }
-            }
-          }
-        },
-        "playlists": {
-          "type": "object",
-          "description": "Playlist changes",
-          "properties": {
-            "added": {
-              "type": "array",
-              "items": { "$ref": "playlist.schema.json" }
-            },
-            "updated": {
-              "type": "array",
-              "items": { "$ref": "playlist.schema.json" }
-            },
-            "removed": {
-              "type": "array",
-              "items": { "type": "string", "description": "Playlist ID" }
-            }
-          }
+        "total_items": {
+          "type": "integer",
+          "description": "Total number of changed items across all pages",
+          "minimum": 0
         }
       }
+    },
+    "added": {
+      "type": "object",
+      "description": "Entities added since last sync",
+      "properties": {
+        "tracks": {
+          "type": "array",
+          "items": { "$ref": "track.schema.json" }
+        },
+        "albums": {
+          "type": "array",
+          "items": { "$ref": "album.schema.json" }
+        },
+        "artists": {
+          "type": "array",
+          "items": { "$ref": "artist.schema.json" }
+        },
+        "playlists": {
+          "type": "array",
+          "items": { "$ref": "playlist.schema.json" }
+        }
+      }
+    },
+    "updated": {
+      "type": "object",
+      "description": "Entities modified since last sync",
+      "properties": {
+        "tracks": {
+          "type": "array",
+          "items": { "$ref": "track.schema.json" }
+        },
+        "albums": {
+          "type": "array",
+          "items": { "$ref": "album.schema.json" }
+        },
+        "artists": {
+          "type": "array",
+          "items": { "$ref": "artist.schema.json" }
+        },
+        "playlists": {
+          "type": "array",
+          "items": { "$ref": "playlist.schema.json" }
+        }
+      }
+    },
+    "deleted": {
+      "type": "object",
+      "description": "Entity IDs removed since last sync",
+      "properties": {
+        "tracks": {
+          "type": "array",
+          "items": { "type": "string", "description": "Track ID" }
+        },
+        "albums": {
+          "type": "array",
+          "items": { "type": "string", "description": "Album ID" }
+        },
+        "artists": {
+          "type": "array",
+          "items": { "type": "string", "description": "Artist ID" }
+        },
+        "playlists": {
+          "type": "array",
+          "items": { "type": "string", "description": "Playlist ID" }
+        }
+      }
+    },
+    "playlists_updated": {
+      "type": "array",
+      "description": "List of playlist IDs whose track ordering changed",
+      "items": { "type": "string" }
     }
   }
 }

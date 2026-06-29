@@ -6,34 +6,48 @@ Michi Link is the official protocol specification that defines how every compone
 
 The Michi ecosystem consists of:
 
-- **Michi Music Player** — A high-performance desktop music player
-- **Michi Micro Server** — A lightweight local-network server for media sharing
-- **Michi Music Mobile** — Mobile remote control and playback client
-- **Michi Music Stream** — Real-time streaming adapter for multi-room audio
+- **Michi Music Player** — Desktop music player for Linux/KDE (Python, PySide6, GStreamer). Master center for library management, metadata, artwork, lyrics, playlists, audio profiles, and synchronization.
+- **Michi Micro Server** — Lightweight home server (Rust/Tokio/Axum/SQLite). Receives music from Player, stores library backup, serves music to Mobile, reproduces autonomously, and distributes audio across the house.
+- **Michi Music Mobile** — Android app (Kotlin/Jetpack Compose/Media3). Local/offline playback, download/stream from Micro Server, and remote control for the ecosystem.
+- **Michi Music Stream** — Family of physical audio receivers. Standard (jack 3.5mm) and Hi-Fi (DAC, RCA stereo). Only receives audio and converts to physical output.
+- **Michi Big Server** — Future high-capacity server for large libraries.
 
 ---
 
 ## What is Michi Link?
 
-Michi Link is a **common language** — a wire-format specification that any Michi component can speak. It decouples producers from consumers so that a player, server, mobile app, or stream adapter can discover, pair, and interoperate without shared code or tight coupling.
+Michi Link is a **contract** — a wire-format specification that any Michi component can speak. It decouples producers from consumers so that a player, server, mobile app, or stream receiver can discover, pair, and interoperate without shared code or tight coupling.
+
+**Michi Link comes integrated in each Michi app.** End users never install it separately.
 
 ---
 
 ## Core Concepts
 
-| Concept            | Description |
-|--------------------|-------------|
-| **Discovery**      | mDNS/DNS-SD based service announcement and lookup on the local network |
-| **Pairing**        | Trusted handshake between devices using a shared secret |
-| **Permissions**    | Role-based access tokens scoped to specific capabilities |
-| **Library**        | Query, browse, and search media metadata across devices |
-| **Streaming**      | Real-time audio transport via raw PCM, FLAC, or Opus |
-| **Sync**          | Clock synchronisation for gapless multi-device playback |
-| **Playback Control** | Play, pause, seek, volume, queue management commands |
-| **Audio Chains**   | Modular DSP pipeline definitions (EQ, crossfade, filters) |
-| **Receivers**      | Output device abstraction (HDMI, AirPlay, Bluetooth, etc.) |
-| **Rooms**          | Grouping of receivers for coordinated multi-room audio |
-| **Events**         | Real-time push notifications for state changes |
+| Concept | Description |
+|---------|-------------|
+| **Discovery** | UDP multicast announce and/or mDNS for service discovery on the local network |
+| **Pairing** | Trusted handshake between devices with token exchange |
+| **Permissions** | Device-scoped authorization tokens for fine-grained access control |
+| **Library** | Query, browse, and search music metadata across devices |
+| **Streaming** | Audio transport via HTTP Range requests |
+| **Sync** | Manifest-based incremental synchronization for offline devices |
+| **Playback Control** | Play, pause, seek, volume, and queue management commands |
+| **Audio Chains** | Modular pipeline: Source + Controller + Output + Profile |
+| **Receivers** | Physical audio output devices (v1-lite protocol for constrained hardware) |
+| **Rooms** | Groups of receivers for synchronized multi-room audio |
+| **Events** | Real-time push notifications via WebSocket |
+
+---
+
+## Transport Architecture
+
+| Layer | Protocol | Purpose |
+|-------|----------|---------|
+| **Discovery** | UDP multicast (port 42069) / mDNS | Device announcement and discovery |
+| **Primary API** | HTTP REST (`/api/v1`) | All data operations: library, sync, streaming, playback, queue, rooms |
+| **Real-time** | WebSocket (`/api/v1/events`) | Event notifications (state changes, device events) |
+| **Streaming** | HTTP with Range support | Audio streaming and download |
 
 ---
 
@@ -41,45 +55,33 @@ Michi Link is a **common language** — a wire-format specification that any Mic
 
 | Path | Contents |
 |------|----------|
-| `spec/` | The core specification documents (message schemas, sequence diagrams) |
-| `spec/transport/` | WebSocket / HTTP transport layer definitions |
-| `spec/payloads/` | JSON message type definitions and field semantics |
-| `spec/discovery/` | mDNS service types, TXT records, and discovery flow |
-| `protos/` | Optional Protocol Buffers schemas for compact binary encoding |
-| `examples/` | Annotated message examples for each core flow |
-| `diagrams/` | Sequence diagrams and architecture overviews (PlantUML / Mermaid) |
-| `tests/` | Conformance test scenarios and expected message sequences |
-| `CHANGELOG.md` | Version history and breaking-change log |
-
----
-
-## How to Use This Spec
-
-1. Read `spec/transport/connection.md` to understand the transport layer.
-2. Follow the core flow in `spec/discovery/discovery.md` for initial setup.
-3. Implement pairing via `spec/payloads/pairing.md`.
-4. Use the message examples in `examples/` as reference during development.
-5. Validate your implementation against the scenarios in `tests/`.
+| `docs/` | Specification documents for every subsystem |
+| `openapi/` | OpenAPI 3.0 specification |
+| `schemas/` | JSON Schema (draft-07) for every entity |
+| `examples/` | Annotated JSON examples for every flow |
+| `tests/contract/` | Conformance tests validating examples against schemas |
 
 ---
 
 ## Quick Start for Integrators
 
 ```text
-1. Listen on mDNS for _michilink._tcp services.
-2. Connect via WebSocket (ws://<host>:<port>/michi/v1).
-3. Send a "pair" request with a generated device ID.
-4. Exchange permissions tokens.
-5. Query the library or start playback using the defined message types.
+1. Discover services via UDP multicast (port 42069) or mDNS (_michi-link._tcp).
+2. Query server identity: GET /api/v1/server/info
+3. Initiate pairing:  POST /api/v1/pair/start
+4. Confirm pairing:   POST /api/v1/pair/confirm
+5. Use Authorization: Bearer <device_token> on all subsequent requests.
+6. Use REST /api/v1 for library, sync, streaming, playback, queue, and rooms.
+7. Use WebSocket /api/v1/events only for real-time event notifications.
 ```
-
-See `examples/minimal-client.md` for a complete walkthrough.
 
 ---
 
 ## Versioning
 
-This specification uses **semantic versioning**. The current major version is **v1**. Breaking changes will increment the major version and be documented in `CHANGELOG.md`.
+This specification uses **semantic versioning** (`major.minor.patch`). The current major version is **v1**. Breaking changes increment the major version. Backward compatibility is guaranteed within a major version.
+
+Michi Link v1-lite is a subset of v1 for resource-constrained devices (receivers), not a different version.
 
 ---
 
@@ -91,5 +93,5 @@ Licensed under the [MIT License](LICENSE).
 
 ## Build Status
 
-[![Spec Status](https://img.shields.io/badge/spec-v1-blue.svg)](https://github.com/michi/link)
+[![Spec Status](https://img.shields.io/badge/spec-v1-blue.svg)](https://github.com/pitydah/michi-link)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)

@@ -1,4 +1,5 @@
 {
+  "device_type": "michi_stream_standard",
   "id": "rec-std-001",
   "name": "Michi Music Stream Standard",
   "model": "standard",

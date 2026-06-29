@@ -44,6 +44,9 @@ function mappingRules() {
     { pattern: /^queue\.json$/, schemaBase: "queue" },
     { pattern: /^audio-chain\.json$/, schemaBase: "audio-chain" },
     { pattern: /^event-(.+)\.json$/, schemaBase: "event" },
+    { pattern: /^playback-control\.json$/, schemaBase: "playback-control" },
+    { pattern: /^sync-delta\.json$/, schemaBase: "sync-delta" },
+    { pattern: /^error\.json$/, schemaBase: "error" },
   ];
 }
 
@@ -276,6 +279,79 @@ function main() {
       failed++;
     }
   }
+
+  // --- Negative test: playback-control rejects "action" field ---
+  (function () {
+    const validate = compileWithRefs("playback-control", allSchemas);
+    const bad = { action: "play", value: 30000 };
+    if (validate && !validate(bad)) {
+      console.log(`${PASS} playback-control correctly rejects "action" as field name`);
+      passed++;
+    } else {
+      console.log(`${FAIL} playback-control did NOT reject "action" (should fail)`);
+      failed++;
+    }
+  })();
+
+  // --- Positive test: sync-delta with cursor format ---
+  (function () {
+    const validate = compileWithRefs("sync-delta", allSchemas);
+    const cursorDelta = {
+      device_id: "dev_abc123",
+      sync_id: "sync_delta_001",
+      generated_at: "2026-06-29T12:00:00Z",
+      cursor: { page: 1, total_pages: 1, total_items: 3 },
+      added: {
+        tracks: [{ id: "track_1", title: "New Song", artist: "Artist A", album: "Album A", duration_ms: 240000 }],
+        albums: [],
+        artists: [],
+        playlists: []
+      },
+      updated: {
+        tracks: [{ id: "track_2", title: "Updated Title", artist: "Artist B", album: "Album B", duration_ms: 200000 }],
+        albums: [],
+        artists: [],
+        playlists: []
+      },
+      deleted: {
+        tracks: ["track_3"],
+        albums: [],
+        artists: [],
+        playlists: []
+      },
+      playlists_updated: []
+    };
+    if (validate && validate(cursorDelta)) {
+      console.log(`${PASS} sync-delta with cursor format is valid`);
+      passed++;
+    } else {
+      console.log(`${FAIL} sync-delta with cursor format failed validation`);
+      for (const err of validate.errors || []) {
+        console.log(`       ${err.instancePath} ${err.message}`);
+      }
+      failed++;
+    }
+  })();
+
+  // --- Positive test: standard error format ---
+  (function () {
+    const validate = compileWithRefs("error", allSchemas);
+    const errorObj = {
+      code: "INVALID_REQUEST",
+      message: "The request contains invalid fields",
+      details: { field: "position_ms", reason: "must be a non-negative integer" }
+    };
+    if (validate && validate(errorObj)) {
+      console.log(`${PASS} error format with code, message, details is valid`);
+      passed++;
+    } else {
+      console.log(`${FAIL} error format failed validation`);
+      for (const err of validate.errors || []) {
+        console.log(`       ${err.instancePath} ${err.message}`);
+      }
+      failed++;
+    }
+  })();
 
   const total = passed + failed;
   console.log(`\n${total} total, ${passed} passed, ${failed} failed`);

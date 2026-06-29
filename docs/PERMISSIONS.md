@@ -7,8 +7,9 @@ Each device has a set of **granted permissions** that control what it can do. Pe
 - **Device-based authorization**: the `device_id` in the token determines which permissions apply
 - Permissions are scoped to the pairing server's domain
 - Every API endpoint checks the required permission before allowing access
+- Permissions are **additive**: a device with `library.write` implicitly has `library.read`
 
-## All Permissions
+## Official Permissions
 
 | Permission | Description | Typical Roles |
 |---|---|---|
@@ -18,17 +19,18 @@ Each device has a set of **granted permissions** that control what it can do. Pe
 | `library.scan` | Trigger a library scan/re-scan | cli, admin |
 | `track.read` | Read track metadata | controller, player, cli |
 | `track.write` | Edit track metadata | cli, admin |
-| `stream.read` | Stream audio from server | player, speaker |
+| `stream.read` | Stream audio from server (play via streaming) | player, speaker |
 | `stream.transcode` | Request on-the-fly transcoding | player, speaker |
 | `artwork.read` | Fetch cover art images | controller, player, cli |
 | `playlist.read` | View playlists | controller, player, cli |
 | `playlist.write` | Create/edit/delete playlists | controller, cli |
+| **`download.read`** | **Download tracks for offline/backup** | **sync client, mobile** |
 | `sync.read_manifest` | Read sync manifest | sync client |
-| `sync.download_tracks` | Download tracks for offline use | sync client, mobile |
+| `sync.download_tracks` | Download tracks via sync protocol | sync client, mobile |
 | `sync.download_covers` | Download cover art for offline use | sync client, mobile |
 | `sync.upload_state` | Report sync/download state | sync client |
 | `playback.read` | Read current playback state | controller, cli |
-| `playback.control` | Play, pause, stop, skip | controller, cli |
+| `playback.control` | Play, pause, stop, skip, seek | controller, cli |
 | `queue.read` | View playback queue | controller, player, cli |
 | `queue.write` | Add/reorder/remove from queue | controller, cli |
 | `receiver.read` | Read receiver info | controller, cli |
@@ -42,18 +44,27 @@ Each device has a set of **granted permissions** that control what it can do. Pe
 | `system.read` | Read system configuration | admin, cli |
 | `system.write` | Modify system configuration | admin |
 
+### `stream.read` vs `download.read`
+
+| Permission | Purpose |
+|---|---|
+| `stream.read` | Reproducir/escuchar audio vía streaming HTTP con Range. No implica copia permanente. |
+| `download.read` | Descargar/copia offline del archivo completo para almacenamiento local. Requiere el endpoint `/download/{track_id}`. |
+
+Ambos permisos son independientes. Un dispositivo puede tener solo `stream.read` (p. ej., un receiver) o ambos (p. ej., un mobile client para offline).
+
 ## Permission Inheritance
 
 Devices inherit permissions based on their role(s):
 
 | Role | Inherited Permissions |
 |---|---|
-| `server` | All `server.*`, `system.*`, `library.*` |
-| `controller` | `server.read`, `library.read`, `track.read`, `artwork.read`, `playlist.*`, `playback.*`, `queue.*`, `receiver.*`, `room.*` |
-| `player` | `server.read`, `library.read`, `track.read`, `artwork.read`, `stream.*`, `queue.read`, `playback.read` |
-| `sync` | `server.read`, `sync.*` |
-| `mobile` | Role-based; typically `sync.*`, `playback.*`, `library.read` |
-| `cli` | `server.*`, `library.*`, `system.*`, `playback.*`, `queue.*` |
+| `desktop_player` / `library_master` | All `server.*`, `system.*`, `library.*`, `track.*`, `playlist.*`, `playback.*`, `queue.*`, `sync.*`, `stream.*` |
+| `home_server` / `library_server` | All `server.*`, `system.*`, `library.*`, `track.*`, `playlist.*`, `sync.*`, `stream.*` |
+| `mobile_client` / `offline_player` | `server.read`, `library.read`, `track.read`, `artwork.read`, `sync.*`, `download.read`, `playback.*`, `queue.*` |
+| `remote_controller` | `server.read`, `library.read`, `track.read`, `artwork.read`, `playlist.*`, `playback.*`, `queue.*`, `receiver.*`, `room.*` |
+| `audio_receiver` / `music_stream_receiver` | `server.read`, `stream.read`, `receiver.session`, `receiver.volume` |
+| `sync_client` | `server.read`, `sync.*`, `download.read` |
 
 ## Checking Permissions
 

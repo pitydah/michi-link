@@ -1,10 +1,31 @@
 # Michi Link API v1
 
 - **Version:** 1.0.0
-- **Transport:** HTTP/1.1 (HTTPS recommended)
+- **Primary Transport:** HTTP/1.1 REST (HTTPS recommended) — all data operations
+- **RTC Transport:** WebSocket at `/api/v1/events` — real-time event notifications only
+- **Discovery:** UDP multicast (port 42069) and/or mDNS (`_michi-link._tcp`)
 - **Content-Type:** `application/json`
 - **Authentication:** Bearer Token via `Authorization` header
 - **Base URL:** `http://{host}:{port}/api/v1`
+
+---
+
+## Canonical Field Names
+
+The following field names are **official** and MUST be used by all implementations. Legacy/aliased names (marked with →) are accepted during transition but MUST NOT appear in new code.
+
+| Domain | Official Field | Type | Notes |
+|--------|---------------|------|-------|
+| Playback Control | `command` | string | `"action"` → legacy alias |
+| Playback Control | `value` | int/string/bool | Parameter for `seek`, `set_volume`, `shuffle`, `repeat` |
+| Playback State | `position_ms` | int | Milliseconds. `position_seconds` → legacy alias |
+| Playback State | `state` | string | `"playing"`, `"paused"`, `"stopped"`, `"loading"` |
+| Playback State | `volume` | int | 0–100 |
+| Playback State | `repeat` | string | `"off"`, `"one"`, `"all"` |
+| Sync Delta | `cursor` | string | Opaque cursor token. `since`, `manifest_id` → legacy aliases |
+| Sync Manifest | `cursor` | string | Next cursor for delta requests |
+| Track | `duration_ms` | int | Milliseconds. `duration_seconds` → legacy alias |
+| Volume | `volume` | int | 0–100 inclusive |
 
 ---
 
@@ -957,7 +978,7 @@ Obtiene el manifiesto completo de sincronización. Contiene todos los elementos 
 
 ```json
 {
-  "manifest_id": "uuid-del-manifiesto",
+  "cursor": "initial_cursor_string",
   "generated_at": "2026-06-29T12:00:00Z",
   "tracks": {
     "uuid-track-1": { "version": 3, "updated_at": "2026-06-28T10:00:00Z" },
@@ -977,40 +998,30 @@ Obtiene un manifiesto diferencial desde una versión conocida. Útil para sincro
 
 **Parámetros de consulta:**
 
-| Parámetro     | Tipo   | Obligatorio | Descripción                         |
-|---------------|--------|-------------|--------------------------------------|
-| `since`       | string | Sí          | Timestamp ISO 8601 de la última sincronización. |
-| `manifest_id` | string | No          | ID del último manifiesto conocido.   |
+| Parámetro | Tipo   | Obligatorio | Descripción                                                      |
+|-----------|--------|-------------|------------------------------------------------------------------|
+| `cursor`  | string | Sí          | Cursor opaco de la última sincronización (obtenido de la respuesta anterior o del manifest completo). |
+| `device_id` | string | No        | ID del dispositivo solicitante.                                  |
+
+> **Nota de compatibilidad:** Durante la transición se aceptan también `since` (timestamp ISO 8601) y `manifest_id` (ID de manifiesto). El campo oficial es `cursor`. Las nuevas implementaciones DEBEN usar `cursor`.
 
 **Respuesta `200 OK`:**
 
 ```json
 {
-  "manifest_id": "uuid-del-manifiesto",
-  "generated_at": "2026-06-29T12:00:00Z",
-  "since": "2026-06-28T12:00:00Z",
-  "changes": {
-    "tracks": {
-      "added": ["uuid-track-nuevo"],
-      "updated": ["uuid-track-modificado"],
-      "removed": ["uuid-track-eliminado"]
-    },
-    "albums": {
-      "added": [],
-      "updated": [],
-      "removed": []
-    },
-    "artists": {
-      "added": [],
-      "updated": [],
-      "removed": []
-    },
-    "playlists": {
-      "added": [],
-      "updated": [],
-      "removed": []
-    }
-  }
+  "cursor": "next_cursor_string",
+  "added": [
+    { "type": "track", "data": { ... } }
+  ],
+  "updated": [
+    { "type": "track", "data": { ... } }
+  ],
+  "deleted": [
+    { "type": "track", "id": "uuid-track-eliminado" }
+  ],
+  "playlists_updated": [
+    { "playlist_id": "uuid-playlist", "added": [], "removed": [] }
+  ]
 }
 ```
 
@@ -1059,10 +1070,10 @@ Obtiene el estado actual de reproducción del servidor.
     "title": "Canción de Ejemplo",
     "artist": "Artista Ejemplo",
     "album": "Álbum Ejemplo",
-    "duration_seconds": 245,
+    "duration_ms": 245000,
     "cover_id": "uuid-de-la-caratula"
   },
-  "position_seconds": 78,
+  "position_ms": 78000,
   "volume": 80,
   "device_id": "uuid-del-dispositivo-reproductor",
   "queue_id": "uuid-de-la-cola",
@@ -1075,41 +1086,41 @@ Posibles valores de `state`: `playing`, `paused`, `stopped`, `loading`.
 
 Posibles valores de `repeat`: `off`, `one`, `all`.
 
+Volumen oficial: entero 0–100.
+
 ---
 
 #### `POST /playback/control`
 
-Controla la reproducción: play, pause, stop, next, previous, seek.
+Controla la reproducción: play, pause, stop, next, previous, seek, volume, shuffle, repeat.
 
-**Cuerpo de solicitud:**
-
-```json
-{
-  "action": "play",
-  "position_seconds": 30
-}
-```
-
-**Actions disponibles:**
-
-| Acción     | Descripción                          | Requiere `position_seconds` |
-|------------|--------------------------------------|-----------------------------|
-| `play`     | Reanudar o iniciar reproducción.     | No                          |
-| `pause`    | Pausar reproducción.                 | No                          |
-| `stop`     | Detener reproducción.                | No                          |
-| `next`     | Siguiente track.                     | No                          |
-| `previous` | Track anterior.                      | No                          |
-| `seek`     | Saltar a una posición específica.    | Sí                          |
-| `volume`   | Cambiar volumen (0-100).             | No (usar `volume` en cuerpo)|
-
-**Cuerpo alternativo para volumen:**
+**Cuerpo de solicitud (oficial):**
 
 ```json
 {
-  "action": "volume",
-  "volume": 75
+  "command": "seek",
+  "value": 30000
 }
 ```
+
+**Comandos oficiales:**
+
+| Comando        | Descripción                              | `value` esperado        |
+|----------------|------------------------------------------|--------------------------|
+| `play`         | Reanudar o iniciar reproducción.         | `null`                   |
+| `pause`        | Pausar reproducción.                     | `null`                   |
+| `toggle`       | Alternar play/pausa.                     | `null`                   |
+| `stop`         | Detener reproducción.                    | `null`                   |
+| `next`         | Siguiente track.                         | `null`                   |
+| `previous`     | Track anterior.                          | `null`                   |
+| `seek`         | Saltar a posición específica.            | `int` (position_ms)      |
+| `set_volume`   | Establecer volumen (0–100).              | `int` (0–100)            |
+| `mute`         | Silenciar.                               | `null`                   |
+| `unmute`       | Reactivar sonido.                        | `null`                   |
+| `shuffle`      | Activar/desactivar shuffle.              | `boolean`                |
+| `repeat`       | Establecer modo de repetición.           | `"off"`, `"one"`, `"all"`|
+
+> **Nota de compatibilidad:** El campo `"action"` se acepta como alias legacy durante la transición, pero el campo oficial es `"command"`. Las nuevas implementaciones DEBEN usar `"command"`.
 
 **Respuesta `200 OK`:**
 
@@ -1117,7 +1128,7 @@ Controla la reproducción: play, pause, stop, next, previous, seek.
 {
   "success": true,
   "state": "playing",
-  "position_seconds": 30
+  "position_ms": 30000
 }
 ```
 

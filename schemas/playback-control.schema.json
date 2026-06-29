@@ -9,7 +9,7 @@
     "command": {
       "type": "string",
       "description": "Playback control command",
-      "enum": ["play", "pause", "stop", "next", "previous", "seek", "set_volume", "toggle_shuffle", "toggle_repeat"]
+      "enum": ["play", "pause", "stop", "next", "previous", "seek", "set_volume", "toggle_shuffle", "toggle_repeat", "toggle", "mute", "unmute"]
     },
     "value": {
       "description": "Parameter for commands that accept a value (seek_ms, volume level)",
@@ -27,9 +27,13 @@
         {
           "type": "boolean",
           "description": "Shuffle toggle value"
+        },
+        {
+          "type": "null",
+          "description": "No value required for commands like toggle, mute, unmute"
         }
       ],
-      "examples": [30000, 80, "one", true]
+      "examples": [30000, 80, "one", true, null]
     }
   }
 }
