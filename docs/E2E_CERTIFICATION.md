@@ -101,11 +101,32 @@ Cada check tiene status `pass`, `fail`, o `skip`. El reporte global es `pass` so
 
 ### Niveles de certificación
 
-| Nivel | Significado |
-|-------|-------------|
-| NOT_TESTED | No ejecutado |
-| UNIT_PASS | Pasa test unitario del proyecto |
-| MOCK_PASS | Pasa contra servidor mock |
-| MANUAL_PASS | Pasa manualmente con curl |
-| E2E_PASS | Pasa con runner.py contra servidor real |
-| FAIL | No pasa |
+| Nivel | Código | Entorno | Comando |
+|-------|--------|---------|---------|
+| No probado | NOT_TESTED | — | — |
+| Unitario | UNIT_PASS | `cargo test` | Test CI del proyecto |
+| Mock | MOCK_PASS | Mock HTTP | `python runner.py --mock` |
+| Local E2E | LOCAL_E2E_PASS | `localhost` | `python runner.py --server-host 127.0.0.1` |
+| Red E2E | NETWORK_E2E_PASS | `192.168.1.x` | `python runner.py --server-host <LAN_IP>` |
+| Hardware E2E | DEVICE_E2E_PASS | Físico | `python runner.py` + dispositivo real |
+| Falla | FAIL | Cualquiera | — |
+
+### Detalle de niveles E2E
+
+**LOCAL_E2E_PASS:** Servidor y runner en la misma máquina. Prueba que el contrato funciona sin red de por medio.
+
+```bash
+python runner.py scenarios/mobile_player.yml --server-host 127.0.0.1 --server-port 8400
+```
+
+**NETWORK_E2E_PASS:** Servidor y runner en máquinas diferentes en la misma LAN. Prueba latencia, discovery y estabilidad de red.
+
+```bash
+python runner.py scenarios/mobile_player.yml --server-host 192.168.1.100 --server-port 8400
+```
+
+**DEVICE_E2E_PASS:** Misma red pero con dispositivos físicos reales (Mobile Android, Stream hardware). Nivel máximo de certificación.
+
+### Nota sobre FAIL
+
+Si un escenario estaba en NOT_TESTED y al ejecutarlo falla, se marca FAIL. No se puede pasar a beta si hay FAILs sin resolver.

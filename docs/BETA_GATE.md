@@ -4,90 +4,105 @@
 
 La **beta gate** es el conjunto de condiciones que deben cumplirse antes de declarar oficialmente la versión beta del ecosistema Michi.
 
+## Niveles requeridos por escenario
+
+| Escenario | Mínimo para beta | Ideal |
+|-----------|-----------------|-------|
+| Mobile ↔ Player pairing | **NETWORK_E2E_PASS** | DEVICE_E2E_PASS |
+| Mobile ↔ Player stream | **NETWORK_E2E_PASS** | DEVICE_E2E_PASS |
+| Mobile ↔ Player playback | **NETWORK_E2E_PASS** | DEVICE_E2E_PASS |
+| Mobile ↔ Micro pairing | **NETWORK_E2E_PASS** | DEVICE_E2E_PASS |
+| Mobile ↔ Micro download | **NETWORK_E2E_PASS** | DEVICE_E2E_PASS |
+| Mobile ↔ Micro playback | **NETWORK_E2E_PASS** | DEVICE_E2E_PASS |
+| Player → Micro import | **LOCAL_E2E_PASS** | NETWORK_E2E_PASS |
+| Micro autonomous | **LOCAL_E2E_PASS** | NETWORK_E2E_PASS |
+| Micro ↔ Stream | MOCK_PASS (no blocker) | DEVICE_E2E_PASS |
+
 ## Condiciones
 
-### 1. Mobile ↔ Player E2E_PASS
+### 1. Mobile ↔ Player
 
-| Escenario | Nivel requerido | Estado actual |
-|-----------|----------------|---------------|
-| E2E-01: Mobile ↔ Player pairing | E2E_PASS | NOT_TESTED |
-| E2E-02: Mobile ↔ Player stream | E2E_PASS | NOT_TESTED |
-| E2E-03: Mobile ↔ Player playback | E2E_PASS | NOT_TESTED |
+| Escenario | Mínimo requerido | Estado actual |
+|-----------|-----------------|---------------|
+| E2E-01: Mobile ↔ Player pairing | NETWORK_E2E_PASS | NOT_TESTED |
+| E2E-02: Mobile ↔ Player stream | NETWORK_E2E_PASS | NOT_TESTED |
+| E2E-03: Mobile ↔ Player playback | NETWORK_E2E_PASS | NOT_TESTED |
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/mobile_player_*.json`
 
-### 2. Mobile ↔ Micro Server E2E_PASS
+### 2. Mobile ↔ Micro Server
 
-| Escenario | Nivel requerido | Estado actual |
-|-----------|----------------|---------------|
-| E2E-04: Mobile ↔ Micro pairing | E2E_PASS | NOT_TESTED |
-| E2E-05: Mobile ↔ Micro download/sync | E2E_PASS | NOT_TESTED |
-| E2E-06: Mobile ↔ Micro playback | E2E_PASS | NOT_TESTED |
+| Escenario | Mínimo requerido | Estado actual |
+|-----------|-----------------|---------------|
+| E2E-04: Mobile ↔ Micro pairing | NETWORK_E2E_PASS | NOT_TESTED |
+| E2E-05: Mobile ↔ Micro download/sync | NETWORK_E2E_PASS | NOT_TESTED |
+| E2E-06: Mobile ↔ Micro playback | NETWORK_E2E_PASS | NOT_TESTED |
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/mobile_micro_*.json`
 
-### 3. Player → Micro Server Import E2E_PASS
+### 3. Player → Micro Server Import
 
-| Escenario | Nivel requerido | Estado actual |
-|-----------|----------------|---------------|
-| E2E-07: Player → Micro import | E2E_PASS | NOT_TESTED |
+| Escenario | Mínimo requerido | Estado actual |
+|-----------|-----------------|---------------|
+| E2E-07: Player → Micro import | LOCAL_E2E_PASS | NOT_TESTED |
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/player_micro_import_*.json`
 
-### 4. Micro Autonomous Playback E2E_PASS
+### 4. Micro Autonomous Playback
 
-| Escenario | Nivel requerido | Estado actual |
-|-----------|----------------|---------------|
-| E2E-08: Micro autonomous playback | E2E_PASS | NOT_TESTED |
+| Escenario | Mínimo requerido | Estado actual |
+|-----------|-----------------|---------------|
+| E2E-08: Micro autonomous playback | LOCAL_E2E_PASS | NOT_TESTED |
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/micro_autonomous_playback_*.json`
 
 ### 5. Seguridad
 
-| Condición | Estado | Evidencia |
-|-----------|--------|-----------|
-| No file_path en respuestas públicas | PASS | test_v1_tracks_no_file_path |
-| Error format con { error: { code, message, details } } | PASS | test_v1_error_format_includes_details |
-| Tokens hasheados (SHA-256) | PASS | crates/michi-link/src/auth.rs |
-| Tokens no expuestos en logs | NOT_TESTED | — |
+| Condición | Mínimo requerido | Estado | Evidencia |
+|-----------|-----------------|--------|-----------|
+| No file_path en respuestas públicas | UNIT_PASS | UNIT_PASS | test_v1_tracks_no_file_path |
+| Error format con `{ error: { code, message, details } }` | UNIT_PASS | UNIT_PASS | test_v1_error_format_includes_details |
+| Tokens hasheados (SHA-256) | UNIT_PASS | UNIT_PASS | crates/michi-link/src/auth.rs |
+| Tokens no expuestos en logs | LOCAL_E2E_PASS | NOT_TESTED | — |
+| Rollback import probado | LOCAL_E2E_PASS | NOT_TESTED | — |
 
 ### 6. Contrato
 
-| Condición | Estado | Evidencia |
-|-----------|--------|-----------|
-| service enum correcto | PASS | 31/31 tests de contrato |
-| features booleanas | PASS | 31/31 tests de contrato |
-| auth.required obligatorio | PASS | 31/31 tests de contrato |
-| michi_link_version string | PASS | 31/31 tests de contrato |
-| sync-delta con cursor | PASS | 31/31 tests de contrato |
-| playback-control con command | PASS | 31/31 tests de contrato |
-| error format con details | PASS | 31/31 tests de contrato |
+| Condición | Mínimo requerido | Estado | Evidencia |
+|-----------|-----------------|--------|-----------|
+| service enum correcto | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
+| features booleanas | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
+| auth.required obligatorio | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
+| michi_link_version string | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
+| sync-delta con cursor | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
+| playback-control con command | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
+| error format con details | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
 
 ## Resumen
 
 ```
-Condición                     Requerido    Actual     ¿Gate passed?
-──────────────────────────────────────────────────────────────
-Mobile ↔ Player               E2E_PASS     NOT_TESTED  ❌
-Mobile ↔ Micro                E2E_PASS     NOT_TESTED  ❌
-Player → Micro import         E2E_PASS     NOT_TESTED  ❌
-Micro autonomous playback     E2E_PASS     NOT_TESTED  ❌
-Seguridad                     PASS         PASS        ✅
-Contrato                      PASS         PASS        ✅
-──────────────────────────────────────────────────────────────
+Condición                     Mínimo           Actual        ¿Gate passed?
+──────────────────────────────────────────────────────────────────────────
+Mobile ↔ Player               NETWORK_E2E_PASS NOT_TESTED     ❌
+Mobile ↔ Micro                NETWORK_E2E_PASS NOT_TESTED     ❌
+Player → Micro import         LOCAL_E2E_PASS   NOT_TESTED     ❌
+Micro autonomous playback     LOCAL_E2E_PASS   NOT_TESTED     ❌
+Seguridad                     UNIT_PASS        UNIT_PASS      ✅
+Contrato                      UNIT_PASS        UNIT_PASS      ✅
+──────────────────────────────────────────────────────────────────────────
 Beta gate overall:            ❌ CERRADA
 ```
 
 ## ¿Cómo abrir la beta gate?
 
-1. Ejecutar cada escenario con `runner.py`.
+1. Ejecutar cada escenario con `runner.py` en el nivel requerido.
 2. Subir reportes a `tests/e2e_certification/reports/`.
 3. Actualizar `BETA_READINESS_CHECKLIST.md` con los niveles alcanzados.
-4. Cuando todos los escenarios E2E_PASS estén en ✅, abrir PR para declarar beta.
+4. Cuando todos los escenarios cumplan el mínimo, abrir PR para declarar beta.
 
 ## Postergados para v1.0.0-beta (no bloquean alpha)
 
-- Music Stream physical hardware (prototype).
+- Music Stream physical hardware (prototype, sigue como MOCK_PASS).
 - WebSocket events (stub/partial, baja prioridad).
 - Rooms/Multiroom (planned).
 - Capability probing (future v1.1).

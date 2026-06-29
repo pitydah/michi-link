@@ -8,7 +8,7 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 
 | Columna | Significado |
 |---------|-------------|
-| Certification Level | `NOT_TESTED` / `UNIT_PASS` / `MOCK_PASS` / `MANUAL_PASS` / `E2E_PASS` / `FAIL` |
+| Certification Level | `NOT_TESTED` / `UNIT_PASS` / `MOCK_PASS` / `LOCAL_E2E_PASS` / `NETWORK_E2E_PASS` / `DEVICE_E2E_PASS` / `FAIL` |
 | Evidence | Enlace a test, reporte E2E o commit que demuestra el pase |
 | Test command | Comando exacto para reproducir la verificación |
 | Last verified | Fecha ISO 8601 de la última verificación |
@@ -16,14 +16,15 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 
 ### Niveles de certificación
 
-| Nivel | Significado |
-|-------|-------------|
-| NOT_TESTED | No ejecutado |
-| UNIT_PASS | Pasa test unitario del proyecto |
-| MOCK_PASS | Pasa contra servidor mock |
-| MANUAL_PASS | Pasa manualmente con curl |
-| E2E_PASS | Pasa con runner.py contra servidor real |
-| FAIL | No pasa |
+| Nivel | Código | Significado |
+|-------|--------|-------------|
+| No probado | NOT_TESTED | No ejecutado |
+| Unitario | UNIT_PASS | Pasa test unitario aislado |
+| Mock | MOCK_PASS | Pasa contra servidor mock |
+| Local E2E | LOCAL_E2E_PASS | Pasa contra localhost real |
+| Red E2E | NETWORK_E2E_PASS | Pasa en LAN real |
+| Hardware E2E | DEVICE_E2E_PASS | Pasa en hardware físico real |
+| Falla | FAIL | No pasa el test |
 
 ---
 
