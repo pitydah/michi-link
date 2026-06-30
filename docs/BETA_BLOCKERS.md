@@ -31,8 +31,8 @@ Un **beta blocker** es un flujo E2E que debe funcionar correctamente antes de de
 | B-06 | NOT_TESTED | michi-micro-server, michi-music-mobile | TBD |
 | B-07 | NOT_TESTED | michi-music-player, michi-micro-server | TBD |
 | B-08 | PARTIAL | michi-micro-server | TBD |
-| B-09 | NOT_TESTED | michi-micro-server, michi-music-stream | TBD |
-| B-10 | NOT_TESTED | michi-micro-server, michi-music-stream | TBD |
+| B-09 | **BLOCKED (Micro Server no implementa receiver client)** | michi-micro-server, michi-music-stream | Micro Server necesita implementar ReceiverClient |
+| B-10 | **BLOCKED (Micro Server no implementa receiver session)** | michi-micro-server, michi-music-stream | Micro Server necesita implementar ReceiverSessionManager |
 
 ## Criterio de Desbloqueo
 

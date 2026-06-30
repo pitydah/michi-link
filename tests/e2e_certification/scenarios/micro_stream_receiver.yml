@@ -3,83 +3,128 @@ name: micro_stream_receiver
 server_type: michi-micro-server
 client_type: michi-music-stream-simulator
 
+# Flujo E2E contra el receiver simulator v1-lite real.
+# Micro Server actúa como controlador del Stream.
+
 checks:
-  - name: micro_server_info
+  - name: stream_receiver_info
     method: GET
-    path: /api/v1/server/info
-    server: micro
+    path: /api/v1/receiver/info
     expected_status: 200
     expected_json:
-      service: michi-micro-server
+      service: michi-stream-standard
+      api_version: v1-lite
+      michi_link_version: 1.0.0-alpha
+      auth:
+        required: true
+        strategy: RECEIVER_BUTTON
+        token_refresh: false
 
-  - name: receiver_pair_start
+  - name: stream_pair_start
     method: POST
     path: /api/v1/receiver/pair/start
-    server: micro
     body:
-      device_name: "Stream Simulator"
-      device_type: "michi_stream_standard"
-      roles: ["audio_receiver"]
-      capabilities:
-        streaming_formats: ["flac", "mp3"]
-        max_bitrate: 320
+      initiator: michi_micro_server
+      initiator_id: micro_e2e
     expected_status: 200
+    expected_json:
+      status: pairing_window_open
+      pairing_window_seconds: 120
     extract:
-      receiver_pairing_code: pairing_code
+      stream_nonce: nonce
 
-  - name: receiver_pair_confirm
+  - name: stream_pair_confirm
     method: POST
     path: /api/v1/receiver/pair/confirm
-    server: micro
     body:
-      device_name: "Stream Simulator"
-      pairing_code: "{{ var_receiver_pairing_code }}"
+      nonce: "{{ var_stream_nonce }}"
+      initiator_id: micro_e2e
+      token: tok_e2e_micro
     expected_status: 200
+    expected_json:
+      status: paired
+      controller_id: micro_e2e
     extract:
-      receiver_token: token
+      stream_token: token
 
-  - name: receiver_heartbeat
+  - name: stream_session_start
+    method: POST
+    path: /api/v1/receiver/session/start
+    auth:
+      type: bearer
+      token: "{{ var_stream_token }}"
+    body:
+      session_id: sess_e2e_001
+      codec: pcm_s16le
+      sample_rate: 48000
+      bit_depth: 16
+      channels: 2
+      transport: udp
+      stream_port: 55300
+      buffer_ms: 250
+      volume: 70
+    expected_status: 200
+    expected_json:
+      status: session_started
+
+  - name: stream_heartbeat
     method: POST
     path: /api/v1/receiver/heartbeat
-    server: micro
+    auth:
+      type: bearer
+      token: "{{ var_stream_token }}"
     body:
-      device_id: "rec-sim-001"
-      state: idle
+      session_id: sess_e2e_001
+    expected_status: 200
+    expected_json:
+      status: alive
+
+  - name: stream_volume
+    method: POST
+    path: /api/v1/receiver/volume
+    auth:
+      type: bearer
+      token: "{{ var_stream_token }}"
+    body:
       volume: 50
     expected_status: 200
     expected_json:
-      success: true
+      status: volume_set
+      volume: 50
 
-  - name: receiver_session_start
-    method: POST
-    path: /api/v1/receiver/session/start
-    server: micro
-    body:
-      stream_url: "http://localhost:8500/api/v1/stream/00000000-0000-0000-0000-000000000000"
-      token: "{{ var_receiver_token }}"
-      volume: 60
-    expected_status: 200
-    expected_json:
-      state: playing
-    extract:
-      receiver_session_id: session_id
-
-  - name: receiver_volume
-    method: POST
-    path: /api/v1/receiver/volume
-    server: micro
-    body:
-      volume: 70
-    expected_status: 200
-    expected_json:
-      volume: 70
-
-  - name: receiver_session_stop
+  - name: stream_session_stop
     method: POST
     path: /api/v1/receiver/session/stop
-    server: micro
+    auth:
+      type: bearer
+      token: "{{ var_stream_token }}"
     body:
-      session_id: "{{ var_receiver_session_id }}"
+      session_id: sess_e2e_001
     expected_status: 200
     expected_json:
-      success: true
+      status: session_stopped
+
+  - name: stream_pair_reject_without_window
+    method: POST
+    path: /api/v1/receiver/pair/confirm
+    body:
+      nonce: invalid_nonce
+      initiator_id: attacker
+      token: tok_evil
+    expected_status: 409
+    expected_json:
+      error:
+        code: pairing_window_closed
+
+  - name: stream_auth_rejects_invalid
+    method: POST
+    path: /api/v1/receiver/volume
+    auth:
+      type: bearer
+      token: tok_invalid
+    body:
+      volume: 50
+    expected_status: 401
+    expected_json:
+      error:
+        code: invalid_token
