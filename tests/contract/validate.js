@@ -57,6 +57,7 @@ function mappingRules() {
     { pattern: /^commit-mapping-result\.json$/, schemaBase: "import-commit-result" },
     { pattern: /^queue-transfer-request\.json$/, schemaBase: "queue-transfer" },
     { pattern: /^queue-transfer-response\.json$/, schemaBase: "queue-transfer-response" },
+    { pattern: /^michi-identity-announce-signed\.json$/, schemaBase: "discovery-announce" },
   ];
 }
 

@@ -67,6 +67,21 @@
           "description": "Whether multi-device sync is supported"
         }
       }
+    },
+    "michi_id": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "type": "null" }
+      ],
+      "description": "Ed25519-derived identity hash, or null if not available"
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Ed25519 public key in base64, present when announce is signed"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Ed25519 signature of the announce payload in base64"
     }
   }
 }

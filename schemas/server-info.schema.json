@@ -55,6 +55,20 @@
       "minProperties": 1,
       "examples": [{ "library": true, "search": true, "streaming": true, "sync_manifest": true, "playback": true, "queue": true, "artwork": true, "events": false }]
     },
+    "michi_id": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "type": "null" }
+      ],
+      "description": "Ed25519-derived identity hash (64 hex chars), or null if identity not initialized"
+    },
+    "public_key": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Ed25519 public key in base64, or null if identity not initialized"
+    },
     "auth": {
       "type": "object",
       "description": "Authentication configuration. REQUIRED for all servers.",
@@ -64,9 +78,18 @@
         "strategy": {
           "type": "string",
           "description": "Auth strategy (see AUTH_PROFILES.md)",
-          "enum": ["PLAYER_PASSWORD", "SERVER_CODE", "RECEIVER_BUTTON", "LEGACY"]
+          "enum": ["PLAYER_PASSWORD", "SERVER_CODE", "RECEIVER_BUTTON", "ED25519_CHALLENGE", "LEGACY"]
         },
-        "token_refresh": { "type": "boolean", "description": "Whether /token/refresh is supported" }
+        "token_refresh": { "type": "boolean", "description": "Whether /token/refresh is supported" },
+        "identity_available": {
+          "type": "boolean",
+          "description": "Whether Ed25519 identity is available for this server"
+        },
+        "identity_strategies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Available identity-based auth strategies"
+        }
       }
     }
   }

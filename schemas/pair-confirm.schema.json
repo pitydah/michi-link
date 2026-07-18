@@ -16,6 +16,14 @@
       "description": "The pairing code displayed by the other device",
       "minLength": 1,
       "examples": ["ABCD-1234"]
+    },
+    "pin_proof": {
+      "type": "string",
+      "description": "blake3(pin + server_nonce) to prove PIN knowledge without revealing it"
+    },
+    "pin_proof_signature": {
+      "type": "string",
+      "description": "Ed25519 signature of pin_proof (base64)"
     }
   }
 }

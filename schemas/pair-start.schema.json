@@ -25,6 +25,23 @@
     "capabilities": {
       "type": "object",
       "description": "Device capabilities"
+    },
+    "auth_strategy": {
+      "type": "string",
+      "enum": ["PLAYER_PASSWORD", "SERVER_CODE", "RECEIVER_BUTTON", "ED25519_CHALLENGE", "LEGACY"],
+      "description": "Desired auth strategy"
+    },
+    "public_key": {
+      "type": "string",
+      "description": "Ed25519 public key (base64) for ED25519_CHALLENGE strategy"
+    },
+    "challenge_nonce": {
+      "type": "string",
+      "description": "Random nonce (base64) for ED25519_CHALLENGE challenge-response"
+    },
+    "challenge_signature": {
+      "type": "string",
+      "description": "Ed25519 signature of the nonce (base64), proves possession of secret key"
     }
   }
 }

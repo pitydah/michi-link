@@ -105,6 +105,53 @@ Usado por: **Michi Music Stream** (Standard y Hi-Fi)
 
 ---
 
+## ED25519_CHALLENGE
+
+Usado por: cualquier dispositivo con identidad Ed25519 inicializada (Player, Micro Server, Mobile).
+
+### Flujo
+
+1. Cliente descubre servidor y obtiene su `michi_id` + `public_key` de `GET /api/v1/server/info`.
+2. Cliente genera un nonce aleatorio de 16 bytes y lo firma con su secret key.
+3. `POST /api/v1/pair/start` con:
+   ```json
+   {
+     "auth_strategy": "ED25519_CHALLENGE",
+     "public_key": "base64(pk)",
+     "challenge_nonce": "base64(nonce)",
+     "challenge_signature": "base64(sign(nonce))"
+   }
+   ```
+4. Servidor verifica la firma → prueba de posesión de secret key.
+5. Servidor almacena `public_key` del cliente (TOFU).
+6. Servidor responde con su propio challenge + `pin_hash`.
+7. Cliente verifica challenge del servidor (TOFU bidireccional).
+8. Usuario ingresa PIN de 6 dígitos para confirmación humana.
+9. `POST /api/v1/pair/confirm` con `pin_proof` + `pin_proof_signature`.
+10. Servidor verifica PIN + firma → pairing completo.
+
+### Características
+
+- **Sin código en pantalla:** El PIN es generado por el servidor, mostrado en su UI.
+- **Sin refresh token:** El token de sesión se obtiene tras confirmar el pairing.
+- **TOFU bidireccional:** Ambos lados almacenan la public_key del otro tras el primer challenge exitoso.
+
+### Payload `auth` en `/server/info`
+
+```json
+{
+  "auth": {
+    "required": true,
+    "strategy": "SERVER_CODE",
+    "token_refresh": true,
+    "identity_available": true,
+    "identity_strategies": ["ED25519_CHALLENGE"]
+  }
+}
+```
+
+---
+
 ## LEGACY
 
 Usado como transición por clientes que aún implementan `action`/`value`.
