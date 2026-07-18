@@ -1,6 +1,6 @@
 # Michi Link API v1
 
-- **Version:** 1.0.0
+- **API Version:** `v1` (permanent — only changes with a deliberate breaking change)
 - **Primary Transport:** HTTP/1.1 REST (HTTPS recommended) — all data operations
 - **RTC Transport:** WebSocket at `/api/v1/events` — real-time event notifications only
 - **Discovery:** UDP multicast (port 42069) and/or mDNS (`_michi-link._tcp`)
@@ -26,6 +26,7 @@ The following field names are **official** and MUST be used by all implementatio
 | Sync Manifest | `cursor` | string | Next cursor for delta requests |
 | Track | `duration_ms` | int | Milliseconds. `duration_seconds` → legacy alias |
 | Volume | `volume` | int | 0–100 inclusive |
+| API Version | `api_version` | string | `"v1"`. Siempre la misma. No hay `michi_link_version`. |
 
 ---
 
@@ -230,10 +231,9 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
 | `name` | string | Nombre legible del servidor (configurable por el usuario) |
 | `server_id` | string | UUID único del servidor |
 | `version` | string | Versión de la aplicación |
-| `api_version` | string | Versión de Michi Link API que implementa (ej: `v1`) |
-| `michi_link_version` | string | Versión del protocolo Michi Link (ej: `1.0.0-alpha`). DEBE ser string. |
+| `api_version` | string | Versión del contrato API. Siempre `"v1"`. Nunca cambia sin un breaking change deliberado. |
 | `roles` | string[] | Roles activos del servidor (lista oficial en ARCHITECTURE.md) |
-| `features` | object | Indicadores booleanos de capacidades. En v1.0.0-alpha son valores `true`/`false`. Los detalles extendidos irán en un futuro endpoint `/api/v1/capabilities` o en una versión posterior. |
+| `features` | object | Indicadores booleanos de capacidades. |
 | `auth` | object | Información de autenticación (ver AUTH_PROFILES.md) |
 | `auth.required` | boolean | Si la autenticación es obligatoria (`true` para todos los servidores v1) |
 | `auth.strategy` | string | Estrategia: `PLAYER_PASSWORD`, `SERVER_CODE`, `RECEIVER_BUTTON`, `LEGACY` |
@@ -250,7 +250,6 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
   "server_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "version": "0.1.0",
   "api_version": "v1",
-  "michi_link_version": "1.0.0-alpha",
   "roles": ["home_server", "library_server", "stream_server"],
   "features": {
     "library": true,
@@ -275,7 +274,6 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
   "server_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
   "version": "0.1.0",
   "api_version": "v1",
-  "michi_link_version": "1.0.0-alpha",
   "roles": ["desktop_player", "library_master", "sync_host", "sync_source", "stream_server"],
   "features": {
     "library": true,

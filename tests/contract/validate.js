@@ -387,26 +387,8 @@ function main() {
     }
   })();
 
-  // --- Positive test: michi_link_version must be string ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const numericVersion = {
-      service: "michi-micro-server",
-      name: "Test",
-      api_version: "v1",
-      michi_link_version: 1,
-      roles: ["home_server"],
-      features: { library: true },
-      auth: { required: true, strategy: "SERVER_CODE", token_refresh: true }
-    };
-    if (validate && !validate(numericVersion)) {
-      console.log(`${PASS} michi_link_version rejects numeric value (must be string)`);
-      passed++;
-    } else {
-      console.log(`${FAIL} michi_link_version accepted numeric value (should reject)`);
-      failed++;
-    }
-  })();
+  // --- Positive test: michi_link_version as string --- (included in server-info test below)
+  // Note: michi_link_version is no longer part of the schema. api_version is the only version field.
 
   // --- Positive test: features accept booleans ---
   (function () {

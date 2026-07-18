@@ -4,7 +4,6 @@
   "server_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
   "version": "0.1.0",
   "api_version": "v1",
-  "michi_link_version": "1.0.0-alpha",
   "roles": ["desktop_player", "library_master", "sync_host", "sync_source", "stream_server"],
   "features": {
     "library": true,

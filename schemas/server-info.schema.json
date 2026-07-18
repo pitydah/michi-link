@@ -2,9 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/server-info.schema.json",
   "title": "ServerInfo",
-  "description": "Server identity and capabilities payload (v1.0.0-alpha official format)",
+  "description": "Server identity and capabilities payload. api_version is always 'v1' — the only contract version.",
   "type": "object",
-  "required": ["service", "name", "api_version", "michi_link_version", "roles", "features", "auth"],
+  "required": ["service", "name", "api_version", "roles", "features", "auth"],
   "properties": {
     "service": {
       "type": "string",
@@ -27,18 +27,13 @@
     },
     "version": {
       "type": "string",
-      "description": "Application version",
+      "description": "Application version (internal, not contract version)",
       "examples": ["0.1.0"]
     },
     "api_version": {
       "type": "string",
-      "description": "Michi Link API version (use 'v1' for v1.x series)",
-      "examples": ["v1", "1.0.0"]
-    },
-    "michi_link_version": {
-      "type": "string",
-      "description": "Michi Link protocol version. MUST be a string.",
-      "examples": ["1.0.0-alpha"]
+      "description": "API contract version. Always 'v1'. Never changes without a deliberate breaking change.",
+      "examples": ["v1"]
     },
     "roles": {
       "type": "array",
@@ -50,7 +45,7 @@
     },
     "features": {
       "type": "object",
-      "description": "Simple boolean capability flags in v1.0.0-alpha. Extended capabilities may be added in a future /api/v1/capabilities endpoint.",
+      "description": "Boolean capability flags. Extended capabilities may be added in a future /api/v1/capabilities endpoint.",
       "additionalProperties": { "type": "boolean" },
       "minProperties": 1,
       "examples": [{ "library": true, "search": true, "streaming": true, "sync_manifest": true, "playback": true, "queue": true, "artwork": true, "events": false }]
