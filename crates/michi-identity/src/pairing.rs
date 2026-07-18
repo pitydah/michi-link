@@ -120,13 +120,19 @@ impl PairingProtocol {
     }
 
     /// Lado cliente: verifica el challenge del servidor.
+    ///
+    /// Decodifica el nonce de base64 a bytes RAW y verifica la firma
+    /// contra esos bytes RAW (que es lo que firmó el servidor).
     pub fn verify_server_challenge(
         server_public_key: &[u8],
         challenge: &AuthChallenge,
     ) -> Result<(), IdentityError> {
         use base64::Engine;
+        // Decodificar nonce de base64 a bytes RAW
+        let nonce_bytes = base64::engine::general_purpose::STANDARD
+            .decode(&challenge.nonce)?;
         let valid = crate::identity::IdentityManager::verify(
-            challenge.nonce.as_bytes(),
+            &nonce_bytes,
             &challenge.signature,
             &base64::engine::general_purpose::STANDARD.encode(server_public_key),
         )?;
