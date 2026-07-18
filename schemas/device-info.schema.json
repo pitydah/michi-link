@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/device-info.schema.json",
+  "title": "DeviceInfo",
+  "description": "Information about a paired device",
+  "type": "object",
+  "required": ["device_id", "name", "device_type"],
+  "properties": {
+    "device_id": { "type": "string", "format": "uuid" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "device_type": { "type": "string" },
+    "roles": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "permissions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "last_seen": { "type": "string", "format": "date-time" },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

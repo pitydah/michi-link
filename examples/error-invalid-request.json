@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "The request body contains invalid fields.",
+    "details": {
+      "field": "volume",
+      "reason": "must be between 0 and 100",
+      "value": 250
+    }
+  }
+}

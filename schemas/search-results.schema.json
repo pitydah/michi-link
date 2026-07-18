@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/search-results.schema.json",
+  "title": "SearchResults",
+  "description": "Global search results across tracks, albums, artists, and playlists",
+  "type": "object",
+  "required": ["query"],
+  "properties": {
+    "query": { "type": "string" },
+    "tracks": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "array", "items": { "$ref": "track.schema.json" } },
+        "total": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "albums": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "array", "items": { "$ref": "album.schema.json" } },
+        "total": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "artists": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "array", "items": { "$ref": "artist.schema.json" } },
+        "total": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "playlists": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "array", "items": { "$ref": "playlist.schema.json" } },
+        "total": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

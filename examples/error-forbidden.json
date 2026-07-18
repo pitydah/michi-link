@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Token does not have the required permission.",
+    "details": {
+      "required_permission": "library.write",
+      "device_id": "uuid-del-dispositivo"
+    }
+  }
+}

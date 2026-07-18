@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "Resource already exists or state conflict.",
+    "details": {
+      "resource_type": "playlist",
+      "resource_id": "uuid-existente",
+      "reason": "A playlist with this name already exists"
+    }
+  }
+}

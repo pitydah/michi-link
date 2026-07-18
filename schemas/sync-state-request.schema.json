@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/sync-state-request.schema.json",
+  "title": "SyncStateRequest",
+  "description": "Upload sync state from a device",
+  "type": "object",
+  "properties": {
+    "device_id": { "type": "string", "minLength": 1 },
+    "track_id": { "type": "string", "minLength": 1 },
+    "position_ms": { "type": "integer", "minimum": 0 },
+    "playing": { "type": "boolean" },
+    "volume": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

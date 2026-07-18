@@ -61,6 +61,13 @@ function mappingRules() {
     { pattern: /^tracks-bulk-request\.json$/, schemaBase: "track-bulk" },
     { pattern: /^queue-bulk-request\.json$/, schemaBase: "queue-bulk" },
     { pattern: /^error-idempotency-key-reuse\.json$/, schemaBase: "error" },
+    { pattern: /^error-invalid-request\.json$/, schemaBase: "error" },
+    { pattern: /^error-unauthorized\.json$/, schemaBase: "error" },
+    { pattern: /^error-forbidden\.json$/, schemaBase: "error" },
+    { pattern: /^error-not-found\.json$/, schemaBase: "error" },
+    { pattern: /^error-conflict\.json$/, schemaBase: "error" },
+    { pattern: /^error-rate-limited\.json$/, schemaBase: "error" },
+    { pattern: /^error-internal\.json$/, schemaBase: "error" },
   ];
 }
 

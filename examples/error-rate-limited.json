@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Too many requests. Please wait before retrying.",
+    "details": {
+      "retry_after_seconds": 10,
+      "limit": 120,
+      "window_seconds": 60
+    }
+  }
+}
