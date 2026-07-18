@@ -58,6 +58,9 @@ function mappingRules() {
     { pattern: /^queue-transfer-request\.json$/, schemaBase: "queue-transfer" },
     { pattern: /^queue-transfer-response\.json$/, schemaBase: "queue-transfer-response" },
     { pattern: /^michi-identity-announce-signed\.json$/, schemaBase: "discovery-announce" },
+    { pattern: /^tracks-bulk-request\.json$/, schemaBase: "track-bulk" },
+    { pattern: /^queue-bulk-request\.json$/, schemaBase: "queue-bulk" },
+    { pattern: /^error-idempotency-key-reuse\.json$/, schemaBase: "error" },
   ];
 }
 

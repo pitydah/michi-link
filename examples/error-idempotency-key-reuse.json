@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "IDEMPOTENCY_KEY_REUSE",
+    "message": "The Idempotency-Key has already been used for a different request.",
+    "details": {
+      "idempotency_key": "abc-123-def-456",
+      "original_method": "POST",
+      "original_path": "/api/v1/import/upload",
+      "retry_in_seconds": 3540
+    }
+  }
+}

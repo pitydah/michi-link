@@ -8,12 +8,13 @@
   "properties": {
     "track_ids": {
       "type": "array",
-      "items": { "type": "string" },
-      "minItems": 1
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
     },
     "current_index": { "type": "integer", "minimum": 0 },
     "position_ms": { "type": "integer", "minimum": 0 },
-    "source": { "type": "string" },
-    "queue_id": { "type": "string" }
+    "source": { "type": "string", "minLength": 1 },
+    "queue_id": { "type": "string", "minLength": 1 }
   }
 }

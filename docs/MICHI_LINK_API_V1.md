@@ -108,7 +108,8 @@ Toda respuesta de error sigue la misma estructura:
 | `TRACK_NOT_FOUND`          | Track no encontrado en la biblioteca.  |
 | `RANGE_NOT_SATISFIABLE`    | Rango de bytes solicitado no válido.   |
 | `NOT_IMPLEMENTED`          | Endpoint o funcionalidad no implementada. |
-| `RATE_LIMITED`             | Demasiadas solicitudes.                |
+| `RATE_LIMITED`             | Demasiadas solicitudes. Incluye header `Retry-After`. |
+| `IDEMPOTENCY_KEY_REUSE`   | El `Idempotency-Key` ya fue usado con otro método/ruta. |
 | `INTERNAL_ERROR`           | Error interno del servidor.            |
 
 **Ejemplos de errores:**
@@ -172,6 +173,88 @@ Toda respuesta de error sigue la misma estructura:
   }
 }
 ```
+
+---
+
+## Request Validation
+
+Todo servidor DEBE validar los requests entrantes contra los schemas definidos antes de procesarlos. Los errores de validación se reportan con:
+
+```json
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "El cuerpo de la solicitud contiene campos inválidos.",
+    "details": {
+      "field": "volume",
+      "reason": "must be between 0 and 100",
+      "value": 150
+    }
+  }
+}
+```
+
+### Reglas de validación
+
+| Tipo | Regla | Ejemplo |
+|------|-------|---------|
+| String | `minLength: 1` | Campos obligatorios no vacíos |
+| String | `maxLength` | Límite superior para evitar abusos |
+| String | `pattern` | Formato específico (UUID, hash, base64) |
+| Integer | `minimum`, `maximum` | Rangos numéricos (volumen 0-100, año 1900-2100) |
+| Array | `minItems`, `maxItems` | Bulk operations limitadas a 500 items |
+| Array | `uniqueItems` | Sin duplicados en colecciones |
+
+---
+
+## Idempotency
+
+Los endpoints POST, PUT y DELETE pueden aceptar un header `Idempotency-Key` para garantizar que requests repetidos tengan el mismo efecto que uno solo.
+
+### Header
+
+```
+Idempotency-Key: <string>
+```
+
+### Comportamiento
+
+1. El servidor almacena la combinación `(key, método, ruta)` y la respuesta original durante **1 hora**.
+2. Si el mismo `Idempotency-Key` llega dentro de la ventana, el servidor devuelve la respuesta almacenada sin procesar el request.
+3. Si la key ya fue usada con **diferente** método o ruta, el servidor responde con `422 IDEMPOTENCY_KEY_REUSE`.
+
+### Endpoints que soportan idempotency
+
+| Endpoint | Método |
+|----------|--------|
+| `/api/v1/import/session` | POST |
+| `/api/v1/import/upload/{session_id}` | POST |
+| `/api/v1/import/commit/{session_id}` | POST |
+| `/api/v1/queue/items` | POST |
+| `/api/v1/playlists` | POST |
+| `/api/v1/playlists/{id}/tracks` | PUT |
+| `/api/v1/tracks/bulk` | POST |
+| `/api/v1/queue/items/bulk` | POST |
+
+---
+
+## Compression
+
+El servidor DEBE soportar compresión gzip para respuestas JSON.
+
+### Request
+
+```
+Accept-Encoding: gzip
+```
+
+### Response
+
+```
+Content-Encoding: gzip
+```
+
+Las respuestas JSON con tamaño mayor a 1KB se comprimen automáticamente. Las respuestas de streaming (`/stream/{id}`, `/download/{id}`) NO se comprimen.
 
 ---
 
@@ -1088,6 +1171,110 @@ Reemplaza o actualiza los tracks de una playlist.
 
 ---
 
+### Bulk Operations
+
+#### `POST /tracks/bulk`
+
+Crea múltiples tracks en una sola operación. Límite: 500 tracks por request.
+
+**Auth:** Bearer token con permiso `library.write`.
+
+**Cuerpo de solicitud:**
+
+```json
+{
+  "tracks": [
+    {
+      "id": "track_001",
+      "title": "Neon Lights",
+      "artist": "Luna Swift",
+      "album": "Imaginary Cities",
+      "duration_ms": 245000,
+      "format": "flac"
+    }
+  ]
+}
+```
+
+**Respuesta `201 Created`:**
+
+```json
+{
+  "created": 2,
+  "failed": 0,
+  "tracks": [
+    { "id": "track_001", "status": "created" },
+    { "id": "track_002", "status": "created" }
+  ]
+}
+```
+
+**Respuesta `400 Bad Request`** si algún track no pasa validación:
+
+```json
+{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "Error de validación en track index 0.",
+    "details": { "index": 0, "field": "duration_ms", "reason": "must be a non-negative integer" }
+  }
+}
+```
+
+#### `POST /queue/items/bulk`
+
+Agrega múltiples tracks a la cola de reproducción en una sola operación. Límite: 500 tracks.
+
+**Auth:** Bearer token con permiso `queue.write`.
+
+**Cuerpo de solicitud:**
+
+```json
+{
+  "track_ids": [
+    "uuid-track-1",
+    "uuid-track-2",
+    "uuid-track-3"
+  ],
+  "position": "end"
+}
+```
+
+**Respuesta `200 OK`:**
+
+```json
+{
+  "items_added": 3,
+  "queue_id": "uuid-de-la-cola"
+}
+```
+
+#### `POST /playlists/{id}/tracks/bulk`
+
+Agrega múltiples tracks a una playlist existente. Límite: 500 tracks.
+
+**Auth:** Bearer token con permiso `playlist.write`.
+
+**Cuerpo de solicitud:**
+
+```json
+{
+  "track_ids": ["uuid-track-1", "uuid-track-2"]
+}
+```
+
+**Respuesta `200 OK`:**
+
+```json
+{
+  "id": "uuid-de-la-playlist",
+  "tracks_added": 2,
+  "track_count": 27
+}
+```
+
+---
+
 ### Sincronización
 
 #### `GET /sync/manifest`
@@ -1924,6 +2111,64 @@ El servidor establece el volumen del receptor.
 ---
 
 #### `GET /receiver/firmware`
+
+Consulta si hay una actualización de firmware disponible.
+
+**Respuesta `200 OK`:**
+
+```json
+{
+  "current_version": "1.2.3",
+  "available_version": "1.3.0",
+  "update_available": true,
+  "download_url": "http://192.168.1.100:52050/firmware/v1.3.0.bin",
+  "changelog": "Correcciones de seguridad y mejoras de rendimiento."
+}
+```
+
+---
+
+## Post-Beta Features
+
+Las siguientes características están documentadas para futura implementación pero no son necesarias para beta.
+
+### Maintenance Mode
+
+Un servidor puede indicar que está en mantenimiento respondiendo con `503 Service Unavailable`:
+
+```json
+{
+  "status": "maintenance",
+  "message": "Server is undergoing maintenance. Expected completion in 15 minutes.",
+  "estimated_downtime_seconds": 900
+}
+```
+
+Header: `Retry-After: 900`
+
+### CORS
+
+Para clientes web (dashboards, Home Assistant), el servidor DEBE implementar CORS:
+
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization, Idempotency-Key
+```
+
+### Content-Type Negotiation
+
+El servidor PUEDE responder `406 Not Acceptable` si el header `Accept` solicita un tipo de contenido no soportado (ej: `application/xml`). El único Content-Type soportado es `application/json`.
+
+### WebSocket Event Retry
+
+Si un cliente WebSocket se desconecta, debe reconectar con backoff exponencial:
+
+1. Esperar 1 segundo.
+2. Si falla, esperar 2 segundos.
+3. Si falla, esperar 4, 8, 16... hasta un máximo de 30 segundos.
+4. Al reconectar, el servidor reenvía el último evento de estado conocido.<｜end▁of▁thinking｜>
+
 
 Consulta si hay una actualización de firmware disponible.
 

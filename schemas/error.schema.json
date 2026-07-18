@@ -13,7 +13,8 @@
         "code": {
           "type": "string",
           "description": "Machine-readable error code",
-          "examples": ["INVALID_REQUEST", "NOT_FOUND", "UNAUTHORIZED", "FORBIDDEN", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "TRACK_NOT_FOUND", "RANGE_NOT_SATISFIABLE", "PAIRING_REQUIRED"]
+          "minLength": 1,
+          "examples": ["INVALID_REQUEST", "NOT_FOUND", "UNAUTHORIZED", "FORBIDDEN", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "TRACK_NOT_FOUND", "RANGE_NOT_SATISFIABLE", "IDEMPOTENCY_KEY_REUSE", "PAIRING_REQUIRED"]
         },
         "message": {
           "type": "string",

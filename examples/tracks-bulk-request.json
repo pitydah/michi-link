@@ -1,0 +1,28 @@
+{
+  "tracks": [
+    {
+      "id": "track_001",
+      "title": "Neon Lights",
+      "artist": "Luna Swift",
+      "album": "Imaginary Cities",
+      "duration_ms": 245000,
+      "track_number": 1,
+      "year": 2025,
+      "format": "flac",
+      "bitrate": 1411,
+      "sample_rate": 44100
+    },
+    {
+      "id": "track_002",
+      "title": "Echoes in the Rain",
+      "artist": "The Echoes",
+      "album": "Neon Dreams",
+      "duration_ms": 312000,
+      "track_number": 3,
+      "year": 2024,
+      "format": "flac",
+      "bitrate": 1411,
+      "sample_rate": 48000
+    }
+  ]
+}

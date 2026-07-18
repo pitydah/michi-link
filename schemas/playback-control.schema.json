@@ -9,6 +9,7 @@
     "command": {
       "type": "string",
       "description": "Playback control command (official field)",
+      "minLength": 1,
       "enum": ["play", "pause", "toggle", "stop", "next", "previous", "seek", "set_volume", "mute", "unmute", "shuffle", "repeat"]
     },
     "position_ms": {
