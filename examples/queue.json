@@ -1,59 +1,37 @@
 {
-  "id": "queue_music_001",
-  "current_index": 2,
   "items": [
     {
-      "id": "queue_item_001",
-      "track_id": "track_001",
+      "id": "track_001",
       "title": "Neon Lights",
       "artist": "Luna Swift",
+      "album": "Imaginary Cities",
       "duration_ms": 245000,
-      "cover_id": "artwork_001",
-      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
-      "added_at": "2026-06-29T11:55:00Z"
+      "track_number": 1,
+      "year": 2025,
+      "format": "flac"
     },
     {
-      "id": "queue_item_002",
-      "track_id": "track_002",
+      "id": "track_002",
       "title": "Echoes in the Rain",
       "artist": "The Echoes",
+      "album": "Neon Dreams",
       "duration_ms": 313000,
-      "cover_id": "artwork_002",
-      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
-      "added_at": "2026-06-29T11:56:00Z"
+      "track_number": 3,
+      "year": 2024,
+      "format": "flac"
     },
     {
-      "id": "queue_item_003",
-      "track_id": "track_003",
+      "id": "track_003",
       "title": "Pulse Wave",
       "artist": "Neon Pulse",
+      "album": "Neon Dreams",
       "duration_ms": 198000,
-      "cover_id": "artwork_002",
-      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
-      "added_at": "2026-06-29T11:57:00Z"
-    },
-    {
-      "id": "queue_item_004",
-      "track_id": "track_004",
-      "title": "Starlight Serenade",
-      "artist": "Luna Swift",
-      "duration_ms": 276000,
-      "cover_id": "artwork_001",
-      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
-      "added_at": "2026-06-29T11:58:00Z"
-    },
-    {
-      "id": "queue_item_005",
-      "track_id": "track_005",
-      "title": "Digital Horizon",
-      "artist": "Neon Pulse",
-      "duration_ms": 221000,
-      "cover_id": "artwork_002",
-      "added_by": "d3c4e5f6-a7b8-9012-cdef-123456789012",
-      "added_at": "2026-06-29T11:59:00Z"
+      "track_number": 5,
+      "year": 2024,
+      "format": "mp3"
     }
   ],
-  "total_duration_ms": 1253000,
+  "current_index": 1,
   "shuffle": false,
   "repeat": "off"
 }

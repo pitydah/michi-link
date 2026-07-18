@@ -48,10 +48,10 @@
       "description": "Whether playback was active at handoff time"
     },
     "volume": {
-      "type": "number",
-      "description": "Volume level 0.0-1.0",
+      "type": "integer",
+      "description": "Volume level 0-100",
       "minimum": 0,
-      "maximum": 1
+      "maximum": 100
     }
   }
 }

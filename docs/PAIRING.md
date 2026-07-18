@@ -77,19 +77,21 @@ Authorization: Bearer <temp_token>
 
 ## Token Format
 
-Tokens are **JWT** (JSON Web Tokens) containing:
+Tokens are **opaque bearer tokens** (not JWT). They consist of a 256-bit random value generated from `OsRng`, hex-encoded (64 hex characters).
 
-```json
-{
-  "sub": "device_id",
-  "iss": "michi-link",
-  "iat": 1700000000,
-  "exp": 1700604800,
-  "permissions": ["library.read", "playback.control"]
-}
+```text
+Authorization: Bearer <64-hex-char-token>
 ```
 
-Opaque bearer tokens are also supported for constrained devices.
+The token does not contain embedded claims. Permissions and device identity are resolved server-side from the database using the SHA-256 hash of the token as lookup key.
+
+### Token Properties
+
+- **Format:** Opaque string (64 hex chars = 256 bits of entropy)
+- **Storage:** SHA-256 hash in memory + database (`link_devices.token_hash`)
+- **Expiration:** 7 days (configurable)
+- **Refresh:** Token rotation invalidates the previous refresh token
+- **Revocation:** Immediate (removed from in-memory store, flagged in database)
 
 ## Token Refresh
 

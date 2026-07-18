@@ -1,15 +1,13 @@
 {
   "device_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
   "device_name": "Michi Music Desktop",
-  "device_type": "desktop",
-  "roles": ["player", "server", "sync_host"],
+  "device_type": "michi_server",
+  "roles": ["server"],
   "api_version": "1.0",
   "host": "192.168.1.100",
   "port": 8400,
   "capabilities": {
-    "streaming": ["flac", "mp3", "aac", "ogg", "wav"],
-    "transcoding": true,
-    "sync": true,
-    "display": true
+    "audio_formats": ["flac", "mp3", "aac", "ogg", "wav"],
+    "sync": true
   }
 }
