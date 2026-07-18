@@ -39,6 +39,7 @@ paths:
         Returns metadata about the Michi Link server instance including version, uptime, and capabilities.
         This endpoint is public and does not require authentication.
       operationId: getServerInfo
+      security: []
       responses:
         "200":
           description: Server information retrieved successfully
@@ -58,6 +59,7 @@ paths:
         Public health check endpoint. Returns server status without requiring authentication.
         This is the official health check; /server/ping and /server/clock are deprecated.
       operationId: getServerStatus
+      security: []
       responses:
         "200":
           description: Server is healthy
@@ -190,7 +192,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /pair/token/refresh:
+  /token/refresh:
     post:
       tags:
         - Pairing
@@ -1858,7 +1860,7 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /queue/add:
+  /queue/items:
     post:
       tags:
         - Queue
