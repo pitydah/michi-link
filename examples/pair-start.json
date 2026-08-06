@@ -3,8 +3,8 @@
   "device_type": "mobile",
   "roles": ["mobile_player", "remote_controller", "sync_client"],
   "auth_strategy": "ED25519_CHALLENGE",
-  "michi_id": "lhlxbEOUgOykbYw6mg4McXy75xBWBX5HOn8pVbixqbY",
-  "public_key": "mfakzVj2ldEWtugNXuf2sX5twgODOsmkK_hnFVF86pU",
-  "challenge_nonce": "5c4kNiTeUwXCL3r6uNXkrPy_f2Vgtepn",
-  "challenge_signature": "XreJfmgWP6CUM3vH1Adzge1oHj3vMu2qO3tfuIx33ACF6ZQYBAiEryZhCIF_Q0xlx4yZ8ATbuovuMUTHnS-Akg"
+  "michi_id": "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc",
+  "public_key": "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y",
+  "challenge_nonce": "VFfZjzw8JeAM7-RFiTSrMA",
+  "challenge_signature": "DTlMt9BYH_TnYgKAeGd8zTpza-w5b8BDm9AyIoAW2p0clD7JrzwN9cwPY5y48K14x_0z2TPq7-LTXdNTqmhr-w"
 }

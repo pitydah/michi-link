@@ -1,0 +1,7 @@
+{
+  "token": "tok_michi_7f3a9c2e4b8d1f6a5c3e9b7d2a4f8c1e",
+  "refresh_token": "tok_michi_refresh_9c4e2a7f1d8b3e6a5c0f2d4b8a1e7c3f",
+  "expires_in": 3600,
+  "device_id": "stable-device-id",
+  "server_id": "stable-server-id"
+}

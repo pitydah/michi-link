@@ -1,7 +1,6 @@
 {
-  "device_id": "d3c4e5f6-a7b8-9012-cdef-123456789012",
-  "pairing_code": "ABCD-1234",
-  "michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
-  "pin_proof": "u3n5n-2gw-AoRwH5hS63ZOkwKuFstXPGk46KJ0WV_qg",
-  "pin_proof_signature": "tTV5n0i-PMUy69_UVO-zkRdWMHG7TAfJOjFY3v1kDdLjWgjB2sTa2c1pQwROFfH7TMjZ0flupxE736Z_JIwO0g"
+  "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "pin": "482391",
+  "michi_id": "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc",
+  "public_key": "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y"
 }

@@ -1,0 +1,10 @@
+{
+  "endpoint": "http://192.168.1.50:8400/",
+  "expires_at": "2026-08-06T01:34:56.488529147+00:00",
+  "format": "michi-link-pairing",
+  "server_michi_id": "7MA6wfcR8VeL947RBwrUYsE7jsvPc_Qu0nMTuK_9Kzo",
+  "server_public_key": "INi8JPx6cdWt2B2KgOvedRw9pc7CEzztPfh3kNaWKag",
+  "session_id": "67f89aa3-e5c6-43e9-ab81-be4e7d7305bf",
+  "uri": "michi://pair?format=michi-link-pairing&version=1&server_michi_id=7MA6wfcR8VeL947RBwrUYsE7jsvPc_Qu0nMTuK_9Kzo&server_public_key=INi8JPx6cdWt2B2KgOvedRw9pc7CEzztPfh3kNaWKag&session_id=67f89aa3-e5c6-43e9-ab81-be4e7d7305bf&expires_at=2026-08-06T01%3A34%3A56.488529147%2B00%3A00&endpoint=http%3A%2F%2F192.168.1.50%3A8400%2F",
+  "version": 1
+}

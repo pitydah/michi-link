@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/track.schema.json",
   "title": "Track",
-  "description": "A single audio track entry in the library",
+  "description": "A single audio track entry in the library. File locations are NOT part of the contract: audio URLs are resolved via the streaming endpoints (see /api/v1/tracks), artwork via artwork_id.",
   "type": "object",
   "required": ["id", "title", "artist", "album", "duration_ms"],
   "additionalProperties": false,
@@ -95,11 +95,6 @@
       "description": "File size in bytes",
       "minimum": 0,
       "examples": [12345678]
-    },
-    "path": {
-      "type": "string",
-      "description": "File system path or URI to the audio file",
-      "examples": ["/music/Queen/A Night at the Opera/01 Bohemian Rhapsody.flac"]
     },
     "md5_hash": {
       "type": "string",

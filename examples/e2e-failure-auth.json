@@ -8,8 +8,8 @@
   "checks": [
     { "name": "discovery", "status": "pass", "detail": "Micro Server detectado vía mDNS" },
     { "name": "server_info", "status": "pass", "detail": "service: michi-micro-server, auth.strategy: SERVER_CODE" },
-    { "name": "pair_start", "status": "pass", "detail": "pairing_code recibido" },
-    { "name": "pair_confirm", "status": "fail", "detail": "Error 401 UNAUTHORIZED: pairing_code expiró antes de confirmar" }
+    { "name": "pair_start", "status": "pass", "detail": "PIN de 6 digitos recibido" },
+    { "name": "pair_confirm", "status": "fail", "detail": "Error 401 UNAUTHORIZED: PIN expiró antes de confirmar" }
   ],
   "errors": [
     "pair_confirm falló: el código expiró (pasaron más de 5 min entre start y confirm)"

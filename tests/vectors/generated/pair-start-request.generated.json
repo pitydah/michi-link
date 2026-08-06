@@ -1,0 +1,14 @@
+{
+  "device_name": "Michi Mobile",
+  "device_type": "mobile",
+  "roles": [
+    "mobile_player",
+    "remote_controller",
+    "sync_client"
+  ],
+  "auth_strategy": "ED25519_CHALLENGE",
+  "michi_id": "Lf8aRiY5sVemJW-r6GoLTfwoixrjt6NfHsrJM0x29B4",
+  "public_key": "jwNiTJEq-ql8WfAdCsp9FFckdRtY8YHshU5QnjQ5XBs",
+  "challenge_nonce": "dD4kt6aK6zKmb5STLEzr2g",
+  "challenge_signature": "VSBw4QxEP42AcNdbjLtVFgIJLfgBUiAL3IF0SJVPyIYFz2mCyftVhJ9h4X8J8N11_YA9rfJqxPJYCsNxz6ZeDg"
+}
