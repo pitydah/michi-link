@@ -73,13 +73,13 @@
     },
     "public_key": {
       "type": "string",
-      "description": "Ed25519 public key in base64url",
-      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$"
+      "description": "Ed25519 public key in base64url, exactly 43 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
     },
     "signature": {
       "type": "string",
-      "description": "Ed25519 signature of the announce payload in base64url",
-      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$"
+      "description": "Ed25519 signature of the announce payload in base64url, exactly 86 chars, no padding",
+      "pattern": "^[A-Za-z0-9_-]{86}$"
     },
     "timestamp_ms": {
       "type": "integer",

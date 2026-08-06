@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/server-info.schema.json",
   "title": "ServerInfo",
-  "description": "Server identity and capabilities payload. api_version is always 'v1' \u2014 the only contract version.",
+  "description": "Server identity and capabilities payload. api_version is 'v1' for full servers and 'v1-lite' for stream receivers. The identity group (michi_id, public_key, identity_scheme) is all-or-nothing.",
   "type": "object",
   "required": [
     "service",
@@ -48,7 +48,7 @@
     },
     "version": {
       "type": "string",
-      "description": "Application version (internal, not contract version)",
+      "description": "Application version (internal, not contract version). Semver.",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
       "examples": [
         "0.1.0"
@@ -113,15 +113,25 @@
         }
       ]
     },
+    "identity_scheme": {
+      "type": "string",
+      "description": "Cryptographic identity scheme, all-or-nothing with michi_id and public_key",
+      "enum": [
+        "ed25519-blake3-v1"
+      ],
+      "examples": [
+        "ed25519-blake3-v1"
+      ]
+    },
     "michi_id": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]{43}$",
-      "description": "Identity derived as base64url(BLAKE3(public_key)), 43 chars, present when identity is initialized"
+      "description": "Identity derived as base64url(BLAKE3(public_key)), exactly 43 chars, present when identity is initialized"
     },
     "public_key": {
       "type": "string",
-      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$",
-      "description": "Ed25519 public key in base64url, present when identity is initialized"
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Ed25519 public key in base64url, exactly 43 chars, present when identity is initialized"
     },
     "auth": {
       "type": "object",
@@ -162,13 +172,65 @@
     {
       "if": {
         "properties": {
+          "michi_id": {},
+          "public_key": {},
+          "identity_scheme": {}
+        },
+        "anyOf": [
+          {
+            "properties": {
+              "michi_id": {}
+            },
+            "required": [
+              "michi_id"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "public_key": {}
+            },
+            "required": [
+              "public_key"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "identity_scheme": {}
+            },
+            "required": [
+              "identity_scheme"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      },
+      "then": {
+        "required": [
+          "michi_id",
+          "public_key",
+          "identity_scheme"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
           "service": {
             "const": "michi-music-player"
           }
-        }
+        },
+        "type": "object"
       },
       "then": {
         "properties": {
+          "api_version": {
+            "enum": [
+              "v1"
+            ]
+          },
           "roles": {
             "items": {
               "enum": [
@@ -178,8 +240,20 @@
               ]
             },
             "type": "array"
+          },
+          "auth": {
+            "properties": {
+              "strategy": {
+                "enum": [
+                  "PLAYER_PASSWORD",
+                  "ED25519_CHALLENGE"
+                ]
+              }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
       }
     },
     {
@@ -188,10 +262,16 @@
           "service": {
             "const": "michi-micro-server"
           }
-        }
+        },
+        "type": "object"
       },
       "then": {
         "properties": {
+          "api_version": {
+            "enum": [
+              "v1"
+            ]
+          },
           "roles": {
             "items": {
               "enum": [
@@ -201,8 +281,20 @@
               ]
             },
             "type": "array"
+          },
+          "auth": {
+            "properties": {
+              "strategy": {
+                "enum": [
+                  "SERVER_CODE",
+                  "ED25519_CHALLENGE"
+                ]
+              }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
       }
     },
     {
@@ -211,10 +303,16 @@
           "service": {
             "const": "michi-mobile"
           }
-        }
+        },
+        "type": "object"
       },
       "then": {
         "properties": {
+          "api_version": {
+            "enum": [
+              "v1"
+            ]
+          },
           "roles": {
             "items": {
               "enum": [
@@ -225,7 +323,8 @@
             },
             "type": "array"
           }
-        }
+        },
+        "type": "object"
       }
     },
     {
@@ -234,19 +333,43 @@
           "service": {
             "const": "michi-stream-standard"
           }
-        }
+        },
+        "type": "object"
       },
       "then": {
         "properties": {
+          "api_version": {
+            "enum": [
+              "v1-lite"
+            ]
+          },
           "roles": {
             "items": {
               "enum": [
                 "audio_receiver"
               ]
             },
-            "type": "array"
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1
+          },
+          "auth": {
+            "properties": {
+              "strategy": {
+                "enum": [
+                  "RECEIVER_BUTTON"
+                ]
+              },
+              "token_refresh": {
+                "enum": [
+                  false
+                ]
+              }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
       }
     },
     {
@@ -255,19 +378,43 @@
           "service": {
             "const": "michi-stream-hifi"
           }
-        }
+        },
+        "type": "object"
       },
       "then": {
         "properties": {
+          "api_version": {
+            "enum": [
+              "v1-lite"
+            ]
+          },
           "roles": {
             "items": {
               "enum": [
                 "audio_receiver"
               ]
             },
-            "type": "array"
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1
+          },
+          "auth": {
+            "properties": {
+              "strategy": {
+                "enum": [
+                  "RECEIVER_BUTTON"
+                ]
+              },
+              "token_refresh": {
+                "enum": [
+                  false
+                ]
+              }
+            },
+            "type": "object"
           }
-        }
+        },
+        "type": "object"
       }
     }
   ]

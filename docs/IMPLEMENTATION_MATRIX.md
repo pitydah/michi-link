@@ -4,6 +4,9 @@
 
 | Nivel | Significado |
 |-------|-------------|
+| **CONTRACT_PASS** | Pasa la validación de contrato del repo: schemas, OpenAPI y ejemplos (150 checks) |
+| **RUST_REFERENCE_PASS** | Pasa la suite del crate de referencia `crates/michi-identity` (88 tests, clippy 0 warnings) |
+| **CROSS_LAYER_PASS** | Pasa los checks cruzados schemas ↔ OpenAPI ↔ crate (67 checks) |
 | **NOT_TESTED** | Sin evidencia de certificación |
 | **UNIT_PASS** | Pasa test unitario aislado |
 | **MOCK_PASS** | Pasa contra servidor mock |
@@ -13,6 +16,8 @@
 | **FAIL** | No pasa el test |
 | **consume** | El proyecto consume el endpoint de otro servidor, no lo implementa |
 | **not-applicable** | El proyecto no implementa ni consume este endpoint (por su rol en el ecosistema) |
+
+Evidencia de contrato verificada (2026-08-05): `tests/contract` 150 checks PASS (CONTRACT_PASS), `tests/identity_contract` 22 checks PASS (CONTRACT_PASS), `tests/cross_layer` 67 checks PASS (CROSS_LAYER_PASS), `crates/michi-identity` 88 tests + clippy 0 warnings (RUST_REFERENCE_PASS), redocly 0 errors, `scripts/contract-policy.py` PASS. El set canónico de errores tiene **20 códigos** (ver `schemas/error.schema.json`).
 
 Fuente de evidencia por endpoint: `docs/BETA_READINESS_CHECKLIST.md`. Los niveles `stable`/`DONE`/`manual` NO son niveles de evidencia y están prohibidos en esta matriz.
 
@@ -32,10 +37,10 @@ Fuente de evidencia por endpoint: `docs/BETA_READINESS_CHECKLIST.md`. Los nivele
 |---|----------|--------|------------------|--------|-------------|--------|-------------|------------|--------------|---------------|-----------|
 | 1 | `/server/info` | GET | `service`, `name`, `server_id`, `version`, `api_version`, `roles[]`, `features{}`, `auth{strategy}` | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | Player service: `michi-music-player`, MS: `michi-micro-server`. Auth strategy difiere: PLAYER_PASSWORD vs SERVER_CODE. | Crítica |
 | 2 | `/status` | GET | `{ status, version, uptime_seconds, timestamp }` | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | Endpoint público, sin auth | Alta |
-| 3 | `/pair/start` | POST | `{ device_name, device_type }` → `{ pairing_code, device_id }` | NOT_TESTED | **UNIT_PASS** | **consume** | NOT_TESTED | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Crítica |
-| 4 | `/pair/confirm` | POST | `{ device_id, pairing_code }` → `{ token, refresh_token, device_id, server_id }` | NOT_TESTED | **UNIT_PASS** | **consume** | NOT_TESTED | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Crítica |
+| 3 | `/pair/start` | POST | `{ device_name, device_type, roles[], auth_strategy, michi_id, public_key, challenge_nonce, challenge_signature }` → `{ session_id, expires_at, attempts_remaining, server_michi_id, server_public_key }` | NOT_TESTED | **UNIT_PASS** | **consume** | NOT_TESTED | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | El PIN se muestra en el servidor y nunca viaja por la red | Crítica |
+| 4 | `/pair/confirm` | POST | `{ session_id, pin, michi_id, public_key }` → `{ token, refresh_token?, expires_in, device_id, server_id }` | NOT_TESTED | **UNIT_PASS** | **consume** | NOT_TESTED | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Crítica |
 | 5 | `/token/refresh` | POST | `{ refresh_token }` → `{ token, refresh_token }` | not-applicable | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Micro | Player no implementa token_refresh. Mobile debe tolerar ausencia. | Alta |
-| 6 | `/devices/revoke` | POST | `{ device_id }` → `{ success }` | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | | Media |
+| 6 | `/pair/status` | GET | → `{ paired, device_id?, paired_at? }` | NOT_TESTED | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | no | | Media |
 | 7 | `/library/stats` | GET | → `{ total_tracks, total_albums, total_artists, total_playlists }` | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
 | 8 | `/library/scan` | POST | → `{ success, scan_id }` | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Media |
 | 9 | `/tracks` | GET | `?q, artist, album, genre, year, page, limit` → paginated | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | | Alta |

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/error.schema.json",
   "title": "Error",
-  "description": "Standard error response payload. The full set of 17 contract error codes.",
+  "description": "Standard error response payload. The full set of 20 canonical contract error codes.",
   "type": "object",
   "required": ["error"],
   "additionalProperties": false,
@@ -16,7 +16,7 @@
         "code": {
           "type": "string",
           "description": "Machine-readable error code",
-          "enum": ["INVALID_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "RATE_LIMITED", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "PAIRING_EXPIRED", "PAIRING_ATTEMPTS_EXCEEDED", "PAIRING_KEY_MISMATCH", "IDENTITY_CORRUPTED", "SIGNATURE_INVALID", "REPLAY_DETECTED", "IDEMPOTENCY_KEY_REUSE", "TRACK_NOT_FOUND", "IMPORT_SESSION_EXPIRED"],
+          "enum": ["INVALID_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "RATE_LIMITED", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "PAIRING_EXPIRED", "PAIRING_ATTEMPTS_EXCEEDED", "PAIRING_KEY_MISMATCH", "IDENTITY_CORRUPTED", "SIGNATURE_INVALID", "REPLAY_DETECTED", "IDEMPOTENCY_KEY_REUSE", "TRACK_NOT_FOUND", "IMPORT_SESSION_EXPIRED", "PAIRING_NOT_FOUND", "PAIRING_ALREADY_CONSUMED", "PAIRING_PIN_MISMATCH"],
           "examples": ["INVALID_REQUEST", "NOT_FOUND", "UNAUTHORIZED"]
         },
         "message": {

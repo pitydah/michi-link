@@ -1,0 +1,21 @@
+{
+  "device_id": "vector-stream-01",
+  "name": "Michi Stream Hi-Fi",
+  "service": "michi-stream-hifi",
+  "roles": [
+    "audio_receiver"
+  ],
+  "api_version": "v1-lite",
+  "host": "192.168.1.102",
+  "port": 8600,
+  "features": {
+    "heartbeat": true,
+    "session": true,
+    "volume": true
+  },
+  "michi_id": "p3vpOMKPvKtqyctfdU7fUuTp_3v3aWagt4ehjS29ats",
+  "public_key": "MUEDSmbWf4rZBknP34OHWrSsR6kzCCW-OVxQSR792l4",
+  "signature": "OHEOstmwCRtmXbWB4FjJNkdTSkZX2jGuNZPRXD8JENN7W9d3LPxsJUDSeWa7XVTGD-WYhn0JGH4aoKARY5HwBQ",
+  "timestamp_ms": 1785979792352,
+  "nonce": "R38ZZmLlez1iDKfPa9v6Rg"
+}

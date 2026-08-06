@@ -41,11 +41,11 @@ A signed announce adds exactly these five fields. They must all be present or al
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `michi_id` | string | base64url of BLAKE3(public key raw bytes), 43 chars |
-| `public_key` | string | Ed25519 public key, base64 or base64url |
-| `signature` | string | Ed25519 signature over the canonical payload, base64 |
+| `michi_id` | string | base64url of BLAKE3(public key raw bytes), 43 chars, no padding |
+| `public_key` | string | Ed25519 public key, base64url, 43 chars, no padding |
+| `signature` | string | Ed25519 signature over the canonical payload, base64url, 86 chars, no padding |
 | `timestamp_ms` | number | Unix epoch milliseconds at signing time |
-| `nonce` | string | base64url random nonce (≥ 16 raw bytes) |
+| `nonce` | string | base64url random nonce (≥ 22 chars, 16 raw bytes) |
 
 Capabilities are **not** part of the announce: they are negotiated via `GET /api/v1/server/info` (see below).
 
@@ -64,11 +64,11 @@ Capabilities are **not** part of the announce: they are negotiated via `GET /api
     "library": true,
     "events": false
   },
-  "michi_id": "bG2c8k...43-chars-base64url",
-  "public_key": "A5B...base64...",
-  "signature": "Kf9...base64...",
+  "michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+  "public_key": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+  "signature": "DTlMt9BYH_TnYgKAeGd8zTpza-w5b8BDm9AyIoAW2p0clD7JrzwN9cwPY5y48K14x_0z2TPq7-LTXdNTqmhr-w",
   "timestamp_ms": 1785974884586,
-  "nonce": "vJ2eR0qS9kLmN4oP"
+  "nonce": "VFfZjzw8JeAM7-RFiTSrMA"
 }
 ```
 
@@ -92,6 +92,69 @@ The canonical example lives in `examples/discovery-announce.json` and its schema
 | `music_server`, `library_host`, `playback_host` | Micro Server |
 | `mobile_player`, `remote_controller`, `sync_client` | Mobile |
 | `audio_receiver` | Stream receivers |
+
+### Service profiles
+
+Each service advertises a **fixed announce profile**: `api_version`, `roles` and `features` are invariants per service, and the announce is rejected as a `ContractViolation` when the profile is incoherent (wrong `api_version`, roles outside the service's set, empty `features`, empty `roles`, or a stream receiver whose `roles` is not exactly `["audio_receiver"]`).
+
+| Service | api_version | roles (allowed) | Notes |
+|---------|-------------|-----------------|-------|
+| `michi-music-player` | `v1` | `desktop_player`, `library_master`, `sync_host` | — |
+| `michi-micro-server` | `v1` | `music_server`, `library_host`, `playback_host` | — |
+| `michi-mobile` | `v1` | `mobile_player`, `remote_controller`, `sync_client` | — |
+| `michi-stream-standard` | `v1-lite` | exactly `["audio_receiver"]` | receivers announce `v1-lite`, never `v1` |
+| `michi-stream-hifi` | `v1-lite` | exactly `["audio_receiver"]` | receivers announce `v1-lite`, never `v1` |
+
+`features` is a **boolean-only** map and is never empty. In the Rust reference implementation the profile is represented by `AnnounceProfile` (`crates/michi-identity/src/types.rs`), validated by `DiscoveryEngine::validate_profile` before signing:
+
+```rust,ignore
+use michi_identity::types::{
+    AnnounceProfile, ApiVersion, Role, Service,
+};
+
+let profile = AnnounceProfile {
+    device_id: "stable-device-01".into(),
+    name: "Living Room Player".into(),
+    service: Service::MusicPlayer,
+    roles: vec![Role::DesktopPlayer, Role::LibraryMaster, Role::SyncHost],
+    api_version: ApiVersion::V1,
+    host: "192.168.1.10".into(),
+    port: 8400,
+    features: [("library".to_string(), true)].into_iter().collect(),
+};
+
+DiscoveryEngine::validate_profile(&profile)?;
+```
+
+Example announce for a player (full `v1` profile, signed):
+
+```json
+{
+  "device_id": "stable-device-01",
+  "name": "Living Room Player",
+  "service": "michi-music-player",
+  "roles": ["desktop_player", "library_master", "sync_host"],
+  "api_version": "v1",
+  "host": "192.168.1.10",
+  "port": 8400,
+  "features": { "library": true, "events": false }
+}
+```
+
+Example announce for a Hi-Fi stream receiver (`v1-lite`, exactly one role):
+
+```json
+{
+  "device_id": "rec-hifi-01",
+  "name": "Michi Music Stream Hi-Fi",
+  "service": "michi-stream-hifi",
+  "roles": ["audio_receiver"],
+  "api_version": "v1-lite",
+  "host": "192.168.1.20",
+  "port": 8410,
+  "features": { "session": true, "volume": true, "heartbeat": true }
+}
+```
 
 ## Signed Announce Verification
 

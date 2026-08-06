@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "PAIRING_ALREADY_CONSUMED",
+    "message": "The pairing session has already been used and cannot be confirmed again.",
+    "details": {
+      "session_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    "request_id": "f2a3b4c5-d6e7-48f9-9ab1-c2d3e4f5a6b7"
+  }
+}

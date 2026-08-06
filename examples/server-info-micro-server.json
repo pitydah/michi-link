@@ -15,5 +15,8 @@
     "artwork": true,
     "events": true
   },
+  "identity_scheme": "ed25519-blake3-v1",
+  "michi_id": "lhlxbEOUgOykbYw6mg4McXy75xBWBX5HOn8pVbixqbY",
+  "public_key": "mfakzVj2ldEWtugNXuf2sX5twgODOsmkK_hnFVF86pU",
   "auth": { "required": true, "strategy": "SERVER_CODE", "token_refresh": true }
 }

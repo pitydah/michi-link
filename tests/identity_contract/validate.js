@@ -66,12 +66,38 @@ function main() {
   check(`signed announce has complete signature group (${identityFields.join(", ")})`, missing.length === 0, null);
 
   const BASE64URL_RE = /^[A-Za-z0-9_-]+$/;
+  const PADDING_RE = /[+/=]/;
   const announceId = signedAnnounce.michi_id;
   const announceKey = signedAnnounce.public_key;
-  const idOk = typeof announceId === "string" && announceId.length === 43 && BASE64URL_RE.test(announceId);
-  const keyOk = typeof announceKey === "string" && announceKey.length === 43 && BASE64URL_RE.test(announceKey);
-  check("identity coherence: announce michi_id is exactly 43 base64url chars (format only, no crypto)", idOk, null);
-  check("identity coherence: announce public_key is exactly 43 base64url chars (format only, no crypto)", keyOk, null);
+  const announceSignature = signedAnnounce.signature;
+  const announceNonce = signedAnnounce.nonce;
+  const docId = identityDoc.michi_id;
+  const docKey = identityDoc.public_key;
+
+  const is43 = (s) => typeof s === "string" && s.length === 43 && BASE64URL_RE.test(s);
+  const is86 = (s) => typeof s === "string" && s.length === 86 && BASE64URL_RE.test(s);
+  const isLongEnough = (s, min) => typeof s === "string" && s.length >= min && BASE64URL_RE.test(s);
+
+  // Wire format coherence: exact lengths, base64url charset, no + / = padding.
+  check("identity coherence: announce michi_id is exactly 43 base64url chars (format only, no crypto)", is43(announceId), null);
+  check("identity coherence: announce public_key is exactly 43 base64url chars (format only, no crypto)", is43(announceKey), null);
+  check("identity coherence: identity-document michi_id is exactly 43 base64url chars", is43(docId), null);
+  check("identity coherence: identity-document public_key is exactly 43 base64url chars", is43(docKey), null);
+  check("identity coherence: announce signature is exactly 86 base64url chars", is86(announceSignature), null);
+  check("identity coherence: announce nonce is at least 22 base64url chars", isLongEnough(announceNonce, 22), null);
+  check(
+    "identity coherence: identity-document wire values contain no '+', '/' or '=' padding chars",
+    !PADDING_RE.test(docId) && !PADDING_RE.test(docKey),
+    null
+  );
+  check(
+    "identity coherence: announce wire group (michi_id, public_key, signature, nonce) contains no '+', '/' or '=' padding chars",
+    !PADDING_RE.test(announceId) &&
+      !PADDING_RE.test(announceKey) &&
+      !PADDING_RE.test(announceSignature) &&
+      !PADDING_RE.test(announceNonce),
+    null
+  );
 
   // Negative checks: valid identity payloads with one mutation each.
   const identityBase = {
@@ -113,6 +139,18 @@ function main() {
   rejects("negative: discovery-announce rejects malformed michi_id (not 43 base64url chars)", validateAnnounce, {
     ...announceBase,
     michi_id: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+  });
+  rejects("negative: discovery-announce rejects truncated signature (43 chars)", validateAnnounce, {
+    ...announceBase,
+    signature: "aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7bC",
+  });
+  rejects("negative: discovery-announce rejects nonce containing padding '='", validateAnnounce, {
+    ...announceBase,
+    nonce: announceNonce + "=",
+  });
+  rejects("negative: michi-identity rejects public_key containing padding '+'", validateIdentity, {
+    ...identityBase,
+    public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf9+CpQ",
   });
 
   // Freshness rule (90s window): a positive check against the static example

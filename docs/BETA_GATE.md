@@ -77,9 +77,9 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 | Condición | Mínimo requerido | Estado | Evidencia |
 |-----------|-----------------|--------|-----------|
-| No file_path en respuestas públicas | UNIT_PASS | UNIT_PASS | test_v1_tracks_no_file_path |
-| Error format con `{ error: { code, message, details } }` | UNIT_PASS | UNIT_PASS | test_v1_error_format_includes_details |
-| Tokens hasheados (SHA-256) | UNIT_PASS | UNIT_PASS | crates/michi-link/src/auth.rs |
+| No file_path en respuestas públicas | UNIT_PASS | CONTRACT_PASS | schemas/track.schema.json + tests/contract (negativos de paths) |
+| Error format con `{ error: { code, message, details } }` | UNIT_PASS | CONTRACT_PASS | schemas/error.schema.json + tests/contract |
+| Tokens opacos (no JWT) | CONTRACT_PASS | CONTRACT_PASS | schemas/pair-confirm-response.schema.json |
 | Tokens no expuestos en logs | LOCAL_E2E_PASS | NOT_TESTED | — |
 | Rollback import probado | LOCAL_E2E_PASS | NOT_TESTED | — |
 | Continue-on-Server fallback (Player retoma local si Micro falla) | LOCAL_E2E_PASS | NOT_TESTED | — |
@@ -88,26 +88,30 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 | Condición | Mínimo requerido | Estado | Evidencia |
 |-----------|-----------------|--------|-----------|
-| service enum correcto | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks (negativos de service enum: rechaza servicios y aliases retirados) |
-| api_version v1/v1-lite estricto | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks (negativos: `api_version: "1.0.0"` rechazado; campo extra `michi_link_version` rechazado por `additionalProperties: false`) | <!-- michi-policy:exclude -->
-| features booleanas | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks |
-| auth.required obligatorio | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks |
-| sync-delta con cursor | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks |
-| playback-control con command | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks (negativo: rechaza `action`) |
-| error format con details | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks |
-| identity ed25519-blake3-v1 (michi_id 43 chars) | UNIT_PASS | UNIT_PASS | tests/identity_contract: 13 checks |
+| service enum correcto | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks (negativos de service enum: rechaza servicios y aliases retirados) |
+| api_version v1/v1-lite estricto | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks (negativos: `api_version: "1.0.0"` rechazado; campo extra `michi_link_version` rechazado por `additionalProperties: false`) | <!-- michi-policy:exclude -->
+| features booleanas | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks |
+| auth.required obligatorio | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks |
+| sync-delta con cursor | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks |
+| playback-control con command | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks (negativo: rechaza `action`) |
+| error format con details | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks |
+| identity ed25519-blake3-v1 (michi_id 43 chars) | UNIT_PASS | CONTRACT_PASS | tests/identity_contract: 22 checks |
+| Wire base64url estricto (43/86, sin padding, sin `+`/`/`/`=`) | UNIT_PASS | CONTRACT_PASS | tests/identity_contract: 22 checks (negativos de padding) |
+| Pairing canónico (challenge + session + PIN) | UNIT_PASS | RUST_REFERENCE_PASS | crates/michi-identity/src/pairing.rs |
 
 ### 8.1 Evidencia de contrato verificada (2026-08-05)
 
-| Check | Resultado |
-|-------|-----------|
-| tests/contract (`npm test`) | 109 checks PASS, 0 failed |
-| tests/identity_contract (`npm test`) | 13 checks PASS, 0 failed |
-| cargo test (crates/michi-identity) | 59 PASS |
-| clippy (crates/michi-identity) | 0 warnings |
-| redocly lint (openapi/michi-link-v1.yaml) | 0 errors |
+| Check | Nivel | Resultado |
+|-------|-------|-----------|
+| tests/contract (`npm test`) | CONTRACT_PASS | 150 checks PASS, 0 failed |
+| tests/identity_contract (`npm test`) | CONTRACT_PASS | 22 checks PASS, 0 failed |
+| tests/cross_layer (`npm test`) | CROSS_LAYER_PASS | 67 checks PASS, 0 failed |
+| cargo test (crates/michi-identity) | RUST_REFERENCE_PASS | 88 PASS |
+| clippy (crates/michi-identity) | RUST_REFERENCE_PASS | 0 warnings |
+| redocly lint (openapi/michi-link-v1.yaml) | CONTRACT_PASS | 0 errors |
+| python3 scripts/contract-policy.py | CONTRACT_PASS | PASS (0 findings) |
 
-> Toda la evidencia E2E sigue vacía: `tests/e2e_certification/reports/` no contiene reportes. La beta permanece **CERRADA** hasta lograr `NETWORK_E2E_PASS`/`DEVICE_E2E_PASS` en Mobile↔Player y Mobile↔Micro, y al menos `LOCAL_E2E_PASS` en Player→Micro import y Micro autonomous playback.
+> Toda la evidencia E2E sigue vacía: `tests/e2e_certification/reports/` no contiene reportes. La beta permanece **CERRADA** — no hay LOCAL_E2E_PASS / NETWORK_E2E_PASS / DEVICE_E2E_PASS — hasta lograr `NETWORK_E2E_PASS`/`DEVICE_E2E_PASS` en Mobile↔Player y Mobile↔Micro, y al menos `LOCAL_E2E_PASS` en Player→Micro import y Micro autonomous playback.
 
 ## Resumen
 
@@ -120,8 +124,10 @@ Player → Micro import         LOCAL_E2E_PASS   NOT_TESTED     ❌
 Continue on Server            LOCAL_E2E_PASS   NOT_TESTED     ❌
 Micro autonomous playback     LOCAL_E2E_PASS   NOT_TESTED     ❌
 Micro ↔ Stream Simulator      MOCK_PASS        NOT_TESTED     ❌
-Seguridad                     UNIT_PASS        UNIT_PASS      ✅
-Contrato                      UNIT_PASS        UNIT_PASS      ✅
+Seguridad                     UNIT_PASS        CONTRACT_PASS  ✅
+Contrato                      UNIT_PASS        CONTRACT_PASS  ✅
+Reference implementation      RUST_REFERENCE_PASS  RUST_REFERENCE_PASS ✅
+Cross-layer                   CROSS_LAYER_PASS  CROSS_LAYER_PASS ✅
 ──────────────────────────────────────────────────────────────────────────
 Beta gate overall:            ❌ CERRADA
 ```

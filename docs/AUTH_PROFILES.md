@@ -13,9 +13,9 @@ Usado por: **Michi Music Player**
 ### Flujo
 
 1. Player inicia servidor con una contraseña configurada por el usuario (vía UI de preferencias).
-2. El cliente envía `/pair/start` con `device_name` y `device_type`.
-3. El usuario ingresa la contraseña en el cliente; actúa como pairing code en `/pair/confirm`.
-4. El servidor valida la contraseña y entrega el token Bearer.
+2. El cliente envía `/pair/start` con su identidad y el challenge Ed25519; el servidor abre la sesión y muestra el PIN de 6 dígitos.
+3. El usuario ingresa la contraseña en el cliente (autorización humana local) y el PIN en el flujo de confirmación estándar.
+4. El servidor valida el PIN y entrega el token Bearer opaco.
 
 ### Características
 
@@ -43,19 +43,18 @@ Usado por: **Michi Micro Server**
 
 ### Flujo
 
-1. Micro Server inicia y genera un código de pairing temporal (6-8 caracteres alfanuméricos).
-2. El código se muestra en una UI web o consola del servidor.
-3. El cliente envía `/pair/start` con su `device_name` y `device_type`.
-4. El servidor asigna un `pairing_code` y `device_id`.
-5. El cliente muestra el código al usuario, quien lo ingresa en el servidor.
-6. El servidor confirma con `/pair/confirm` y entrega token + refresh_token.
+1. Micro Server inicia y genera un PIN temporal de 6 dígitos (mostrado en su UI web o consola).
+2. El cliente envía `/pair/start` con su `device_name`, `device_type`, `roles`, identidad (`michi_id`/`public_key`) y el challenge Ed25519 (`challenge_nonce`/`challenge_signature`).
+3. El servidor valida el challenge y asigna una sesión (`session_id`, `expires_at`, `attempts_remaining`) con su identidad (`server_michi_id`/`server_public_key`).
+4. El usuario lee el PIN de la pantalla del servidor y lo ingresa en el cliente.
+5. El cliente confirma con `/pair/confirm` (`session_id` + `pin`) y recibe token + refresh_token.
 
 ### Características
 
 - **Con refresh token:** Micro Server implementa `/token/refresh` completo.
-- **Código en pantalla:** El usuario ve el código en el servidor y lo ingresa en el cliente (o viceversa).
-- **Expiración:** Código expira en 5 minutos.
-- **Seguridad:** Código temporal de un solo uso.
+- **PIN en pantalla:** El usuario ve el PIN en el servidor y lo ingresa en el cliente. El PIN nunca viaja por la red.
+- **Expiración:** La sesión expira en 5 minutos.
+- **Seguridad:** Sesión temporal de un solo uso (5 intentos máximo).
 
 ### Payload `auth` en `/server/info`
 
@@ -79,10 +78,9 @@ Usado por: **Michi Music Stream** (Standard y Hi-Fi)
 
 1. El receptor (Stream) se enciende y busca servidores vía UDP/mDNS.
 2. El usuario presiona un botón físico en el receptor para iniciar pairing.
-3. El receptor envía `/receiver/pair/start` al servidor descubierto.
-4. El servidor genera un código y lo muestra en su UI.
-5. El usuario confirma el código en el servidor (aceptando el nuevo dispositivo).
-6. Alternativa: pairing automático por botón (sin código) si solo hay un servidor en la red.
+3. El receptor envía `/pair/start` (device_type: `receiver`, auth_strategy: `RECEIVER_BUTTON`) al servidor descubierto.
+4. El servidor valida el challenge, abre la sesión y muestra el PIN de 6 dígitos en su UI.
+5. El usuario confirma el PIN en el servidor (aceptando el nuevo dispositivo) y el receptor completa `/pair/confirm`.
 
 ### Características
 
@@ -112,27 +110,29 @@ Usado por: cualquier dispositivo con identidad Ed25519 inicializada (Player, Mic
 ### Flujo
 
 1. Cliente descubre servidor y obtiene su `michi_id` + `public_key` de `GET /api/v1/server/info`.
-2. Cliente genera un nonce aleatorio de 16 bytes y lo firma con su secret key.
+2. Cliente genera un nonce aleatorio de 16 bytes (base64url, ≥ 22 chars) y lo firma con su secret key (Ed25519 sobre los bytes crudos del nonce).
 3. `POST /api/v1/pair/start` con:
    ```json
    {
+     "device_name": "Michi Mobile",
+     "device_type": "mobile",
+     "roles": ["mobile_player", "remote_controller", "sync_client"],
      "auth_strategy": "ED25519_CHALLENGE",
-     "public_key": "base64(pk)",
-     "challenge_nonce": "base64(nonce)",
-     "challenge_signature": "base64(sign(nonce))"
+     "michi_id": "<43 chars base64url>",
+     "public_key": "<43 chars base64url>",
+     "challenge_nonce": ">=22 chars base64url",
+     "challenge_signature": "86 chars base64url"
    }
    ```
-4. Servidor verifica la firma → prueba de posesión de secret key.
-5. Servidor almacena `public_key` del cliente (TOFU).
-6. Servidor responde con su propio challenge + `pin_hash`.
-7. Cliente verifica challenge del servidor (TOFU bidireccional).
-8. Usuario ingresa PIN de 6 dígitos para confirmación humana.
-9. `POST /api/v1/pair/confirm` con `pin_proof` + `pin_proof_signature`.
-10. Servidor verifica PIN + firma → pairing completo.
+4. Servidor verifica la firma → prueba de posesión de secret key. Nonce no visto antes (anti-replay).
+5. Servidor almacena `public_key` del cliente (TOFU) y abre la sesión con PIN de 6 dígitos mostrado en su UI.
+6. Usuario lee el PIN en el servidor y lo ingresa en el cliente.
+7. `POST /api/v1/pair/confirm` con `session_id`, `pin`, `michi_id` y `public_key`.
+8. Servidor verifica el PIN (verificador keyed, comparación en tiempo constante) → pairing completo, token opaco emitido.
 
 ### Características
 
-- **Sin código en pantalla:** El PIN es generado por el servidor, mostrado en su UI.
+- **PIN en pantalla:** El PIN es generado por el servidor, mostrado en su UI, y nunca viaja por la red.
 - **Sin refresh token:** El token de sesión se obtiene tras confirmar el pairing.
 - **TOFU bidireccional:** Ambos lados almacenan la public_key del otro tras el primer challenge exitoso.
 
@@ -179,8 +179,8 @@ Usado como transición por clientes que aún implementan `action`/`value`.
 
 1. Mobile consulta `GET /api/v1/server/info` al servidor.
 2. Lee `auth.strategy`:
-   - `PLAYER_PASSWORD`: Mobile pide contraseña al usuario y la envía en `/pair/start`.
-   - `SERVER_CODE`: Mobile muestra el código recibido y espera confirmación del servidor.
+   - `PLAYER_PASSWORD`: Mobile pide contraseña al usuario y completa el flujo canónico de pairing (challenge + sesión + PIN).
+   - `SERVER_CODE`: Mobile inicia `/pair/start` con su identidad, muestra el PIN recibido del servidor y espera que el usuario lo ingrese.
    - `RECEIVER_BUTTON`: No aplica (Mobile no se empareja directamente con un receptor).
 3. Si `auth.token_refresh` es `false`, Mobile no intentará refrescar el token.
 4. Si `auth.token_refresh` es `true`, Mobile usará `/token/refresh` antes de que expire.

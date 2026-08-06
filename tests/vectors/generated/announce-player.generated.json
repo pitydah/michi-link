@@ -1,0 +1,24 @@
+{
+  "device_id": "vector-player-01",
+  "name": "Michi Music Player",
+  "service": "michi-music-player",
+  "roles": [
+    "desktop_player",
+    "library_master",
+    "sync_host"
+  ],
+  "api_version": "v1",
+  "host": "192.168.1.100",
+  "port": 8400,
+  "features": {
+    "events": false,
+    "library": true,
+    "remote_control": true,
+    "streaming": true
+  },
+  "michi_id": "p3vpOMKPvKtqyctfdU7fUuTp_3v3aWagt4ehjS29ats",
+  "public_key": "MUEDSmbWf4rZBknP34OHWrSsR6kzCCW-OVxQSR792l4",
+  "signature": "-9M021a4cbNX8kV6t0UMkawc5OeHKb_ivoV5EBZgr3-3fFGAEvqYJIy40wREq_wGweAkoQlxl4_uFYNGY3a8CQ",
+  "timestamp_ms": 1785979792352,
+  "nonce": "s2shw68nRURbbpGHrCr04Q"
+}

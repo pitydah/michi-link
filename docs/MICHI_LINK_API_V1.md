@@ -395,17 +395,24 @@ Endpoint público sin autenticación. Verifica que el servidor está operativo.
 
 ### Pairing
 
+Flujo único canónico de emparejamiento: **sesión + PIN + challenge Ed25519**. El cliente prueba posesión de su clave firmando un nonce en `/pair/start`; el servidor abre una sesión y muestra un **PIN de 6 dígitos en su propia pantalla** (nunca viaja por la red); el cliente completa con `/pair/confirm`. Schemas: `schemas/pair-start.schema.json`, `pair-start-response`, `pair-confirm`, `pair-confirm-response`.
+
 #### `POST /pair/start`
 
-Inicia el flujo de emparejamiento. Un código se muestra en pantalla para que el usuario lo confirme en otro dispositivo.
+Inicia el emparejamiento. El cuerpo lleva la identidad del cliente (base64url estricto: `michi_id`/`public_key` 43 chars, `challenge_nonce` ≥ 22 chars, `challenge_signature` 86 chars) y el challenge Ed25519 (firma sobre los **bytes crudos** del nonce), que prueba posesión de la clave. El PIN se muestra en el servidor y **nunca** se devuelve al cliente.
 
 **Cuerpo de solicitud:**
 
 ```json
 {
-  "device_name": "Mi Teléfono",
+  "device_name": "Michi Mobile",
   "device_type": "mobile",
-  "roles": ["mobile_player", "remote_controller", "sync_client"]
+  "roles": ["mobile_player", "remote_controller", "sync_client"],
+  "auth_strategy": "ED25519_CHALLENGE",
+  "michi_id": "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc",
+  "public_key": "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y",
+  "challenge_nonce": "VFfZjzw8JeAM7-RFiTSrMA",
+  "challenge_signature": "DTlMt9BYH_TnYgKAeGd8zTpza-w5b8BDm9AyIoAW2p0clD7JrzwN9cwPY5y48K14x_0z2TPq7-LTXdNTqmhr-w"
 }
 ```
 
@@ -413,23 +420,22 @@ Inicia el flujo de emparejamiento. Un código se muestra en pantalla para que el
 
 ```json
 {
-  "pairing_code": "ABCD-1234",
-  "expires_in_seconds": 300,
-  "device_id": "uuid-del-dispositivo",
-  "pin_required": false
+  "session_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "expires_at": "2026-08-05T10:05:00Z",
+  "attempts_remaining": 5,
+  "server_michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+  "server_public_key": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ"
 }
 ```
 
-**Respuesta `409 Conflict`** si ya hay un pairing activo:
+**Respuesta `404 Not Found`** si la sesión no existe o expiró, y **`429 Rate Limited`** si se superó un límite del registry (1024 globales, 8 por origen, 4 por identidad, 20 starts/min por origen):
 
 ```json
 {
   "error": {
-    "code": "PAIRING_IN_PROGRESS",
-    "message": "Ya existe un proceso de emparejamiento activo.",
-    "details": {
-      "expires_in_seconds": 180
-    }
+    "code": "RATE_LIMITED",
+    "message": "Demasiadas sesiones de pairing activas.",
+    "details": {}
   }
 }
 ```
@@ -438,14 +444,16 @@ Inicia el flujo de emparejamiento. Un código se muestra en pantalla para que el
 
 #### `POST /pair/confirm`
 
-Confirma el emparejamiento con el código obtenido en `/pair/start`.
+Confirma el emparejamiento con el PIN obtenido en la pantalla del servidor.
 
 **Cuerpo de solicitud:**
 
 ```json
 {
-  "device_id": "uuid-del-dispositivo",
-  "pairing_code": "ABCD-1234"
+  "session_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "pin": "482391",
+  "michi_id": "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc",
+  "public_key": "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y"
 }
 ```
 
@@ -455,23 +463,27 @@ Confirma el emparejamiento con el código obtenido en `/pair/start`.
 {
   "token": "tok_michi_opaco_7f3a...",
   "refresh_token": "tok_michi_refresh_c2b9...",
-  "expires_in_seconds": 3600,
-  "device_id": "uuid-del-dispositivo",
-  "server_id": "uuid-del-servidor"
+  "expires_in": 3600,
+  "device_id": "stable-device-id",
+  "server_id": "stable-server-id"
 }
 ```
 
-**Respuesta `401 Unauthorized`:**
+`token` es un **bearer token opaco** (no JWT); `refresh_token` es opcional (presente solo si el servidor soporta `/token/refresh`).
+
+**Respuesta `401 Unauthorized`** (PIN incorrecto):
 
 ```json
 {
   "error": {
-    "code": "PAIRING_EXPIRED",
-    "message": "El código de emparejamiento ha expirado.",
+    "code": "PAIRING_PIN_MISMATCH",
+    "message": "El PIN no corresponde a esta sesión de pairing.",
     "details": {}
   }
 }
 ```
+
+Errores de pairing canónicos: `PAIRING_NOT_FOUND`, `PAIRING_EXPIRED`, `PAIRING_ATTEMPTS_EXCEEDED`, `PAIRING_ALREADY_CONSUMED`, `PAIRING_KEY_MISMATCH`, `PAIRING_PIN_MISMATCH` y `RATE_LIMITED` (ver `schemas/error.schema.json`, 20 códigos).
 
 ---
 
@@ -495,7 +507,7 @@ Renueva el token de acceso usando el refresh token.
 {
   "token": "tok_michi_opaco_7f3a...",
   "refresh_token": "tok_michi_refresh_c2b9...",
-  "expires_in_seconds": 3600
+  "expires_in": 3600
 }
 ```
 
@@ -508,31 +520,6 @@ Renueva el token de acceso usando el refresh token.
     "message": "Refresh token inválido o expirado.",
     "details": {}
   }
-}
-```
-
----
-
-### Dispositivos
-
-#### `POST /devices/revoke`
-
-Revoca el acceso de un dispositivo emparejado.
-
-**Cuerpo de solicitud:**
-
-```json
-{
-  "device_id": "uuid-del-dispositivo-a-revocar"
-}
-```
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "success": true,
-  "revoked_device_id": "uuid-del-dispositivo-a-revocar"
 }
 ```
 
@@ -1932,19 +1919,19 @@ Crea una sesión de reproducción ligera en el receptor.
 
 ```json
 {
-  "deviceId": "uuid-del-receptor",
-  "trackId": "uuid-del-track",
-  "startPlaying": true
+  "device_id": "rec-std-001",
+  "track_id": "uuid-del-track",
+  "start_playing": true
 }
 ```
 
-Campos: `deviceId` (obligatorio), `trackId`, `trackIds`, `playlistId`, `startPlaying` (default `true`), `syncGroup`.
+Campos: `device_id` (obligatorio), `track_id`, `track_ids`, `playlist_id`, `start_playing` (default `true`), `sync_group`.
 
 **Respuesta `201 Created`:**
 
 ```json
 {
-  "sessionId": "uuid-de-la-sesion",
+  "session_id": "uuid-de-la-sesion",
   "status": "active"
 }
 ```

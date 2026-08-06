@@ -6,6 +6,7 @@ const addFormats = require("ajv-formats");
 const ROOT = path.resolve(__dirname, "../..");
 const SCHEMAS_DIR = path.join(ROOT, "schemas");
 const EXAMPLES_DIR = path.join(ROOT, "examples");
+const SCHEMA_BASE = "https://michi.link/schemas/";
 const PASS = "\u001b[32m\u2713\u001b[0m";
 const FAIL = "\u001b[31m\u2717\u001b[0m";
 
@@ -21,9 +22,8 @@ function exampleFiles() {
   return fs.readdirSync(EXAMPLES_DIR).filter((f) => f.endsWith(".json")).sort();
 }
 
-const SCHEMA_BASE = "https://michi.link/schemas/";
-
 // Exact mapping: example file name -> schema base name (without .schema.json).
+// Every example MUST have a mapping; any unmapped example fails the suite.
 const EXAMPLE_MAP = {
   "audio-chain.json": "audio-chain",
   "commit-mapping-result.json": "import-commit-result",
@@ -39,10 +39,13 @@ const EXAMPLE_MAP = {
   "import-preflight-response.json": "import-preflight-response",
   "michi-identity-announce-signed.json": "discovery-announce",
   "pair-confirm.json": "pair-confirm",
+  "pair-confirm-response.json": "pair-confirm-response",
   "pair-start.json": "pair-start",
+  "pair-start-response.json": "pair-start-response",
   "playback-control-seek.json": "playback-control",
   "playback-control-volume.json": "playback-control",
   "playback-state.json": "playback-state",
+  "qr-payload.json": "qr-pairing",
   "queue-bulk-request.json": "queue-bulk",
   "queue.json": "queue",
   "queue-transfer-request.json": "queue-transfer",
@@ -137,7 +140,12 @@ function main() {
 
   // --- Negative checks: minimal valid base payloads, one mutation each ---
 
-  const serverInfoBase = {
+  const pairStartBase = loadJSON(path.join(EXAMPLES_DIR, "pair-start.json"));
+  const pairConfirmBase = loadJSON(path.join(EXAMPLES_DIR, "pair-confirm.json"));
+  const pairStartResponseBase = loadJSON(path.join(EXAMPLES_DIR, "pair-start-response.json"));
+  const pairConfirmResponseBase = loadJSON(path.join(EXAMPLES_DIR, "pair-confirm-response.json"));
+
+  const serverInfoMicroBase = {
     service: "michi-micro-server",
     name: "Test Server",
     version: "0.1.0",
@@ -147,7 +155,37 @@ function main() {
     auth: { required: true, strategy: "SERVER_CODE", token_refresh: true },
   };
 
-  const receiverBase = {
+  const serverInfoPlayerBase = {
+    service: "michi-music-player",
+    name: "Test Player",
+    version: "0.1.0",
+    api_version: "v1",
+    roles: ["desktop_player", "library_master", "sync_host"],
+    features: { library: true },
+    auth: { required: true, strategy: "PLAYER_PASSWORD", token_refresh: false },
+  };
+
+  const serverInfoMobileBase = {
+    service: "michi-mobile",
+    name: "Test Mobile",
+    version: "0.1.0",
+    api_version: "v1",
+    roles: ["mobile_player", "remote_controller", "sync_client"],
+    features: { library: true },
+    auth: { required: true, strategy: "SERVER_CODE", token_refresh: true },
+  };
+
+  const serverInfoStreamBase = {
+    service: "michi-stream-standard",
+    name: "Test Stream",
+    version: "0.1.0",
+    api_version: "v1-lite",
+    roles: ["audio_receiver"],
+    features: { session: true, volume: true, heartbeat: true },
+    auth: { required: true, strategy: "RECEIVER_BUTTON", token_refresh: false },
+  };
+
+  const receiverStandardBase = {
     service: "michi-stream-standard",
     name: "Test Receiver",
     version: "0.1.0",
@@ -159,26 +197,26 @@ function main() {
     features: { session: true, volume: true, heartbeat: true },
   };
 
-  const announceBase = {
-    device_id: "dev-01",
-    name: "Test Device",
-    service: "michi-micro-server",
-    roles: ["music_server"],
-    api_version: "v1",
-    host: "192.168.1.10",
-    port: 8400,
-    features: { library: true },
-    michi_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
-    public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
-    signature: "-uA_huP-ihEN6MWq4QL2OK4tiPAk-FDmr_olMoLGDUUjWHHomPQTUSMkwI2yJIgT1JZXx5oCxhb6RIOzJ3eTCA",
-    timestamp_ms: Date.now(),
-    nonce: "IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W",
+  const receiverHifiBase = {
+    ...receiverStandardBase,
+    service: "michi-stream-hifi",
+    audio: { codecs: ["pcm_s16le", "pcm_s24le"], max_sample_rate: 192000, max_channels: 2 },
   };
+
+  const announceBase = loadJSON(path.join(EXAMPLES_DIR, "michi-identity-announce-signed.json"));
 
   const identityBase = {
     identity_scheme: "ed25519-blake3-v1",
     michi_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
     public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+  };
+
+  const trackBase = {
+    id: "track_9a8b7c6d",
+    title: "Bohemian Rhapsody",
+    artist: "Queen",
+    album: "A Night at the Opera",
+    duration_ms: 354000,
   };
 
   const V = (base) => ajv.getSchema(SCHEMA_BASE + base + ".schema.json");
@@ -188,31 +226,184 @@ function main() {
     check(label, !valid, valid ? null : validate);
   };
 
-  rejects("negative: server-info rejects service \"michi-big-server\"", "server-info", {
-    ...serverInfoBase,
-    service: "michi-big-server",
+  // --- Pairing negatives (canonical snake_case contract) ---
+  rejects("negative: pair-start rejects camelCase \"deviceId\"", "pair-start", {
+    ...pairStartBase,
+    deviceId: "dev-01",
   });
-  rejects("negative: server-info rejects deprecated service \"michi-player\"", "server-info", {
-    ...serverInfoBase,
-    service: "michi-player",
+  rejects("negative: pair-start rejects retired \"pairing_id\"", "pair-start", {
+    ...pairStartBase,
+    pairing_id: "pair-01",
+  });
+  rejects("negative: pair-start rejects retired \"pairing_code\"", "pair-start", {
+    ...pairStartBase,
+    pairing_code: "abcd-1234",
+  });
+  rejects("negative: pair-start rejects challenge_signature of 43 chars", "pair-start", {
+    ...pairStartBase,
+    challenge_signature: "aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7bC",
+  });
+  rejects("negative: pair-start rejects public_key of 86 chars", "pair-start", {
+    ...pairStartBase,
+    public_key: "aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7bC9dE1fG3hI5jK7lM9nO1pQ3rS5tU7vW9xYzA1",
+  });
+  rejects("negative: pair-start rejects short challenge_nonce", "pair-start", {
+    ...pairStartBase,
+    challenge_nonce: "abc",
+  });
+  rejects("negative: pair-confirm rejects retired \"pin_proof\"", "pair-confirm", {
+    ...pairConfirmBase,
+    pin_proof: "aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7bC",
+  });
+  rejects("negative: pair-confirm rejects camelCase \"signedChallenge\"", "pair-confirm", {
+    ...pairConfirmBase,
+    signedChallenge: "aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7bC",
+  });
+  rejects("negative: pair-confirm rejects retired \"pairing_code\"", "pair-confirm", {
+    ...pairConfirmBase,
+    pairing_code: "abcd-1234",
+  });
+  rejects("negative: pair-confirm rejects 5-digit PIN", "pair-confirm", {
+    ...pairConfirmBase,
+    pin: "48239",
+  });
+  rejects("negative: pair-confirm rejects missing session_id", "pair-confirm", {
+    ...pairConfirmBase,
+    session_id: undefined,
+  });
+  rejects("negative: pair-start-response rejects missing server_public_key", "pair-start-response", {
+    ...pairStartResponseBase,
+    server_public_key: undefined,
+  });
+  rejects("negative: pair-confirm-response rejects missing token", "pair-confirm-response", {
+    ...pairConfirmResponseBase,
+    token: undefined,
+  });
+  rejects("negative: pair-confirm-response rejects missing expires_in", "pair-confirm-response", {
+    ...pairConfirmResponseBase,
+    expires_in: undefined,
+  });
+
+  // --- Wire format negatives (base64url, no + / =, exact lengths) ---
+  rejects("negative: michi-identity rejects 64-char hex michi_id", "michi-identity", {
+    ...identityBase,
+    michi_id: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+  });
+  rejects("negative: discovery-announce rejects public_key containing '+'", "discovery-announce", {
+    ...announceBase,
+    public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf9+CpQ",
+  });
+  rejects("negative: discovery-announce rejects signature containing '/'", "discovery-announce", {
+    ...announceBase,
+    signature: "-uA_huP-ihEN6MWq4QL2OK4tiPAk-FDmr_olMoLGDUUjWHHomPQTUSMkwI2yJIgT1JZXx5oCxhb6RIOzJ3e/CA",
+  });
+  rejects("negative: discovery-announce rejects nonce containing '='", "discovery-announce", {
+    ...announceBase,
+    nonce: "IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W=",
+  });
+
+  // --- server-info per-service profile negatives ---
+  rejects("negative: server-info player rejects strategy SERVER_CODE", "server-info", {
+    ...serverInfoPlayerBase,
+    auth: { ...serverInfoPlayerBase.auth, strategy: "SERVER_CODE" },
+  });
+  rejects("negative: server-info micro rejects strategy PLAYER_PASSWORD", "server-info", {
+    ...serverInfoMicroBase,
+    auth: { ...serverInfoMicroBase.auth, strategy: "PLAYER_PASSWORD" },
+  });
+  rejects("negative: server-info stream rejects token_refresh true", "server-info", {
+    ...serverInfoStreamBase,
+    auth: { ...serverInfoStreamBase.auth, token_refresh: true },
+  });
+  rejects("negative: server-info stream rejects api_version v1", "server-info", {
+    ...serverInfoStreamBase,
+    api_version: "v1",
+  });
+  rejects("negative: server-info mobile rejects api_version v1-lite", "server-info", {
+    ...serverInfoMobileBase,
+    api_version: "v1-lite",
+  });
+  rejects("negative: server-info mobile rejects role audio_receiver", "server-info", {
+    ...serverInfoMobileBase,
+    roles: ["audio_receiver"],
+  });
+  rejects("negative: server-info rejects partial identity group (michi_id only)", "server-info", {
+    ...serverInfoMicroBase,
+    michi_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
   });
   rejects("negative: server-info rejects extra michi_link_version", "server-info", {
-    ...serverInfoBase,
+    ...serverInfoMicroBase,
     michi_link_version: "1.0.0",
   });
+  rejects("negative: server-info rejects unknown service \"michi-big-server\"", "server-info", {
+    ...serverInfoMicroBase,
+    service: "michi-big-server",
+  });
+
+  // --- receiver-info tier negatives ---
+  rejects("negative: receiver-info standard rejects pcm_s24le", "receiver-info", {
+    ...receiverStandardBase,
+    audio: { ...receiverStandardBase.audio, codecs: ["pcm_s24le"] },
+  });
+  rejects("negative: receiver-info hifi rejects codec \"opus\"", "receiver-info", {
+    ...receiverHifiBase,
+    audio: { ...receiverHifiBase.audio, codecs: ["opus"] },
+  });
+  rejects("negative: receiver-info hifi rejects missing pcm_s16le", "receiver-info", {
+    ...receiverHifiBase,
+    audio: { ...receiverHifiBase.audio, codecs: ["pcm_s24le"] },
+  });
+  rejects("negative: receiver-info rejects max_sample_rate 384000", "receiver-info", {
+    ...receiverStandardBase,
+    audio: { ...receiverStandardBase.audio, max_sample_rate: 384000 },
+  });
+  rejects("negative: receiver-info rejects max_channels 8", "receiver-info", {
+    ...receiverStandardBase,
+    audio: { ...receiverStandardBase.audio, max_channels: 8 },
+  });
+
+  // --- track path-field negatives ---
+  rejects("negative: track rejects \"path\"", "track", {
+    ...trackBase,
+    path: "/data/music/track.flac",
+  });
+  rejects("negative: track rejects \"file_path\"", "track", {
+    ...trackBase,
+    file_path: "/data/music/track.flac",
+  });
+  rejects("negative: track rejects \"absolute_path\"", "track", {
+    ...trackBase,
+    absolute_path: "/data/music/track.flac",
+  });
+
+  // --- Error code negatives ---
+  rejects("negative: error rejects unknown code \"NOPE\"", "error", {
+    error: { code: "NOPE", message: "nope" },
+  });
+  {
+    const validate = V("error");
+    const payload = { error: { code: "PAIRING_NOT_FOUND", message: "No pairing session." } };
+    check("positive: error accepts PAIRING_NOT_FOUND (20-code enum)", validate(payload), validate);
+  }
+
+  // --- Regression coverage (pre-convergence checks) ---
+  rejects("negative: server-info rejects deprecated service \"michi-player\"", "server-info", {
+    ...serverInfoMicroBase,
+    service: "michi-player",
+  });
   rejects("negative: server-info rejects api_version \"1.0.0\"", "server-info", {
-    ...serverInfoBase,
+    ...serverInfoMicroBase,
     api_version: "1.0.0",
   });
   rejects("negative: server-info rejects auth.required false", "server-info", {
-    ...serverInfoBase,
-    auth: { ...serverInfoBase.auth, required: false },
+    ...serverInfoMicroBase,
+    auth: { ...serverInfoMicroBase.auth, required: false },
   });
-  rejects("negative: server-info rejects non-boolean feature", "server-info", {
-    ...serverInfoBase,
-    features: { ...serverInfoBase.features, library: "yes" },
+  rejects("negative: server-info rejects non-boolean feature flag", "server-info", {
+    ...serverInfoMicroBase,
+    features: { ...serverInfoMicroBase.features, library: "yes" },
   });
-  rejects("negative: playback-control rejects \"action\" field", "playback-control", {
+  rejects("negative: playback-control rejects legacy \"action\" field", "playback-control", {
     action: "play",
   });
   rejects("negative: discovery-announce rejects signed announce missing nonce", "discovery-announce", {
@@ -223,40 +414,28 @@ function main() {
     ...announceBase,
     timestamp_ms: undefined,
   });
-  rejects("negative: receiver-info rejects codec \"opus\"", "receiver-info", {
-    ...receiverBase,
-    audio: { ...receiverBase.audio, codecs: ["opus"] },
+  rejects("negative: receiver-info rejects codec \"opus\" on standard receiver", "receiver-info", {
+    ...receiverStandardBase,
+    audio: { ...receiverStandardBase.audio, codecs: ["opus"] },
   });
   rejects("negative: receiver-info rejects api_version \"v1\"", "receiver-info", {
-    ...receiverBase,
+    ...receiverStandardBase,
     api_version: "v1",
   });
-  rejects("negative: michi-identity rejects non-base64url public_key", "michi-identity", {
+  rejects("negative: michi-identity rejects public_key with padding '='", "michi-identity", {
     ...identityBase,
     public_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-  });
-  rejects("negative: michi-identity rejects 64-char hex michi_id", "michi-identity", {
-    ...identityBase,
-    michi_id: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
   });
   rejects("negative: discovery-announce rejects too-short nonce", "discovery-announce", {
     ...announceBase,
     nonce: "short",
   });
-  rejects("negative: pair-confirm rejects pairing_code violating pattern", "pair-confirm", {
-    device_id: "d3c4e5f6a7b89012cdef123456789012",
-    pairing_code: "abcd-1234",
-  });
   rejects("negative: server-info rejects role \"home_server\"", "server-info", {
-    ...serverInfoBase,
+    ...serverInfoMicroBase,
     roles: ["home_server"],
   });
-  rejects("negative: error rejects code \"NOPE\"", "error", {
-    error: { code: "NOPE", message: "nope" },
-  });
-  rejects("negative: server-info if/then rejects audio_receiver role for michi-music-player", "server-info", {
-    ...serverInfoBase,
-    service: "michi-music-player",
+  rejects("negative: server-info rejects audio_receiver role for michi-music-player", "server-info", {
+    ...serverInfoPlayerBase,
     roles: ["audio_receiver"],
   });
   rejects("negative: discovery-announce rejects null features", "discovery-announce", {
@@ -279,6 +458,49 @@ function main() {
   rejects("negative: error rejects missing message", "error", {
     error: { code: "NOT_FOUND" },
   });
+
+  // --- Schema <-> OpenAPI convergence (pairing DTOs) ---
+  // Every required property of the canonical JSON Schemas must exist as a
+  // property of the matching OpenAPI component, and the OpenAPI must not
+  // carry legacy pairing fields.
+  const openapiText = fs.readFileSync(path.join(ROOT, "openapi/michi-link-v1.yaml"), "utf8");
+  const openapiLines = openapiText.split("\n");
+
+  function openapiComponentBlock(componentName) {
+    const marker = `    ${componentName}:`;
+    const start = openapiLines.findIndex((l) => l === marker);
+    if (start === -1) return null;
+    const lines = [];
+    for (let i = start + 1; i < openapiLines.length; i++) {
+      const line = openapiLines[i];
+      if (line.length > 0 && line[0] !== " " && line[0] !== "#") break;
+      if (/^    \S/.test(line) && !line.startsWith("    #")) break;
+      lines.push(line);
+    }
+    return lines.join("\n");
+  }
+
+  const openapiPairs = [
+    ["pair-start.schema.json", "PairStartRequest"],
+    ["pair-start-response.schema.json", "PairStartResponse"],
+    ["pair-confirm.schema.json", "PairConfirmRequest"],
+    ["pair-confirm-response.schema.json", "PairConfirmResponse"],
+  ];
+  for (const [schemaFile, component] of openapiPairs) {
+    const schema = ajv.getSchema(SCHEMA_BASE + schemaFile).schema;
+    const block = openapiComponentBlock(component);
+    const missing = (schema.required || []).filter((prop) => !block || !new RegExp(`^ {8}${prop}:`, "m").test(block));
+    check(
+      `schema <-> openapi: ${schemaFile} required properties exist in ${component}`,
+      block !== null && missing.length === 0,
+      null
+    );
+    if (missing.length > 0) console.log(`       missing in ${component}: ${missing.join(", ")}`);
+  }
+  // OpenAPI must not reintroduce legacy pairing fields.
+  for (const legacy of ["pairing_code", "pin_proof", "pin_proof_signature", "signedChallenge", "pairingId"]) {
+    check(`openapi: legacy field "${legacy}" absent`, !openapiText.includes(legacy), null);
+  }
 
   const total = passed + failed;
   console.log(`\n${total} checks: ${passed} passed, ${failed} failed`);

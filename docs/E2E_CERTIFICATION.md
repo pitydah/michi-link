@@ -93,7 +93,7 @@ Cada check tiene status `pass`, `fail`, o `skip`. El reporte global es `pass` so
   "status": "pass",
   "checks": [
     { "name": "server_info", "status": "pass", "detail": "service: michi-music-player" },
-    { "name": "pair_start", "status": "pass", "detail": "pairing_code received" }
+    { "name": "pair_start", "status": "pass", "detail": "challenge accepted, session_id received" },
   ],
   "errors": []
 }

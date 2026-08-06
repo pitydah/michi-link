@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "PAIRING_PIN_MISMATCH",
+    "message": "The submitted PIN does not match the session PIN. Retry before the session expires.",
+    "details": {
+      "attempts_remaining": 4
+    },
+    "request_id": "a3b4c5d6-e7f8-4a9b-bc1d-2e3f4a5b6c7d"
+  }
+}

@@ -29,14 +29,16 @@ Out of scope: implementation-specific bugs in consumers (Player, Micro Server, M
 
 ## Secrets
 
-- The device private key is stored **encrypted at rest** with ChaCha20-Poly1305 (AEAD) in the identity file. The encryption key is derived as `blake3(context || salt || password)`, with the format context and identity scheme bound as explicit AAD.
+- The device private key is stored **encrypted at rest** with ChaCha20-Poly1305 (AEAD) in the identity file. The encryption key is derived with **Argon2id** (64 MiB, `t=3`, `p=1`, version 0x13) — a memory-hard KDF that resists offline GPU brute-force of weak passwords.
+- The **AAD is the canonical header in full**: every persisted metadata field is bound as authenticated data, so mutating any header field breaks authentication. Ciphertext cannot be transplanted, re-targeted, or metadata-mangled undetected.
 - The identity file is written atomically (temp file + rename) with **0600 permissions** on Unix.
 - The password is **local to the device** and never transmitted over the network.
-- **Never transmit secrets** (private keys, passwords, pairing secrets) over the wire. The pairing PIN is verified through a keyed verifier, never sent as plaintext hash material that could be replayed.
+- **Never transmit secrets** (private keys, passwords, pairing secrets) over the wire. The pairing PIN never leaves the server: it is displayed locally and verified through a keyed in-memory verifier (`blake3(server_secret || pin)`), never sent as replayable hash material.
 
 ## Identity
 
-- Scheme: `ed25519-blake3-v1`. `michi_id = base64url(BLAKE3(public_key raw 32 bytes))` — 43 characters. Hex is not a canonical representation.
+- Scheme: `ed25519-blake3-v1`. `michi_id = base64url(BLAKE3(public_key raw 32 bytes))` — 43 characters, no padding.
+- **Wire encoding is strict base64url:** `michi_id`/`public_key` exactly 43 chars, signatures exactly 86, nonces ≥ 22; `+`, `/`, `=` are forbidden on the wire.
 - Signatures are Ed25519 over a **deterministic canonical serialization** (JSON keys in lexicographic order) of every functional field.
 - Timestamp freshness window: **±90 seconds**.
 - Replay protection: nonces are accepted **once per identity**.
@@ -47,7 +49,15 @@ Out of scope: implementation-specific bugs in consumers (Player, Micro Server, M
 - Sessions last **5 minutes max**, allow **5 attempts max**, and are **single use** (consumed after success).
 - The PIN verifier is keyed with a server-side random secret (`blake3(server_secret || pin)`), so a 6-digit PIN **cannot be brute-forced offline** from anything exposed to the client.
 - PIN comparison is **constant-time**.
-- `pin_hash` is never exposed. The QR URI contains no secrets, no final tokens, and no PIN hash.
+- The registry is bounded: **1024 active sessions globally, 8 per source, 4 per identity**, and **20 pair starts per minute per source**; exceeding a limit returns `RATE_LIMITED`. Expired sessions are cleaned up automatically before every create/confirm and by schedulers.
+- The verifier is never exposed. The QR URI contains no secrets, no final tokens, and no PIN verifier.
+
+## Identity file migration and error handling
+
+- Legacy formats migrate **automatically** on load: v1 (XOR + hostname wrap) → v3 and v2 (BLAKE3-direct KDF) → v3 (Argon2id). Migrations preserve identity, `created_at` and `device_name` — they are format upgrades, never rotations.
+- Errors are separated as `UnsupportedFormat`, `MetadataTampered`, `AuthenticationFailed` and `IdentityMismatch`.
+- **`AuthenticationFailed` deliberately covers BOTH a wrong password and a tampered authenticated field**: distinguishing them would leak an oracle. There is no way for a caller to tell the two apart.
+- A corrupted or unauthenticated identity file returns an **explicit error** and is never overwritten or silently regenerated.
 
 ## Discovery
 
@@ -60,7 +70,7 @@ Out of scope: implementation-specific bugs in consumers (Player, Micro Server, M
 ## Key Rotation
 
 - Rotation (regeneration) is **explicit and user-initiated only**: delete the identity file and regenerate. The library never rotates silently.
-- Migration from the legacy v1 format (XOR + hostname wrap) to v2 (AEAD) is **automatic** and preserves the same identity — it is a format upgrade, not a rotation.
+- Migration from the legacy formats (v1 XOR + hostname wrap, v2 BLAKE3-direct KDF) to v3 (Argon2id) is **automatic** and preserves the same identity — it is a format upgrade, not a rotation.
 
 ## Corrupted Files
 

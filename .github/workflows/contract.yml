@@ -60,6 +60,28 @@ jobs:
         working-directory: crates/michi-identity
         run: cargo test --all-targets --all-features
 
+  cross-layer-conformance:
+    name: Cross-layer conformance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cross-layer test dependencies
+        working-directory: tests/cross_layer
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Generate contract vectors
+        working-directory: crates/michi-identity
+        run: cargo run -q --example generate_contract_vectors -- ${{ github.workspace }}/tests/vectors/generated
+      - name: Run cross-layer tests
+        working-directory: tests/cross_layer
+        run: npm test
+
   openapi:
     name: OpenAPI spec lint
     runs-on: ubuntu-latest

@@ -3,7 +3,7 @@
     "code": "IDENTITY_CORRUPTED",
     "message": "The device identity could not be loaded or verified.",
     "details": {
-      "path": "~/.config/michi/identity.msgpack"
+      "field": "identity_file"
     },
     "request_id": "a7d3f4e7-bf1a-4ff7-aff6-e7f8091a2b3c"
   }

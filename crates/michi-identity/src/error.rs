@@ -2,8 +2,8 @@ use thiserror::Error;
 
 /// Canonical error type for the michi-identity crate.
 ///
-/// Error names map to the canonical Michi Link error codes where
-/// applicable (`PAIRING_EXPIRED`, `SIGNATURE_INVALID`, ...).
+/// Error names map to the canonical Michi Link error codes where applicable
+/// (`PAIRING_EXPIRED`, `SIGNATURE_INVALID`, `IDENTITY_CORRUPTED`, ...).
 #[derive(Debug, Error)]
 pub enum IdentityError {
     #[error("failed to generate Ed25519 keypair: {0}")]
@@ -18,26 +18,40 @@ pub enum IdentityError {
     #[error("failed to save identity key: {0}")]
     KeySaveFailed(String),
 
-    /// The identity file exists but cannot be decrypted or parsed.
-    /// Never silently regenerates the identity (code IDENTITY_CORRUPTED).
+    /// The identity file cannot be parsed or its format is not supported.
+    /// Code: IDENTITY_CORRUPTED.
     #[error("identity file is corrupted: {0}")]
     IdentityCorrupted(String),
 
-    /// Wrong password provided for the identity file.
+    /// AEAD authentication failed. This covers BOTH a wrong password and a
+    /// tampered authenticated field: distinguishing them would leak an oracle,
+    /// so the crate deliberately returns a single error. Code: IDENTITY_CORRUPTED.
+    #[error("identity secret could not be authenticated (wrong password or tampered metadata)")]
+    AuthenticationFailed,
+
+    /// A caller-visible wrong-password outcome where the environment can prove
+    /// the cause (e.g. a legacy migration attempt with a verified mismatch).
+    /// Regular AEAD failures use `AuthenticationFailed` instead.
     #[error("invalid password for identity file")]
-    InvalidPassword,
+    WrongPassword,
 
-    /// Authenticated decryption failed (tampered ciphertext, nonce or AAD).
-    #[error("identity secret could not be authenticated: {0}")]
-    AeadFailure(String),
+    /// Identity metadata was structurally inconsistent before decryption
+    /// (invalid KDF parameters, malformed header fields). Code: IDENTITY_CORRUPTED.
+    #[error("identity metadata is inconsistent: {0}")]
+    MetadataTampered(String),
 
-    /// Automatic migration from the legacy (v1) identity format failed.
-    #[error("identity migration from legacy format failed: {0}")]
-    MigrationFailed(String),
-
-    /// The stored michi_id does not match the derived identity.
+    /// The decrypted secret key does not match the stored identity fields.
+    /// Code: IDENTITY_CORRUPTED.
     #[error("identity keys are inconsistent: {0}")]
-    KeyMismatch(String),
+    IdentityMismatch(String),
+
+    /// The file uses a format/scheme/KDF version this build cannot handle.
+    #[error("unsupported identity format: {0}")]
+    UnsupportedFormat(String),
+
+    /// Automatic migration between identity formats failed.
+    #[error("identity migration failed: {0}")]
+    MigrationFailed(String),
 
     /// Ed25519 signature verification failed (code SIGNATURE_INVALID).
     #[error("invalid signature: {0}")]
@@ -51,6 +65,10 @@ pub enum IdentityError {
     #[error("announce timestamp outside the freshness window")]
     TimestampOutOfWindow,
 
+    /// The announce profile violates the canonical contract rules.
+    #[error("contract violation: {0}")]
+    ContractViolation(#[from] ContractViolation),
+
     /// Pairing session expired (code PAIRING_EXPIRED).
     #[error("pairing session has expired")]
     PairingExpired,
@@ -59,24 +77,31 @@ pub enum IdentityError {
     #[error("pairing attempts exceeded")]
     PairingAttemptsExceeded,
 
-    /// Pairing session was already consumed and cannot be reused.
+    /// Pairing session was already consumed and cannot be reused
+    /// (code PAIRING_ALREADY_CONSUMED).
     #[error("pairing session already consumed")]
     PairingAlreadyConsumed,
 
-    /// Pairing session does not exist.
+    /// Pairing session does not exist (code PAIRING_NOT_FOUND).
     #[error("pairing session not found")]
     PairingNotFound,
 
-    /// The client identity presented at confirm does not match the one at start.
+    /// The client identity presented at confirm does not match the one at
+    /// start (code PAIRING_KEY_MISMATCH).
     #[error("pairing key mismatch")]
     PairingKeyMismatch,
 
-    /// The PIN does not match.
+    /// The PIN does not match (code PAIRING_PIN_MISMATCH).
     #[error("PIN does not match")]
-    PinMismatch,
+    PairingPinMismatch,
 
-    #[error("challenge nonce mismatch")]
+    /// The client challenge signature or nonce failed verification.
+    #[error("challenge mismatch")]
     ChallengeMismatch,
+
+    /// A pairing/registry rate limit was exceeded (code RATE_LIMITED).
+    #[error("rate limit exceeded")]
+    RateLimited,
 
     #[error("peer public key not found")]
     PeerNotFound,
@@ -97,6 +122,20 @@ pub enum IdentityError {
 
     #[error("internal error: {0}")]
     Internal(String),
+}
+
+/// Canonical contract violations detected before signing/verifying.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum ContractViolation {
+    /// The service does not support the announced profile shape.
+    #[error("invalid service profile for announce")]
+    InvalidServiceProfile,
+    /// The roles are not allowed for the announced service.
+    #[error("invalid role profile for service")]
+    InvalidRoleProfile,
+    /// The api_version is not allowed for the announced service.
+    #[error("invalid api_version for service")]
+    InvalidApiVersionProfile,
 }
 
 impl From<ed25519_dalek::SignatureError> for IdentityError {

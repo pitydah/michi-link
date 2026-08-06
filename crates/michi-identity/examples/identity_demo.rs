@@ -21,13 +21,13 @@ fn main() {
 
     println!("   Device name:   {}", identity.device_name());
     println!("   Michi ID:      {}", identity.michi_id());
-    println!("   Public key:    {}", identity.public_key_b64());
+    println!("   Public key:    {}", identity.public_key_base64url());
     println!("   Created at:    {}", identity.created_at());
 
     // 2. Sign a message
     println!("\n2. Signing message...");
     let message = b"Hello, Michi ecosystem!";
-    let (signature, public_key) = identity.sign_standard(message);
+    let (signature, public_key) = identity.sign_base64url(message);
     println!("   Message:       {}", String::from_utf8_lossy(message));
     println!("   Signature:     {}...", &signature[..20]);
 

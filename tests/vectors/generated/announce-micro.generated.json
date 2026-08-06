@@ -1,0 +1,28 @@
+{
+  "device_id": "vector-micro-01",
+  "name": "Michi Micro Server",
+  "service": "michi-micro-server",
+  "roles": [
+    "music_server",
+    "library_host",
+    "playback_host"
+  ],
+  "api_version": "v1",
+  "host": "192.168.1.101",
+  "port": 8500,
+  "features": {
+    "downloads": true,
+    "events": false,
+    "import": true,
+    "library": true,
+    "playback": true,
+    "queue": true,
+    "streaming": true,
+    "sync": true
+  },
+  "michi_id": "p3vpOMKPvKtqyctfdU7fUuTp_3v3aWagt4ehjS29ats",
+  "public_key": "MUEDSmbWf4rZBknP34OHWrSsR6kzCCW-OVxQSR792l4",
+  "signature": "H0NHEZzkjUsYZAhZijTTdvU5WxK1Qjcz-O92BEtfvPllgN3nHL8EzzDjh7aPixS_F5ASoQ8U1kVxUVTp9tDDBw",
+  "timestamp_ms": 1785979792352,
+  "nonce": "GfvFiKREHG0co9G-etcmtw"
+}

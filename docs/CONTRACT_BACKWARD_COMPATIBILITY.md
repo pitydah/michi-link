@@ -22,7 +22,7 @@
 | `auth_strategy: ED25519_CHALLENGE` | 1.0.0-beta | ❌ No | Nuevo valor en enum. Si el cliente no lo entiende, usa legacy. |
 | QR pairing | 1.0.0-beta | ❌ No | Canal nuevo fuera de banda. No afecta REST API. |
 | TOFU storage | 1.0.0-beta | ❌ No | Solo lectura interna del servidor. No afecta endpoints. |
-| `pin_proof` en pair/confirm | 1.0.0-beta | ❌ No | Campo opcional. Pairing legacy funciona sin él. |
+| `pin_proof` / `pin_proof_signature` en pair/confirm | 1.0.0-beta | ❌ No | **Retirado** en la convergencia: el contrato canónico los rechaza (`additionalProperties: false`). El pairing canónico usa challenge en `/pair/start` y `pin` en `/pair/confirm`. | <!-- michi-policy:exclude -->
 | `device_id` (UUID) | 1.0.0-alpha | ❌ Nunca | Se mantiene para siempre en v1. |
 | `action` legacy | 1.0.0-alpha | ❌ No | Deprecado pero aceptado como alias de `command`. |
 | `since` / `manifest_id` | 1.0.0-alpha | ❌ No | Deprecados pero aceptados como alias de `cursor`. |
@@ -52,7 +52,7 @@
 
 ### Cliente v1.0.0-beta (con identidad) ↔ Servidor v1.0.0-beta (con identidad)
 - Ambos tienen `michi_id`. Pueden verificar announces mutuamente.
-- Pueden usar `ED25519_CHALLENGE` para pairing sin PIN.
+- Pueden usar `ED25519_CHALLENGE` para pairing con prueba de posesión de clave + PIN (el PIN de 6 dígitos siempre es parte del flujo canónico).
 - QR pairing disponible si ambos tienen cámara/pantalla.
 - **Máximo nivel de seguridad y confianza.**
 

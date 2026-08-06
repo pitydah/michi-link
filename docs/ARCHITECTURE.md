@@ -252,19 +252,31 @@ CLIENTE                              SERVIDOR
    │◄────────────────────────────────────│
    │                                     │
    │  3. POST /pair/start                │
-   │  {device_name, device_type, roles}  │
+   │  {device_name, device_type, roles,  │
+   │   auth_strategy, michi_id,          │
+   │   public_key, challenge_nonce,      │
+   │   challenge_signature}              │
    │────────────────────────────────────►│
    │                                     │
-   │  4. pairing_code: ABCD-1234         │
+   │  4. {session_id, expires_at,        │
+   │     attempts_remaining,             │
+   │     server_michi_id,                │
+   │     server_public_key}              │
    │◄────────────────────────────────────│
    │                                     │
-   │  5. (Usuario confirma en pantalla)  │
+   │  5. (Usuario lee el PIN de 6        │
+   │     dígitos en la pantalla del      │
+   │     servidor — nunca viaja por la   │
+   │     red)                            │
    │                                     │
    │  6. POST /pair/confirm              │
-   │  {device_id, pairing_code}          │
+   │  {session_id, pin, michi_id,        │
+   │   public_key}                       │
    │────────────────────────────────────►│
    │                                     │
-   │  7. {token, refresh_token}          │
+   │  7. {token, refresh_token?,         │
+   │     expires_in, device_id,          │
+   │     server_id}                      │
    │◄────────────────────────────────────│
    │                                     │
    │  8. GET /tracks (con Bearer token)  │
@@ -277,11 +289,11 @@ CLIENTE                              SERVIDOR
 **Pasos:**
 1. El cliente descubre el servidor en la red local via **mDNS**.
 2. El servidor responde con su información (`server.info`).
-3. El cliente inicia el pairing enviando su identidad.
-4. El servidor genera un código de emparejamiento (válido por 5 minutos).
-5. El usuario confirma el código en el dispositivo servidor (o en el cliente, según el flujo).
-6. El cliente confirma el pairing con el código.
-7. El servidor entrega un token Bearer y un refresh token.
+3. El cliente inicia el pairing enviando su identidad y un **challenge Ed25519** (firma sobre los bytes crudos del nonce, que prueba posesión de la clave).
+4. El servidor verifica la firma, crea la sesión (5 min, 5 intentos, uso único) y devuelve la sesión con la identidad del servidor. El **PIN de 6 dígitos se muestra en el servidor** y nunca viaja por la red.
+5. El usuario lee el PIN en el dispositivo servidor.
+6. El cliente confirma el pairing con `session_id` + `pin`.
+7. El servidor entrega un token Bearer opaco (y refresh token si lo soporta).
 8. En adelante, todas las solicitudes se realizan con el token en el header `Authorization`.
 
 ---
@@ -294,19 +306,34 @@ CLIENTE                              SERVIDOR
 └────┬────┘         └──────┬───────┘         └────┬─────┘
      │                     │                      │
      │ POST /pair/start    │                      │
+     │ {michi_id,          │                      │
+     │  public_key,        │                      │
+     │  challenge_nonce,   │                      │
+     │  challenge_sig}     │                      │
      │────────────────────►│                      │
-     │                     │ Genera pairing_code  │
+     │                     │ Valida challenge     │
+     │                     │ (firma Ed25519 sobre │
+     │                     │ bytes crudos del     │
+     │                     │ nonce)               │
+     │                     │ Crea sesión + PIN    │
+     │                     │ (5 min, 5 intentos,  │
+     │                     │ uso único)           │
      │                     │──────►               │
-     │ pairing_code        │                      │
+     │ session_id, expires │                      │
      │◄────────────────────│                      │
+     │                     │ (PIN mostrado en el  │
+     │                     │ servidor, nunca en   │
+     │                     │ el wire)             │
      │                     │                      │
      │ POST /pair/confirm  │                      │
+     │ {session_id, pin}   │                      │
      │────────────────────►│                      │
-     │                     │ Valida código        │
+     │                     │ Valida PIN           │
+     │                     │ (constante, keyed)   │
      │                     │──────►               │
      │                     │◄──────               │
      │                     │                      │
-     │                     │ Genera JWT           │
+     │                     │ Genera token opaco   │
      │                     │ (device_id, roles,   │
      │                     │  permissions, exp)   │
      │                     │──────►               │
@@ -317,7 +344,7 @@ CLIENTE                              SERVIDOR
      │ Authorization: Bearer <token>              │
      │───────────────────────────────────────────►│
      │                     │                      │
-     │                     │ Valida JWT           │
+     │                     │ Valida token        │
      │                     │ Verifica permisos    │
      │                     │◄─────────────────────│
      │ {data: [...]}       │                      │
@@ -325,7 +352,7 @@ CLIENTE                              SERVIDOR
 ```
 
 **Flujo:**
-- El token JWT contiene: `device_id`, `roles`, `permissions`, `iat`, `exp`.
+- El token es un bearer token **opaco** (no JWT): un valor aleatorio resuelto server-side con `device_id`, `roles` y `permissions` asociados.
 - El servidor valida el token en cada solicitud.
 - Los permisos se verifican contra el endpoint solicitado.
 - Los tokens expiran (por defecto en 1 hora) y se renuevan via `/token/refresh`.
