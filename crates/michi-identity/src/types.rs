@@ -1,7 +1,8 @@
 //! Canonical contract types for the Michi Link protocol.
 //!
-//! Single source of truth for service names, roles, API versions and the
-//! identity representation (Ed25519 + BLAKE3, base64url encoded).
+//! Single source of truth for service names, roles, API versions, identity
+//! representation (Ed25519 + BLAKE3, base64url), announce profiles and the
+//! unified pairing DTOs.
 
 use ed25519_dalek::VerifyingKey;
 use serde::{Deserialize, Serialize};
@@ -39,12 +40,6 @@ impl Service {
 impl fmt::Display for Service {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
-    }
-}
-
-impl From<Service> for serde_json::Value {
-    fn from(s: Service) -> Self {
-        serde_json::Value::String(s.as_str().to_string())
     }
 }
 
@@ -137,7 +132,7 @@ pub enum AuthStrategy {
 
 /// MichiId: BLAKE3 hash of the raw 32-byte Ed25519 public key.
 ///
-/// The canonical representation is base64url without padding (43 chars).
+/// The canonical wire representation is base64url without padding (43 chars).
 /// Hex is NOT a valid representation in contract v1.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MichiId(#[serde(with = "michi_id_serde")] pub Option<[u8; 32]>);
@@ -164,9 +159,8 @@ impl MichiId {
 
     /// Returns the base64url (no padding) representation, or "null".
     pub fn to_base64url(&self) -> String {
-        use base64::Engine;
         match self.0 {
-            Some(ref b) => base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(*b),
+            Some(ref b) => encode_base64url(b),
             None => "null".to_string(),
         }
     }
@@ -176,10 +170,7 @@ impl MichiId {
         if s == "null" {
             return Some(Self(None));
         }
-        use base64::Engine;
-        let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-            .decode(s)
-            .ok()?;
+        let bytes = decode_base64url_strict(s).ok()?;
         if bytes.len() != 32 {
             return None;
         }
@@ -210,10 +201,7 @@ mod michi_id_serde {
         S: Serializer,
     {
         match opt {
-            Some(ref b) => {
-                use base64::Engine;
-                s.serialize_str(&base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(*b))
-            }
+            Some(ref b) => s.serialize_str(&super::encode_base64url(b)),
             None => s.serialize_none(),
         }
     }
@@ -226,10 +214,7 @@ mod michi_id_serde {
         match s {
             Some(ref b64) if b64 == "null" => Ok(None),
             Some(ref b64) => {
-                use base64::Engine;
-                let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-                    .decode(b64)
-                    .map_err(D::Error::custom)?;
+                let bytes = super::decode_base64url_strict(b64).map_err(D::Error::custom)?;
                 if bytes.len() != 32 {
                     return Err(D::Error::custom(
                         "michi_id must be 32 bytes (43 base64url chars)",
@@ -244,11 +229,31 @@ mod michi_id_serde {
     }
 }
 
+/// Base64URL without padding — the ONLY wire encoding of contract v1.
+pub fn encode_base64url(data: &[u8]) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(data)
+}
+
+/// Strict Base64URL without padding. Rejects standard alphabet and padding.
+pub fn decode_base64url_strict(data: &str) -> Result<Vec<u8>, IdentityErrorLite> {
+    use base64::Engine;
+    base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(data)
+        .map_err(|_| IdentityErrorLite)
+}
+
+/// Lightweight error for decode helpers (avoids crate error cycles).
+#[derive(Debug, Clone, Copy)]
+pub struct IdentityErrorLite;
+
+impl fmt::Display for IdentityErrorLite {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid base64url")
+    }
+}
+
 /// Discovery announce payload (contract v1).
-///
-/// The signed variant carries the full identity group:
-/// `michi_id`, `public_key`, `signature`, `timestamp_ms`, `nonce`.
-/// The signature covers every functional field (see `DiscoveryEngine`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Announce {
     /// Stable device identifier, persisted across restarts.
@@ -306,6 +311,22 @@ impl Announce {
     }
 }
 
+/// Service profile used to build a signed announce (contract v1).
+///
+/// The profile must satisfy the canonical per-service invariants; the
+/// engine validates them before signing (`ContractViolation` otherwise).
+#[derive(Debug, Clone)]
+pub struct AnnounceProfile {
+    pub device_id: String,
+    pub name: String,
+    pub service: Service,
+    pub api_version: ApiVersion,
+    pub roles: Vec<Role>,
+    pub host: String,
+    pub port: u16,
+    pub features: BTreeMap<String, bool>,
+}
+
 /// Trust classification of a discovered peer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrustLevel {
@@ -340,6 +361,10 @@ pub struct PairingSession {
     pub expires_at: std::time::SystemTime,
     pub attempts_remaining: u8,
     pub consumed: bool,
+    /// Origin key of the pairing client (e.g. source IP) for rate limiting.
+    pub source_key: String,
+    /// Timestamp of the last confirm attempt.
+    pub last_attempt_at: std::time::SystemTime,
 }
 
 impl PairingSession {
@@ -348,11 +373,62 @@ impl PairingSession {
     }
 }
 
+/// POST /pair/start request (contract v1, snake_case only).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PairStartRequest {
+    pub device_name: String,
+    pub device_type: String,
+    pub roles: Vec<Role>,
+    pub auth_strategy: AuthStrategy,
+    pub michi_id: String,
+    pub public_key: String,
+    /// Base64url, >= 16 raw bytes.
+    pub challenge_nonce: String,
+    /// Ed25519 signature over the raw nonce bytes, base64url (86 chars).
+    pub challenge_signature: String,
+}
+
+/// POST /pair/start response (contract v1).
+///
+/// The PIN is displayed locally on the server and NEVER returned over the
+/// network.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PairStartResponse {
+    pub session_id: Uuid,
+    pub expires_at: String,
+    pub attempts_remaining: u8,
+    pub server_michi_id: String,
+    pub server_public_key: String,
+}
+
+/// POST /pair/confirm request (contract v1, snake_case only).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PairConfirmRequest {
+    pub session_id: Uuid,
+    pub pin: String,
+    pub michi_id: String,
+    pub public_key: String,
+}
+
+/// POST /pair/confirm response (contract v1).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PairConfirmResponse {
+    /// Opaque bearer token issued by the server.
+    pub token: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    pub expires_in: u64,
+    /// Stable device id of the paired client (from the server's perspective).
+    pub device_id: String,
+    /// Stable server id.
+    pub server_id: String,
+}
+
 /// Identity document embedded in `server/info` (contract v1).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IdentityDocument {
     pub michi_id: MichiId,
-    /// Ed25519 public key in base64.
+    /// Ed25519 public key in base64url (43 chars).
     pub public_key: String,
     /// Canonical identity scheme: "ed25519-blake3-v1".
     pub identity_scheme: String,
@@ -426,6 +502,23 @@ mod tests {
     }
 
     #[test]
+    fn test_wire_encoding_no_padding_or_std_chars() {
+        let bytes = [
+            0u8, 255, 128, 1, 2, 3, 250, 251, 252, 253, 254, 1, 2, 3, 4, 5,
+        ];
+        let b64 = encode_base64url(&bytes);
+        assert!(
+            !b64.contains('+') && !b64.contains('/') && !b64.contains('='),
+            "got {}",
+            b64
+        );
+        let decoded = decode_base64url_strict(&b64).unwrap();
+        assert_eq!(decoded, bytes);
+        // Standard alphabet is rejected by the strict decoder.
+        assert!(decode_base64url_strict("AB+/=").is_err());
+    }
+
+    #[test]
     fn test_service_serde() {
         let s = Service::StreamHiFi;
         let json = serde_json::to_string(&s).unwrap();
@@ -486,5 +579,35 @@ mod tests {
         a.nonce = Some("n".into());
         assert!(a.is_signed());
         assert!(!a.is_partially_signed());
+    }
+
+    #[test]
+    fn test_pairing_dtos_snake_case_roundtrip() {
+        let start = PairStartRequest {
+            device_name: "Michi Mobile".into(),
+            device_type: "mobile".into(),
+            roles: vec![Role::MobilePlayer, Role::RemoteController],
+            auth_strategy: AuthStrategy::Ed25519Challenge,
+            michi_id: "A".repeat(43),
+            public_key: "B".repeat(43),
+            challenge_nonce: "C".repeat(22),
+            challenge_signature: "D".repeat(86),
+        };
+        let json = serde_json::to_string(&start).unwrap();
+        assert!(json.contains("\"device_name\""));
+        assert!(json.contains("\"auth_strategy\""));
+        assert!(json.contains("\"challenge_nonce\""));
+        assert!(!json.contains("deviceName"));
+        assert!(!json.contains("camelCase"));
+        let des: PairStartRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(des.michi_id, start.michi_id);
+    }
+
+    #[test]
+    fn test_pairing_dtos_reject_camel_case() {
+        // serde denies unknown fields by default: camelCase aliases fail.
+        let json = r#"{"deviceName":"x","device_type":"mobile","roles":["mobile_player"],"auth_strategy":"ED25519_CHALLENGE","michi_id":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","public_key":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","challenge_nonce":"CCCCCCCCCCCCCCCCCCCCCC","challenge_signature":"DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"}"#;
+        let res: Result<PairStartRequest, _> = serde_json::from_str(json);
+        assert!(res.is_err(), "camelCase deviceName must be rejected");
     }
 }

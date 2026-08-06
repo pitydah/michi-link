@@ -44,7 +44,7 @@ impl QRConnector {
     ) -> Result<String, IdentityError> {
         Self::build_uri(
             &self.identity.michi_id().to_base64url(),
-            &self.identity.public_key_b64(),
+            &self.identity.public_key_base64url(),
             session_id,
             &expires_at.to_rfc3339(),
             endpoint,

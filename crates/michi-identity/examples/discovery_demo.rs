@@ -41,16 +41,22 @@ fn main() {
     features.insert("library".to_string(), true);
     features.insert("events".to_string(), false);
 
-    let announce = alice_engine.build_signed_announce(
-        "alice-player-01",
-        &[
+    let profile = michi_identity::AnnounceProfile {
+        device_id: "alice-player-01".into(),
+        name: alice.device_name().into(),
+        service: michi_identity::Service::MusicPlayer,
+        api_version: michi_identity::ApiVersion::V1,
+        roles: vec![
             michi_identity::Role::DesktopPlayer,
             michi_identity::Role::LibraryMaster,
         ],
-        "192.168.1.10",
-        8400,
-        &features,
-    );
+        host: "192.168.1.10".into(),
+        port: 8400,
+        features,
+    };
+    let announce = alice_engine
+        .build_signed_announce(&profile)
+        .expect("profile validation failed");
     println!("   Device id:     {}", announce.device_id);
     println!("   Service:       {}", announce.service);
     println!("   Has signature: {}", announce.signature.is_some());
