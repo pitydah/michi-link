@@ -270,6 +270,9 @@ impl PairingRegistry {
             return Err(IdentityError::RateLimited);
         }
         window.push_back(Instant::now());
+        // Drop sources whose window is fully expired: the map stays bounded
+        // even with an unbounded number of distinct source keys.
+        times.retain(|_, w| !w.is_empty());
         Ok(())
     }
 
@@ -713,12 +716,17 @@ mod tests {
     fn test_rate_limit_pair_start() {
         let registry = PairingRegistry::new();
         let server = server_identity();
-        // Fresh identity per start AND each session is expired immediately, so
-        // the per-source/per-identity caps stay at zero: the 60s rate window
-        // is what gets exhausted.
-        for i in 0..PAIR_START_RATE_LIMIT {
-            let (client, _) = client_identity();
-            let req = challenge_request(&client, "mobile");
+        // Pre-generate ALL identities BEFORE the loop: Argon2id generation is
+        // slow on CI, and interleaving it with the starts could push the
+        // sequence past the 60s rate window (flaky). With generation done
+        // upfront, the 20 starts happen within milliseconds of each other.
+        let identities: Vec<_> = (0..PAIR_START_RATE_LIMIT + 2)
+            .map(|_| client_identity())
+            .collect();
+        // Each session is expired immediately after start, so the per-source
+        // and per-identity caps stay at zero: the rate window is what trips.
+        for (i, (client, _)) in identities.iter().enumerate().take(PAIR_START_RATE_LIMIT) {
+            let req = challenge_request(client, "mobile");
             let (resp, _pin) = registry
                 .start_server(&server, &req, "rate-src")
                 .unwrap_or_else(|_| panic!("iteration {} failed", i));
@@ -726,15 +734,16 @@ mod tests {
                 session.expires_at = SystemTime::now() - Duration::from_secs(1);
             }
         }
-        let (client, _) = client_identity();
-        let req = challenge_request(&client, "mobile");
+        // The 21st start from the same source trips the rate limit.
+        let (client, _) = &identities[PAIR_START_RATE_LIMIT];
+        let req = challenge_request(client, "mobile");
         let err = registry
             .start_server(&server, &req, "rate-src")
             .unwrap_err();
         assert!(matches!(err, IdentityError::RateLimited), "got {:?}", err);
         // A different source is not rate limited.
-        let (client2, _) = client_identity();
-        let req2 = challenge_request(&client2, "mobile");
+        let (client2, _) = &identities[PAIR_START_RATE_LIMIT + 1];
+        let req2 = challenge_request(client2, "mobile");
         assert!(registry.start_server(&server, &req2, "rate-other").is_ok());
     }
 }

@@ -459,6 +459,49 @@ function main() {
     error: { code: "NOT_FOUND" },
   });
 
+  // --- Schema <-> OpenAPI convergence (pairing DTOs) ---
+  // Every required property of the canonical JSON Schemas must exist as a
+  // property of the matching OpenAPI component, and the OpenAPI must not
+  // carry legacy pairing fields.
+  const openapiText = fs.readFileSync(path.join(ROOT, "openapi/michi-link-v1.yaml"), "utf8");
+  const openapiLines = openapiText.split("\n");
+
+  function openapiComponentBlock(componentName) {
+    const marker = `    ${componentName}:`;
+    const start = openapiLines.findIndex((l) => l === marker);
+    if (start === -1) return null;
+    const lines = [];
+    for (let i = start + 1; i < openapiLines.length; i++) {
+      const line = openapiLines[i];
+      if (line.length > 0 && line[0] !== " " && line[0] !== "#") break;
+      if (/^    \S/.test(line) && !line.startsWith("    #")) break;
+      lines.push(line);
+    }
+    return lines.join("\n");
+  }
+
+  const openapiPairs = [
+    ["pair-start.schema.json", "PairStartRequest"],
+    ["pair-start-response.schema.json", "PairStartResponse"],
+    ["pair-confirm.schema.json", "PairConfirmRequest"],
+    ["pair-confirm-response.schema.json", "PairConfirmResponse"],
+  ];
+  for (const [schemaFile, component] of openapiPairs) {
+    const schema = ajv.getSchema(SCHEMA_BASE + schemaFile).schema;
+    const block = openapiComponentBlock(component);
+    const missing = (schema.required || []).filter((prop) => !block || !new RegExp(`^ {8}${prop}:`, "m").test(block));
+    check(
+      `schema <-> openapi: ${schemaFile} required properties exist in ${component}`,
+      block !== null && missing.length === 0,
+      null
+    );
+    if (missing.length > 0) console.log(`       missing in ${component}: ${missing.join(", ")}`);
+  }
+  // OpenAPI must not reintroduce legacy pairing fields.
+  for (const legacy of ["pairing_code", "pin_proof", "pin_proof_signature", "signedChallenge", "pairingId"]) {
+    check(`openapi: legacy field "${legacy}" absent`, !openapiText.includes(legacy), null);
+  }
+
   const total = passed + failed;
   console.log(`\n${total} checks: ${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);

@@ -240,3 +240,17 @@ QR pairing (`src/qr.rs`): roundtrip, scheme/host validation, missing params, non
 - [docs/DISCOVERY.md](DISCOVERY.md) — how devices find each other before pairing
 - [docs/RECEIVERS_V1_LITE.md](RECEIVERS_V1_LITE.md) — receiver pairing (`RECEIVER_BUTTON`)
 - [crates/michi-identity/](../crates/michi-identity/) — reference implementation
+
+## Known gap: explicit revocation endpoint
+
+Contract v1 has **no explicit unpair/revocation endpoint** (the legacy
+`DELETE /pair/device` was retired and no `/devices/revoke` exists in the
+current OpenAPI). Pairing state is bounded by design:
+
+- sessions expire after 5 minutes and are cleaned up automatically;
+- issued tokens are server-side resources revoked by the server's own
+  token management (see `/token/refresh` and server token stores).
+
+A dedicated revocation endpoint is future contract work and must go through
+the contract change process before any implementation. Consumers must not
+invent their own revocation paths.
