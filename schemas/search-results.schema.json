@@ -5,10 +5,12 @@
   "description": "Global search results across tracks, albums, artists, and playlists",
   "type": "object",
   "required": ["query"],
+  "additionalProperties": false,
   "properties": {
-    "query": { "type": "string" },
+    "query": { "type": "string", "minLength": 1 },
     "tracks": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "data": { "type": "array", "items": { "$ref": "track.schema.json" } },
         "total": { "type": "integer", "minimum": 0 }
@@ -16,6 +18,7 @@
     },
     "albums": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "data": { "type": "array", "items": { "$ref": "album.schema.json" } },
         "total": { "type": "integer", "minimum": 0 }
@@ -23,6 +26,7 @@
     },
     "artists": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "data": { "type": "array", "items": { "$ref": "artist.schema.json" } },
         "total": { "type": "integer", "minimum": 0 }
@@ -30,6 +34,7 @@
     },
     "playlists": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "data": { "type": "array", "items": { "$ref": "playlist.schema.json" } },
         "total": { "type": "integer", "minimum": 0 }

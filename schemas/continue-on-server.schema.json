@@ -5,6 +5,7 @@
   "description": "Request payload for the Continue-on-Server handoff flow",
   "type": "object",
   "required": ["local_tracks", "queue", "current_index", "position_ms", "playing"],
+  "additionalProperties": false,
   "properties": {
     "local_tracks": {
       "type": "array",
@@ -12,6 +13,7 @@
       "items": {
         "type": "object",
         "required": ["local_track_id", "title", "artist"],
+        "additionalProperties": false,
         "properties": {
           "local_track_id": { "type": "string" },
           "michi_track_id": { "type": "string" },

@@ -5,6 +5,7 @@
   "description": "Queue transfer request for Continue-on-Server handoff",
   "type": "object",
   "required": ["track_ids", "current_index", "position_ms", "source"],
+  "additionalProperties": false,
   "properties": {
     "track_ids": {
       "type": "array",

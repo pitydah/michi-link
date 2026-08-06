@@ -17,7 +17,18 @@ Consulta estática de capacidades. Complementa `features` en `server/info`.
 ```json
 {
   "api_version": "v1",
-  "michi_link_version": "1.0.0-alpha",
+  "service": "michi-micro-server",
+  "roles": ["music_server", "library_host", "playback_host"],
+  "features": {
+    "library": true,
+    "search": true,
+    "streaming": true,
+    "sync_manifest": true,
+    "playback": true,
+    "queue": true,
+    "artwork": true,
+    "events": false
+  },
   "capabilities": {
     "streaming": {
       "formats": ["flac", "mp3", "ogg", "aac", "wav"],

@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "SIGNATURE_INVALID",
+    "message": "The Ed25519 signature failed verification.",
+    "details": {
+      "algorithm": "ed25519"
+    },
+    "request_id": "b8e4a5f8-c02b-4ff8-afe7-f8091a2b3c4d"
+  }
+}

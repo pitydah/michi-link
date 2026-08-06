@@ -62,9 +62,11 @@ Cada proyecto del ecosistema Michi implementa Michi Link a su propio ritmo. Esta
 
 | Proyecto | Formato actual |
 |----------|----------------|
-| Michi Music Player | **Oficial v1** (`service`, `name`, `server_id`, `version`, `api_version`, `michi_link_version`, `roles`, `features`, `auth`) |
-| Michi Micro Server | **Oficial v1** (mismos campos) |
+| Michi Music Player | **Contrato definido** (`service`, `name`, `version`, `api_version`, `roles`, `features`, `auth`) — implementación aún no observada (sin evidencia E2E) |
+| Michi Micro Server | **Contrato definido** (mismos campos) — implementación con evidencia UNIT_PASS, sin evidencia E2E |
 | Michi Music Mobile | **Consume.** Mobile no es servidor, no expone /server/info. |
+
+**Nota:** "Contrato definido" indica que el formato sigue el contrato canónico; NO significa que la implementación haya sido medida. La observación de implementación real queda pendiente de evidencia E2E (ver IMPLEMENTATION_MATRIX.md).
 
 **No se acepta el formato antiguo** (`server_name`, `device_id`, `capabilities`). Clientes que encuentren ese formato deben tratarlo como servidor incompatible.
 

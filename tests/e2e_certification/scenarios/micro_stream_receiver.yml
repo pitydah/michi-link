@@ -14,7 +14,6 @@ checks:
     expected_json:
       service: michi-stream-standard
       api_version: v1-lite
-      michi_link_version: 1.0.0-alpha
       auth:
         required: true
         strategy: RECEIVER_BUTTON
@@ -29,7 +28,7 @@ checks:
     expected_status: 200
     expected_json:
       status: pairing_window_open
-      pairing_window_seconds: 120
+      pairing_window_seconds: 300
     extract:
       stream_nonce: nonce
 
@@ -114,7 +113,7 @@ checks:
     expected_status: 409
     expected_json:
       error:
-        code: pairing_window_closed
+        code: PAIRING_EXPIRED
 
   - name: stream_auth_rejects_invalid
     method: POST
@@ -127,4 +126,4 @@ checks:
     expected_status: 401
     expected_json:
       error:
-        code: invalid_token
+        code: UNAUTHORIZED

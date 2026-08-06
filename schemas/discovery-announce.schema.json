@@ -2,47 +2,54 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/discovery-announce.schema.json",
   "title": "DiscoveryAnnounce",
-  "description": "UDP broadcast/ multicast announce payload for device discovery",
+  "description": "UDP multicast announce payload for device discovery. Multicast group 224.0.0.167:53318, interval 30s, offline timeout 90s, max 8KiB. Signed announces require the full signature group (all-or-nothing).",
   "type": "object",
-  "required": ["device_id", "device_name", "device_type", "roles", "api_version", "host", "port"],
+  "required": ["device_id", "name", "service", "roles", "api_version", "host", "port", "features"],
+  "additionalProperties": false,
   "properties": {
     "device_id": {
       "type": "string",
-      "description": "Unique identifier for this device",
+      "description": "Stable unique identifier for this device",
       "minLength": 1,
-      "pattern": "^[a-zA-Z0-9_-]+$",
-      "examples": ["michi-server-01"]
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "examples": ["michi-player-01"]
     },
-    "device_name": {
+    "name": {
       "type": "string",
       "description": "Human-readable device name",
       "minLength": 1,
       "maxLength": 128,
-      "examples": ["Living Room Server"]
+      "examples": ["Michi Music Player"]
     },
-    "device_type": {
+    "service": {
       "type": "string",
-      "description": "Device type identifier",
-      "enum": ["michi_server", "michi_receiver", "michi_client", "michi_bridge"]
+      "description": "Service identifier",
+      "enum": ["michi-music-player", "michi-micro-server", "michi-mobile", "michi-stream-standard", "michi-stream-hifi"],
+      "examples": ["michi-music-player"]
     },
     "roles": {
       "type": "array",
       "description": "Roles this device fulfills on the network",
       "items": {
         "type": "string",
-        "enum": ["server", "receiver", "controller", "source"]
+        "enum": ["desktop_player", "library_master", "sync_host", "music_server", "library_host", "playback_host", "mobile_player", "remote_controller", "sync_client", "audio_receiver"]
       },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "minItems": 1,
+      "examples": [["desktop_player", "library_master", "sync_host"]]
     },
     "api_version": {
       "type": "string",
-      "description": "API version string",
-      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
-      "examples": ["1.0.0"]
+      "description": "API contract version",
+      "enum": ["v1", "v1-lite"],
+      "examples": ["v1"]
     },
     "host": {
       "type": "string",
-      "description": "IP address or hostname",
+      "description": "IP address or hostname for API connections",
+      "minLength": 1,
+      "maxLength": 255,
       "examples": ["192.168.1.100"]
     },
     "port": {
@@ -50,38 +57,64 @@
       "description": "TCP port for API connections",
       "minimum": 1,
       "maximum": 65535,
-      "examples": [5741]
+      "examples": [8400]
     },
-    "capabilities": {
+    "features": {
       "type": "object",
-      "description": "Brief capability flags for quick filtering",
-      "properties": {
-        "audio_formats": {
-          "type": "array",
-          "description": "Supported audio formats",
-          "items": { "type": "string" },
-          "examples": [["flac", "mp3"]]
-        },
-        "sync": {
-          "type": "boolean",
-          "description": "Whether multi-device sync is supported"
-        }
-      }
+      "description": "Boolean capability flags for quick filtering",
+      "additionalProperties": { "type": "boolean" },
+      "minProperties": 1,
+      "examples": [{ "library": true, "streaming": true, "remote_control": true, "events": false }]
     },
     "michi_id": {
-      "oneOf": [
-        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-        { "type": "null" }
-      ],
-      "description": "Ed25519-derived identity hash, or null if not available"
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), 43 chars",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
     },
     "public_key": {
       "type": "string",
-      "description": "Ed25519 public key in base64, present when announce is signed"
+      "description": "Ed25519 public key in base64url",
+      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$"
     },
     "signature": {
       "type": "string",
-      "description": "Ed25519 signature of the announce payload in base64"
+      "description": "Ed25519 signature of the announce payload in base64url",
+      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$"
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "description": "Epoch milliseconds when the announce was signed",
+      "minimum": 0,
+      "examples": [1785974884586]
+    },
+    "nonce": {
+      "type": "string",
+      "description": "Random nonce in base64url, at least 22 chars (16 bytes)",
+      "minLength": 22,
+      "pattern": "^[A-Za-z0-9_-]{22,}$"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "michi_id": {},
+          "public_key": {},
+          "signature": {},
+          "timestamp_ms": {},
+          "nonce": {}
+        },
+        "anyOf": [
+          { "properties": { "michi_id": {} }, "required": ["michi_id"] },
+          { "properties": { "public_key": {} }, "required": ["public_key"] },
+          { "properties": { "signature": {} }, "required": ["signature"] },
+          { "properties": { "timestamp_ms": {} }, "required": ["timestamp_ms"] },
+          { "properties": { "nonce": {} }, "required": ["nonce"] }
+        ]
+      },
+      "then": {
+        "required": ["michi_id", "public_key", "signature", "timestamp_ms", "nonce"]
+      }
+    }
+  ]
 }

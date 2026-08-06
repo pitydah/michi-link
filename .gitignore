@@ -3,3 +3,8 @@
 **/__pycache__/
 *.pyc
 .pytest_cache/
+# Local AI runtime state
+.atl/
+
+# Rust: library crate lockfile (single crate, not a workspace)
+crates/michi-identity/Cargo.lock

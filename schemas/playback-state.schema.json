@@ -5,6 +5,7 @@
   "description": "Current playback state of a device or session",
   "type": "object",
   "required": ["state", "device_id", "session_id"],
+  "additionalProperties": false,
   "properties": {
     "state": {
       "type": "string",

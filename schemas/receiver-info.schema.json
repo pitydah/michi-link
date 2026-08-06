@@ -2,97 +2,134 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/receiver-info.schema.json",
   "title": "ReceiverInfo",
-  "description": "Lightweight receiver device info used in v1-lite protocol",
+  "description": "Canonical receiver device info for the v1-lite protocol. Receivers do not manage libraries, playlists or sync.",
   "type": "object",
-  "required": ["device_id", "device_name", "device_type", "api_version", "host", "port"],
+  "required": ["service", "name", "version", "firmware", "api_version", "roles", "auth", "audio", "features"],
+  "additionalProperties": false,
   "properties": {
     "device_id": {
       "type": "string",
       "description": "Unique receiver identifier",
       "minLength": 1,
-      "pattern": "^[a-zA-Z0-9_-]+$",
-      "examples": ["receiver_kitchen_01"]
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "examples": ["rec-std-001"]
     },
-    "device_name": {
+    "service": {
+      "type": "string",
+      "description": "Receiver service identifier (quality tier)",
+      "enum": ["michi-stream-standard", "michi-stream-hifi"],
+      "examples": ["michi-stream-standard"]
+    },
+    "name": {
       "type": "string",
       "description": "Human-readable receiver name",
       "minLength": 1,
       "maxLength": 128,
-      "examples": ["Kitchen Receiver"]
+      "examples": ["Michi Music Stream Standard"]
     },
-    "device_type": {
+    "version": {
       "type": "string",
-      "description": "Receiver device type (quality tier)",
-      "enum": ["michi_stream_standard", "michi_stream_hifi"]
+      "description": "Application version (internal, not contract version)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["0.1.0"]
+    },
+    "firmware": {
+      "type": "string",
+      "description": "Receiver firmware version",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["0.1.0"]
     },
     "api_version": {
       "type": "string",
-      "description": "API version string",
-      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
-      "examples": ["1.0.0"]
+      "description": "API contract version. Always 'v1-lite' for receivers.",
+      "enum": ["v1-lite"],
+      "examples": ["v1-lite"]
     },
-    "host": {
-      "type": "string",
-      "description": "IP address or hostname",
-      "examples": ["192.168.1.101"]
+    "roles": {
+      "type": "array",
+      "description": "Receiver roles. Always exactly audio_receiver.",
+      "items": { "type": "string", "enum": ["audio_receiver"] },
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "examples": [["audio_receiver"]]
     },
-    "port": {
-      "type": "integer",
-      "description": "TCP port for API connections",
-      "minimum": 1,
-      "maximum": 65535,
-      "examples": [5742]
-    },
-    "firmware_version": {
-      "type": "string",
-      "description": "Receiver firmware version",
-      "examples": ["2.1.0"]
-    },
-    "capabilities": {
+    "auth": {
       "type": "object",
-      "description": "Receiver capability flags",
+      "description": "Authentication configuration for the receiver",
+      "additionalProperties": false,
+      "required": ["required", "strategy", "token_refresh"],
       "properties": {
-        "sample_rates": {
-          "type": "array",
-          "description": "Supported sample rates in Hz",
-          "items": { "type": "integer" },
-          "examples": [[44100, 48000, 96000]]
+        "required": {
+          "type": "boolean",
+          "enum": [true],
+          "description": "Authentication is always required for receivers"
         },
-        "bit_depths": {
-          "type": "array",
-          "description": "Supported bit depths",
-          "items": { "type": "integer" },
-          "examples": [[16, 24]]
+        "strategy": {
+          "type": "string",
+          "description": "Auth strategy used by the receiver",
+          "enum": ["RECEIVER_BUTTON"],
+          "examples": ["RECEIVER_BUTTON"]
         },
-        "max_channels": {
-          "type": "integer",
-          "description": "Maximum audio channels",
-          "minimum": 1,
-          "maximum": 8
-        },
-        "formats": {
-          "type": "array",
-          "description": "Supported audio formats",
-          "items": { "type": "string" },
-          "examples": [["pcm", "flac"]]
+        "token_refresh": {
+          "type": "boolean",
+          "description": "Whether /token/refresh is supported. Always false for receivers.",
+          "enum": [false],
+          "examples": [false]
         }
       }
     },
-    "volume": {
-      "type": "integer",
-      "description": "Current volume level (0–100)",
-      "minimum": 0,
-      "maximum": 100,
-      "examples": [50]
+    "audio": {
+      "type": "object",
+      "description": "Supported audio formats and limits",
+      "additionalProperties": false,
+      "required": ["codecs", "max_sample_rate", "max_channels"],
+      "properties": {
+        "codecs": {
+          "type": "array",
+          "description": "Supported PCM codecs. Standard: pcm_s16le only; Hi-Fi: pcm_s16le + pcm_s24le.",
+          "items": { "type": "string", "enum": ["pcm_s16le", "pcm_s24le"] },
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "examples": [["pcm_s16le"]]
+        },
+        "max_sample_rate": {
+          "type": "integer",
+          "description": "Maximum supported sample rate in Hz",
+          "minimum": 8000,
+          "maximum": 384000,
+          "examples": [96000]
+        },
+        "max_channels": {
+          "type": "integer",
+          "description": "Maximum number of audio channels",
+          "minimum": 1,
+          "maximum": 8,
+          "examples": [2]
+        }
+      }
     },
-    "is_playing": {
-      "type": "boolean",
-      "description": "Whether the receiver is currently playing audio"
-    },
-    "session_id": {
-      "type": "string",
-      "description": "Active playback session identifier",
-      "examples": ["session_x1y2z3"]
+    "features": {
+      "type": "object",
+      "description": "Boolean feature flags supported by the receiver",
+      "additionalProperties": false,
+      "required": ["session", "volume", "heartbeat"],
+      "properties": {
+        "session": {
+          "type": "boolean",
+          "description": "Whether the receiver supports audio sessions"
+        },
+        "volume": {
+          "type": "boolean",
+          "description": "Whether the receiver supports volume control"
+        },
+        "heartbeat": {
+          "type": "boolean",
+          "description": "Whether the receiver sends heartbeats"
+        }
+      }
     }
   }
 }

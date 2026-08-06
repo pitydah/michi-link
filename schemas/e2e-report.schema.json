@@ -5,6 +5,7 @@
   "description": "Formal E2E certification report for Michi Link API scenarios",
   "type": "object",
   "required": ["scenario", "name", "status", "server", "client", "timestamp", "checks"],
+  "additionalProperties": false,
   "properties": {
     "scenario": {
       "type": "string",
@@ -15,6 +16,8 @@
     "name": {
       "type": "string",
       "description": "Human-readable scenario name",
+      "minLength": 1,
+      "maxLength": 128,
       "examples": ["mobile_player_pairing"]
     },
     "status": {
@@ -25,17 +28,37 @@
     "server": {
       "type": "object",
       "required": ["type", "version"],
+      "additionalProperties": false,
       "properties": {
-        "type": { "type": "string", "examples": ["michi-music-player", "michi-micro-server"] },
-        "version": { "type": "string", "examples": ["0.1.0"] }
+        "type": {
+          "type": "string",
+          "description": "Server service identifier",
+          "enum": ["michi-music-player", "michi-micro-server", "michi-mobile", "michi-stream-standard", "michi-stream-hifi"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Server application version",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "examples": ["0.1.0"]
+        }
       }
     },
     "client": {
       "type": "object",
       "required": ["type", "version"],
+      "additionalProperties": false,
       "properties": {
-        "type": { "type": "string", "examples": ["michi-mobile", "michi-music-player"] },
-        "version": { "type": "string", "examples": ["0.1.0"] }
+        "type": {
+          "type": "string",
+          "description": "Client service identifier",
+          "enum": ["michi-music-player", "michi-micro-server", "michi-mobile", "michi-stream-standard", "michi-stream-hifi"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Client application version",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "examples": ["0.1.0"]
+        }
       }
     },
     "timestamp": {
@@ -49,10 +72,11 @@
       "items": {
         "type": "object",
         "required": ["name", "status"],
+        "additionalProperties": false,
         "properties": {
-          "name": { "type": "string" },
+          "name": { "type": "string", "minLength": 1 },
           "status": { "type": "string", "enum": ["pass", "fail", "skip"] },
-          "detail": { "type": "string" }
+          "detail": { "type": "string", "maxLength": 512 }
         }
       },
       "minItems": 1
@@ -60,11 +84,13 @@
     "errors": {
       "type": "array",
       "description": "Error messages if status is fail or partial",
-      "items": { "type": "string" }
+      "items": { "type": "string", "minLength": 1 }
     },
     "certified_by": {
       "type": "string",
       "description": "Email or username of the certifier",
+      "minLength": 1,
+      "maxLength": 128,
       "examples": ["desarrollador@example.com"]
     },
     "certified_at": {

@@ -5,6 +5,7 @@
   "description": "Unified track identity for deduplication and handoff across the Michi ecosystem",
   "type": "object",
   "required": ["michi_track_id", "source_device", "source_track_id"],
+  "additionalProperties": false,
   "properties": {
     "michi_track_id": {
       "type": "string",

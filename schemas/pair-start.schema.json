@@ -5,43 +5,57 @@
   "description": "Initiates a pairing handshake between two devices",
   "type": "object",
   "required": ["device_name", "device_type"],
+  "additionalProperties": false,
   "properties": {
     "device_name": {
       "type": "string",
       "description": "Initiating device display name",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "examples": ["Michi Mobile"]
     },
     "device_type": {
       "type": "string",
       "description": "Initiating device type",
-      "examples": ["mobile", "desktop", "receiver"]
+      "enum": ["mobile", "desktop", "receiver"],
+      "examples": ["mobile"]
     },
     "roles": {
       "type": "array",
-      "description": "Requested roles for this device",
-      "items": { "type": "string" }
-    },
-    "capabilities": {
-      "type": "object",
-      "description": "Device capabilities"
+      "description": "Requested roles for this device (optional)",
+      "items": {
+        "type": "string",
+        "enum": ["desktop_player", "library_master", "sync_host", "music_server", "library_host", "playback_host", "mobile_player", "remote_controller", "sync_client", "audio_receiver"]
+      },
+      "uniqueItems": true,
+      "examples": [["mobile_player", "remote_controller", "sync_client"]]
     },
     "auth_strategy": {
       "type": "string",
       "enum": ["PLAYER_PASSWORD", "SERVER_CODE", "RECEIVER_BUTTON", "ED25519_CHALLENGE", "LEGACY"],
-      "description": "Desired auth strategy"
+      "description": "Desired auth strategy",
+      "examples": ["ED25519_CHALLENGE"]
+    },
+    "michi_id": {
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), 43 chars",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
     },
     "public_key": {
       "type": "string",
-      "description": "Ed25519 public key (base64) for ED25519_CHALLENGE strategy"
+      "description": "Ed25519 public key in base64url, for ED25519_CHALLENGE strategy",
+      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$"
     },
     "challenge_nonce": {
       "type": "string",
-      "description": "Random nonce (base64) for ED25519_CHALLENGE challenge-response"
+      "description": "Random nonce in base64url, at least 22 chars (16 bytes), for ED25519_CHALLENGE challenge-response",
+      "minLength": 22,
+      "pattern": "^[A-Za-z0-9_-]{22,}$"
     },
     "challenge_signature": {
       "type": "string",
-      "description": "Ed25519 signature of the nonce (base64), proves possession of secret key"
+      "description": "Ed25519 signature of the nonce in base64url, proves possession of the secret key",
+      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$"
     }
   }
 }

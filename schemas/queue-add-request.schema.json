@@ -5,6 +5,7 @@
   "description": "Add one or more tracks to the playback queue",
   "type": "object",
   "required": ["track_ids"],
+  "additionalProperties": false,
   "properties": {
     "track_ids": {
       "type": "array",

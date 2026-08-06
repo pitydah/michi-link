@@ -5,6 +5,7 @@
   "description": "Current playback queue with track listing and state",
   "type": "object",
   "required": ["items", "current_index"],
+  "additionalProperties": false,
   "properties": {
     "items": {
       "type": "array",

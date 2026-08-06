@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "REPLAY_DETECTED",
+    "message": "The request nonce was already seen within the replay window.",
+    "details": {
+      "window_ms": 300000
+    },
+    "request_id": "c9f5b6a9-d13c-4ff9-afe8-091a2b3c4d5e"
+  }
+}

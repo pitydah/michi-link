@@ -1,4 +1,8 @@
+> **HISTORICAL** — kept for reference only; NOT part of the active contract.
+
 # Compatibilidad de Versiones
+
+> **HISTORICAL NOTE:** This document describes the pre-canonicalization contract (`michi-link-server`, `capabilities`, multiroom). The active compatibility contract is defined in `docs/COMPATIBILITY_PLAYER_MICRO_MOBILE.md` and the migration matrix in `docs/DOWNSTREAM_MIGRATION.md`. Kept for reference only.
 
 ## Formato de Versión
 

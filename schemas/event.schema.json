@@ -5,34 +5,24 @@
   "description": "WebSocket event envelope for real-time communication",
   "type": "object",
   "required": ["type", "data", "timestamp"],
+  "additionalProperties": false,
   "properties": {
     "type": {
       "type": "string",
-      "description": "Event type identifier",
-      "minLength": 1,
-      "examples": [
-        "playback.state_changed",
-        "playback.track_changed",
-        "queue.updated",
-        "library.updated",
-        "device.online",
-        "device.offline",
-        "room.updated",
-        "sync.manifest",
-        "sync.delta",
-        "pair.completed",
-        "pair.revoked"
-      ]
+      "description": "Event type identifier. Contractual types are defined in EVENTS.md.",
+      "enum": ["playback.state_changed"],
+      "examples": ["playback.state_changed"]
     },
     "data": {
       "type": "object",
-      "description": "Event-specific payload data"
+      "description": "Event-specific payload data",
+      "additionalProperties": true
     },
     "timestamp": {
       "type": "string",
       "description": "ISO 8601 timestamp when the event was generated",
       "format": "date-time",
-      "examples": ["2025-06-20T10:05:00Z"]
+      "examples": ["2026-06-29T12:00:00Z"]
     }
   }
 }

@@ -1,14 +1,18 @@
 # E2E Test Plan — Michi Link API v1.0.0-alpha
 
-## Escenario A: Mobile ↔ Player
+> Los IDs de escenario siguen `tests/e2e_certification/SCENARIOS.md` (fuente): E2E-01, E2E-03, E2E-04, E2E-05, E2E-07, E2E-08, E2E-09. Los IDs E2E-02, E2E-06 y E2E-10 NO existen.
+
+## Escenario A: Mobile ↔ Player (E2E-01, E2E-03)
 
 **Objetivo:** Verificar que Michi Music Mobile puede descubrir, emparejar, explorar y controlar Michi Music Player.
+
+**Server:** Player (port 8400) — ver `tests/e2e_certification/SCENARIOS.md`.
 
 ### A.1 Discovery
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 1 | Mobile escanea red vía UDP multicast (puerto 42069) | Recibe announce de Player |
+| 1 | Mobile escanea red vía UDP multicast (`224.0.0.167:53318`, announce firmado) | Recibe announce de Player |
 | 2 | Mobile consulta `GET /api/v1/server/info` del Player | Recibe service: `michi-music-player`, auth.strategy: `PLAYER_PASSWORD` |
 
 ### A.2 Pairing (PLAYER_PASSWORD)
@@ -58,9 +62,11 @@
 
 ---
 
-## Escenario B: Mobile ↔ Micro Server
+## Escenario B: Mobile ↔ Micro Server (E2E-04, E2E-05)
 
 **Objetivo:** Verificar que Mobile puede emparejar, sincronizar, descargar y controlar Michi Micro Server.
+
+**Server:** Micro Server (port 8500) — ver `tests/e2e_certification/SCENARIOS.md`.
 
 ### B.1 Discovery
 
@@ -122,7 +128,7 @@
 
 ---
 
-## Escenario C: Player ↔ Micro Server
+## Escenario C: Player ↔ Micro Server (E2E-07)
 
 **Objetivo:** Verificar que Michi Music Player puede importar su biblioteca en Michi Micro Server y delegar reproducción.
 
@@ -155,54 +161,58 @@
 
 ---
 
-## Escenario D: Micro Server ↔ Music Stream
+## Escenario D: Micro Server ↔ Music Stream (E2E-09)
 
 **Objetivo:** Verificar que Michi Micro Server puede parear, enviar sesión y controlar un Michi Music Stream físico.
+
+**Server:** Micro Server (port 8500) + Stream Simulator — ver `tests/e2e_certification/SCENARIOS.md`.
 
 ### D.1 Discovery & Pairing
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 1 | Stream enciende y anuncia vía UDP | Micro Server recibe announce |
-| 2 | Stream envía `POST /receiver/pair/start` a Micro Server | pairing_code |
+| 1 | Stream enciende y anuncia vía UDP (`224.0.0.167:53318`) | Micro Server recibe announce |
+| 2 | Stream envía `POST /api/v1/pair/start` (device_type: receiver) a Micro Server | pairing_code |
 | 3 | Usuario confirma en Micro Server | — |
-| 4 | Stream recibe token interno | device_id + token |
+| 4 | Stream confirma `POST /api/v1/pair/confirm` y recibe token interno | device_id + token |
 
 ### D.2 Heartbeat
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 1 | Stream envía `POST /receiver/heartbeat` cada 10s | server_time, next_action |
+| 1 | Stream envía `POST /api/v1/receiver-lite/heartbeat` cada 10s | server_time, next_action |
 | 2 | Micro Server ve Stream como online | GET /receivers muestra online: true |
 
 ### D.3 Session Start
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 1 | Micro Server envía `POST /receiver/session/start` con stream_url + token | session_id, state: playing |
+| 1 | Micro Server envía `POST /api/v1/receiver-lite/session` con stream_url + token | session_id, state: playing |
 | 2 | Stream reproduce audio desde stream_url | Audio audible en salida física |
 
 ### D.4 Volume Control
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 1 | Micro Server envía `POST /receiver/volume` con volume: 50 | volume: 50 |
+| 1 | Micro Server envía `POST /api/v1/receiver-lite/volume` con volume: 50 | volume: 50 |
 | 2 | Volumen del Stream cambia | Audible en hardware |
 
 ### D.5 Session Stop
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 1 | Micro Server envía `POST /receiver/session/stop` | previous_state: playing |
+| 1 | Micro Server envía `DELETE /api/v1/receiver-lite/session` | previous_state: playing |
 | 2 | Stream detiene reproducción | Silencio en salida física |
 
 ---
 
 ## Resumen de Escenarios
 
-| Escenario | Proyectos | Prioridad | Depende de |
-|-----------|-----------|-----------|------------|
-| A | Mobile ↔ Player | Crítica | Player expone endpoints REST |
-| B | Mobile ↔ Micro Server | Crítica | Micro Server funcional |
-| C | Player ↔ Micro Server | Alta | Ambos implementan import |
-| D | Micro Server ↔ Stream | Media | Firmware Stream funcional |
+| Escenario | E2E ID (SCENARIOS.md) | Proyectos | Prioridad | Depende de |
+|-----------|------------------------|-----------|-----------|------------|
+| A | E2E-01 (pairing), E2E-03 (playback) | Mobile ↔ Player | Crítica | Player expone endpoints REST |
+| B | E2E-04 (pairing), E2E-05 (download/sync) | Mobile ↔ Micro Server | Crítica | Micro Server funcional |
+| C | E2E-07 | Player ↔ Micro Server | Alta | Ambos implementan import |
+| D | E2E-09 | Micro Server ↔ Stream | Media | Firmware Stream funcional |
+
+> NO existen escenarios E2E-02, E2E-06 ni E2E-10 en SCENARIOS.md.

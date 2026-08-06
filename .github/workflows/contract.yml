@@ -1,0 +1,90 @@
+name: Contract
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  json-contract:
+    name: JSON contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            tests/contract/package-lock.json
+            tests/identity_contract/package-lock.json
+      - name: Install contract test dependencies
+        working-directory: tests/contract
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run contract tests
+        working-directory: tests/contract
+        run: npm test
+      - name: Install identity contract test dependencies
+        working-directory: tests/identity_contract
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run identity contract tests
+        working-directory: tests/identity_contract
+        run: npm test
+
+  rust-identity:
+    name: Rust identity crate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        working-directory: crates/michi-identity
+        run: cargo fmt --check
+      - name: Lint with Clippy
+        working-directory: crates/michi-identity
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Run tests
+        working-directory: crates/michi-identity
+        run: cargo test --all-targets --all-features
+
+  openapi:
+    name: OpenAPI spec lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Lint OpenAPI spec
+        run: npx --yes @redocly/cli@2 lint openapi/michi-link-v1.yaml --extends=minimal
+
+  contract-policy:
+    name: Contract policy scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run contract policy scan
+        run: python3 scripts/contract-policy.py
+      - name: Write job summary
+        if: always()
+        run: 'echo "## contract-policy job result: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"'

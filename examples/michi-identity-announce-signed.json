@@ -1,16 +1,26 @@
 {
-  "michi_id": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
-  "device_id": "550e8400-e29b-41d4-a716-446655440000",
-  "device_name": "Michi Micro Server",
-  "device_type": "michi_server",
-  "roles": ["home_server", "library_server"],
-  "api_version": "1.0.0",
+  "device_id": "michi-micro-server-01",
+  "name": "Michi Micro Server",
+  "service": "michi-micro-server",
+  "roles": [
+    "music_server",
+    "library_host",
+    "playback_host"
+  ],
+  "api_version": "v1",
   "host": "192.168.1.100",
   "port": 8500,
-  "public_key": "MCowBQYDK2VwAyEAFmGvBsbHg/Na2mJ3ePCHyG10+Q0kAeGn30CUXmVJ/wo=",
-  "signature": "MCwCFGmGvBsbHg/Na2mJ3ePCHyG10+Q0kAeGn30CUXmVJ/wo=",
-  "capabilities": {
-    "audio_formats": ["flac", "mp3"],
-    "sync": true
-  }
+  "features": {
+    "library": true,
+    "streaming": true,
+    "sync_manifest": true,
+    "playback": true,
+    "queue": true,
+    "events": true
+  },
+  "michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+  "public_key": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+  "signature": "-uA_huP-ihEN6MWq4QL2OK4tiPAk-FDmr_olMoLGDUUjWHHomPQTUSMkwI2yJIgT1JZXx5oCxhb6RIOzJ3eTCA",
+  "timestamp_ms": 1785976444857,
+  "nonce": "IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W"
 }

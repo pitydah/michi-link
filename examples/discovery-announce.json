@@ -1,13 +1,15 @@
 {
-  "device_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890",
-  "device_name": "Michi Music Desktop",
-  "device_type": "michi_server",
-  "roles": ["server"],
-  "api_version": "1.0",
+  "device_id": "michi-player-01",
+  "name": "Michi Music Player",
+  "service": "michi-music-player",
+  "roles": ["desktop_player", "library_master", "sync_host"],
+  "api_version": "v1",
   "host": "192.168.1.100",
   "port": 8400,
-  "capabilities": {
-    "audio_formats": ["flac", "mp3", "aac", "ogg", "wav"],
-    "sync": true
+  "features": {
+    "library": true,
+    "streaming": true,
+    "remote_control": true,
+    "events": false
   }
 }

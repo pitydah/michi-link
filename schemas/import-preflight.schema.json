@@ -5,6 +5,7 @@
   "description": "Preflight check before import to determine which tracks need upload, which already exist, and which have conflicts",
   "type": "object",
   "required": ["tracks"],
+  "additionalProperties": false,
   "properties": {
     "tracks": {
       "type": "array",
@@ -12,6 +13,7 @@
       "items": {
         "type": "object",
         "required": ["title", "artist"],
+        "additionalProperties": false,
         "properties": {
           "michi_track_id": {
             "type": "string",

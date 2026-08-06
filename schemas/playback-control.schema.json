@@ -5,6 +5,7 @@
   "description": "Playback control command. Official field is 'command'. Field 'action' is legacy/fallback.",
   "type": "object",
   "required": ["command"],
+  "additionalProperties": false,
   "properties": {
     "command": {
       "type": "string",

@@ -14,6 +14,8 @@ info:
     name: Michi Link Support
     url: https://michi.link/support
     email: api@michi.link
+  license:
+    name: MIT
 
 servers:
   - url: http://{host}:{port}/api/v1
@@ -25,6 +27,42 @@ servers:
       port:
         default: "8080"
         description: Port number of the Michi Link server
+
+tags:
+  - name: Server
+    description: Server metadata, health checks, and clock endpoints.
+  - name: Pairing
+    description: Device pairing handshake and token management.
+  - name: Library
+    description: Music library scanning and statistics.
+  - name: Tracks
+    description: Track metadata management and retrieval.
+  - name: Albums
+    description: Album metadata management and retrieval.
+  - name: Artists
+    description: Artist metadata management and retrieval.
+  - name: Search
+    description: Unified search across the music library.
+  - name: Streaming
+    description: Audio streaming endpoints for playback devices.
+  - name: Playback
+    description: Playback session control and state.
+  - name: Queue
+    description: Playback queue manipulation and repeat/shuffle controls.
+  - name: Playlists
+    description: Playlist creation, management, and retrieval.
+  - name: Devices
+    description: Device discovery, registration, and management.
+  - name: Sync
+    description: Multi-device playback synchronization.
+  - name: Rooms
+    description: Multi-room grouping and room playback control.
+  - name: Events
+    description: Real-time event streaming for state changes.
+  - name: Receivers
+    description: Receiver device management and session control.
+  - name: ReceiverLite
+    description: Lightweight receiver protocol (v1-lite) endpoints.
 
 paths:
   # ============================================================================
@@ -91,6 +129,7 @@ paths:
         Health check endpoint that returns a simple pong response to verify server availability.
         Note: This endpoint is deprecated. Use GET /status instead.
       operationId: pingServer
+      security: []
       responses:
         "200":
           description: Server is alive
@@ -116,6 +155,7 @@ paths:
         Returns the current server time in ISO 8601 format, useful for time synchronization.
         Note: This endpoint is deprecated. Use GET /status instead.
       operationId: getServerClock
+      security: []
       responses:
         "200":
           description: Server clock retrieved
@@ -143,6 +183,7 @@ paths:
       summary: Start pairing
       description: Initiates the pairing handshake with the Michi Link server. Returns a challenge that must be signed and sent back via the confirm endpoint.
       operationId: startPairing
+      security: []
       requestBody:
         required: true
         content:
@@ -226,6 +267,7 @@ paths:
       summary: Get pairing status
       description: Returns the current pairing status of the client with the server.
       operationId: getPairingStatus
+      security: []
       responses:
         "200":
           description: Pairing status
@@ -336,14 +378,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "409":
           description: A scan is already in progress
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: A library scan is already in progress
+          $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -522,7 +557,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/Error"
+                $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1239,14 +1274,18 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: Range not satisfiable
-                  contentLength:
-                    type: integer
-                    format: int64
+                allOf:
+                  - $ref: "#/components/schemas/Error"
+                  - type: object
+                    properties:
+                      contentLength:
+                        type: integer
+                        format: int64
+              example:
+                error:
+                  code: INVALID_REQUEST
+                  message: Range not satisfiable
+                contentLength: 4521984
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1489,14 +1528,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "409":
           description: Playback conflict - no active session
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: No active playback session
+          $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -1516,7 +1548,9 @@ paths:
                 type: object
                 properties:
                   track:
-                    $ref: "#/components/schemas/Track"
+                    type: object
+                    allOf:
+                      - $ref: "#/components/schemas/Track"
                     nullable: true
                   progressMs:
                     type: integer
@@ -1534,6 +1568,7 @@ paths:
                       - off
                       - one
                       - all
+                    description: Repeat mode. "off" replaces the legacy boolean false value.
                 required:
                   - track
                   - progressMs
@@ -1583,14 +1618,7 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: Device or room is already in use
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: Device is already in an active session
+          $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -2058,7 +2086,7 @@ paths:
                     - off
                     - one
                     - all
-                  description: The repeat mode to set
+                  description: The repeat mode to set. "off" replaces the legacy boolean false value.
               required:
                 - mode
       responses:
@@ -2075,6 +2103,7 @@ paths:
                       - off
                       - one
                       - all
+                    description: The updated repeat mode. "off" replaces the legacy boolean false value.
                 required:
                   - repeatMode
         "400":
@@ -3020,14 +3049,7 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: Device is already in another room
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: Device is already assigned to a room
+          $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -3107,6 +3129,8 @@ paths:
             minimum: 5
             maximum: 120
             default: 30
+      # ignored: WebSocket upgrade endpoint - 101 Switching Protocols is the only success
+      # response by RFC 6455; a 2XX would violate the protocol contract.
       responses:
         "101":
           description: WebSocket connection upgraded
@@ -3432,14 +3456,7 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "409":
           description: Update already in progress
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: Firmware update already in progress
+          $ref: "#/components/responses/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -3557,9 +3574,8 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
       description: |
-        Bearer token obtained from the pairing flow.
+        Opaque bearer token (not JWT) issued by the pairing flow or /token/refresh.
         Include in the Authorization header as: Authorization: Bearer <token>
 
   responses:
@@ -3569,42 +3585,76 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: CONFLICT
+              message: The request conflicts with the current state of the resource
     BadRequest:
       description: Bad request - invalid parameters or request body
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: INVALID_REQUEST
+              message: Invalid request parameters
+              details:
+                field: trackId
+                reason: must be a valid UUID
     Unauthorized:
       description: Unauthorized - missing or invalid authentication token
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Missing or invalid authentication token
     Forbidden:
       description: Forbidden - the authenticated user does not have permission
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: FORBIDDEN
+              message: Insufficient permissions for this operation
     NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: NOT_FOUND
+              message: The requested resource was not found
+              details:
+                resource: track
+                id: 123e4567-e89b-12d3-a456-426614174000
     RateLimited:
       description: Too many requests - rate limit exceeded
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: RATE_LIMITED
+              message: Too many requests, please retry later
     InternalError:
       description: Internal server error
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: An unexpected error occurred
 
   schemas:
     # --------------------------------------------------------------------------
@@ -3612,17 +3662,47 @@ components:
     # --------------------------------------------------------------------------
     Error:
       type: object
+      description: Standard error envelope
       properties:
         error:
-          type: string
-          description: A human-readable error message
-        code:
-          type: integer
-          description: Internal error code for programmatic handling
-        details:
           type: object
-          additionalProperties: true
-          description: Additional error context
+          description: Error details
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              enum:
+                - INVALID_REQUEST
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - NOT_FOUND
+                - CONFLICT
+                - RATE_LIMITED
+                - INTERNAL_ERROR
+                - NOT_IMPLEMENTED
+                - PAIRING_EXPIRED
+                - PAIRING_ATTEMPTS_EXCEEDED
+                - PAIRING_KEY_MISMATCH
+                - IDENTITY_CORRUPTED
+                - SIGNATURE_INVALID
+                - REPLAY_DETECTED
+                - IDEMPOTENCY_KEY_REUSE
+                - TRACK_NOT_FOUND
+                - IMPORT_SESSION_EXPIRED
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              additionalProperties: true
+              description: Additional error context
+            request_id:
+              type: string
+              format: uuid
+              description: Request identifier for correlation and support
       required:
         - error
 
@@ -3631,62 +3711,102 @@ components:
     # --------------------------------------------------------------------------
     ServerInfo:
       type: object
-      properties:
-        name:
-          type: string
-          description: Server name
-          example: Michi Link Server
-        version:
-          type: string
-          description: Server software version
-          example: 1.2.3
-        build:
-          type: string
-          description: Build identifier
-          example: 20260601-1200-abcd1234
-        uptime:
-          type: integer
-          description: Server uptime in seconds
-          example: 86400
-        apiVersion:
-          type: string
-          description: Supported API version
-          example: v1
-        libraryId:
-          type: string
-          format: uuid
-          description: Unique identifier for this library instance
-        capabilities:
-          type: array
-          description: List of server capabilities
-          items:
-            type: string
-          example:
-            - streaming
-            - transcoding
-            - multiroom
-            - playlists
-            - sync
-        deviceCount:
-          type: integer
-          description: Number of registered devices
-        roomCount:
-          type: integer
-          description: Number of configured rooms
-        trackCount:
-          type: integer
-          description: Total tracks in library
-        albumCount:
-          type: integer
-          description: Total albums in library
-        artistCount:
-          type: integer
-          description: Total artists in library
+      description: Server identity and capabilities payload. api_version is always v1 or v1-lite.
       required:
+        - service
         - name
         - version
-        - apiVersion
-        - libraryId
+        - api_version
+        - roles
+        - auth
+        - features
+      properties:
+        service:
+          type: string
+          description: Service identifier
+          enum:
+            - michi-music-player
+            - michi-micro-server
+            - michi-mobile
+            - michi-stream-standard
+            - michi-stream-hifi
+          example: michi-micro-server
+        name:
+          type: string
+          description: Human-readable server name (user-configurable)
+          example: Michi Micro Server
+        server_id:
+          type: string
+          format: uuid
+          description: Unique server UUID
+        version:
+          type: string
+          description: Application version (internal, not contract version)
+          example: 1.2.3
+        api_version:
+          type: string
+          description: API contract version. Never changes without a deliberate breaking change.
+          enum:
+            - v1
+            - v1-lite
+          example: v1
+        roles:
+          type: array
+          description: Active roles
+          items:
+            type: string
+          uniqueItems: true
+          minItems: 1
+          example:
+            - home_server
+            - library_server
+            - stream_server
+        features:
+          type: object
+          description: Boolean capability flags
+          additionalProperties:
+            type: boolean
+          minProperties: 1
+          example:
+            library: true
+            search: true
+            streaming: true
+            sync_manifest: true
+            playback: true
+            queue: true
+            artwork: true
+            events: false
+        michi_id:
+          type: string
+          description: Ed25519-derived identity hash (64 hex chars), or null if identity not initialized
+          nullable: true
+        public_key:
+          type: string
+          description: Ed25519 public key in base64, or null if identity not initialized
+          nullable: true
+        auth:
+          type: object
+          description: Authentication configuration. REQUIRED for all servers.
+          required:
+            - required
+          properties:
+            required:
+              type: boolean
+              description: Whether authentication is mandatory. Always true for v1.
+              enum:
+                - true
+            strategy:
+              type: string
+              description: Auth strategy
+              enum:
+                - PLAYER_PASSWORD
+                - SERVER_CODE
+                - RECEIVER_BUTTON
+                - ED25519_CHALLENGE
+                - LEGACY
+            token_refresh:
+              type: boolean
+              description: Whether /token/refresh is supported
 
     # --------------------------------------------------------------------------
     # DEVICE INFO
@@ -4293,39 +4413,6 @@ components:
         - trackIds
 
     # --------------------------------------------------------------------------
-    # PERMISSIONS
-    # --------------------------------------------------------------------------
-    Permissions:
-      type: object
-      description: Bitfield-style permissions for token scoping
-      properties:
-        scopes:
-          type: array
-          items:
-            type: string
-            enum:
-              - library.read
-              - library.write
-              - playback.read
-              - playback.write
-              - queue.read
-              - queue.write
-              - playlist.read
-              - playlist.write
-              - device.read
-              - device.write
-              - room.read
-              - room.write
-              - pairing.read
-              - pairing.write
-              - download.read
-          description: Permission scopes granted to the token
-          example:
-            - library.read
-            - playback.write
-            - download.read
-
-    # --------------------------------------------------------------------------
     # SYNC MANIFEST
     # --------------------------------------------------------------------------
     SyncManifest:
@@ -4423,7 +4510,9 @@ components:
             - loading
           description: Current playback state
         track:
-          $ref: "#/components/schemas/Track"
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/Track"
           nullable: true
           description: Currently playing track
         positionMs:
@@ -4449,7 +4538,7 @@ components:
             - off
             - one
             - all
-          description: Current repeat mode
+          description: Current repeat mode. "off" replaces the legacy boolean false value.
         deviceId:
           type: string
           format: uuid
@@ -4485,10 +4574,13 @@ components:
           type: string
           enum: [play, pause, toggle, stop, next, previous, seek, set_volume, mute, unmute, shuffle, repeat]
         value:
-          oneOf:
+          anyOf:
             - type: integer
             - type: string
-            - type: "null"
+            - type: boolean
+            - type: object
+              nullable: true
+              description: Null value (clears the parameter)
           description: Parameter value for seek (ms), volume (0-100), shuffle (bool), repeat (off/one/all)
 
     # --------------------------------------------------------------------------
@@ -4588,6 +4680,7 @@ components:
             - off
             - one
             - all
+          description: Repeat mode. "off" replaces the legacy boolean false value.
         totalUpcoming:
           type: integer
           description: Total number of upcoming items
@@ -4694,7 +4787,9 @@ components:
           type: boolean
           description: Whether the room has active playback
         playbackState:
-          $ref: "#/components/schemas/PlaybackState"
+          type: object
+          allOf:
+            - $ref: "#/components/schemas/PlaybackState"
           nullable: true
           description: Current playback state for the room
         createdAt:
@@ -4776,7 +4871,7 @@ components:
             - off
             - one
             - all
-          description: Repeat mode to set
+          description: Repeat mode to set. "off" replaces the legacy boolean false value.
       anyOf:
         - required:
             - trackId
@@ -4784,43 +4879,6 @@ components:
             - trackIds
         - required:
             - playlistId
-
-    # --------------------------------------------------------------------------
-    # EVENT
-    # --------------------------------------------------------------------------
-    Event:
-      type: object
-      properties:
-        type:
-          type: string
-          description: Event type category
-          enum:
-            - playback
-            - queue
-            - library
-            - device
-            - room
-            - pairing
-            - sync
-            - error
-        action:
-          type: string
-          description: Specific action that triggered the event
-        data:
-          type: object
-          additionalProperties: true
-          description: Event payload data
-        timestamp:
-          type: string
-          format: date-time
-          description: When the event occurred
-        source:
-          type: string
-          description: Source component that generated the event
-      required:
-        - type
-        - action
-        - timestamp
 
     # --------------------------------------------------------------------------
     # PAGINATED RESPONSE
@@ -4857,7 +4915,15 @@ components:
     # --------------------------------------------------------------------------
     ReceiverInfo:
       type: object
+      description: Lightweight receiver device info used in the v1-lite protocol
       properties:
+        service:
+          type: string
+          description: Receiver service identifier
+          enum:
+            - michi-stream-standard
+            - michi-stream-hifi
+          example: michi-stream-standard
         deviceId:
           type: string
           format: uuid
@@ -4874,6 +4940,21 @@ components:
         protocolVersion:
           type: string
           description: Supported protocol version
+        api_version:
+          type: string
+          description: API contract version for the receiver protocol
+          enum:
+            - v1-lite
+          example: v1-lite
+        auth:
+          type: object
+          description: Authentication configuration for this receiver
+          properties:
+            strategy:
+              type: string
+              description: Auth strategy
+              enum:
+                - RECEIVER_BUTTON
         status:
           type: string
           enum:
@@ -4890,6 +4971,18 @@ components:
         uptime:
           type: integer
           description: Uptime in seconds
+        audio:
+          type: object
+          description: Audio capabilities
+          properties:
+            codecs:
+              type: array
+              items:
+                type: string
+                enum:
+                  - pcm_s16le
+                  - pcm_s24le
+              description: Supported audio codecs
         capabilities:
           type: object
           properties:
