@@ -35,11 +35,11 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 1.1 | server-info.schema.json service enum tiene `michi-music-player` | UNIT_PASS | schemas/server-info.schema.json | `npx ajv validate -s schemas/server-info.schema.json -d examples/server-info-player.json` | 2026-07-15 | no |
 | 1.2 | server-info.schema.json features son booleanos | UNIT_PASS | schemas/server-info.schema.json | test contract negativo: features con objetos falla | 2026-07-15 | no |
 | 1.3 | server-info.schema.json auth.required es obligatorio | UNIT_PASS | schemas/server-info.schema.json | test contract negativo: falta auth.required | 2026-07-15 | no |
-| 1.4 | server-info.schema.json michi_link_version es string | UNIT_PASS | schemas/server-info.schema.json | test contract negativo: michi_link_version numérico falla | 2026-07-15 | no |
+| 1.4 | server-info.schema.json api_version validada estrictamente (enum v1/v1-lite; `additionalProperties: false` rechaza campos extra, incl. `michi_link_version` retirado) | UNIT_PASS | tests/contract/validate.js | test contract negativo: `api_version: "1.0.0"` rechazado; `michi_link_version` extra rechazado (109 checks) | 2026-08-05 | no | <!-- michi-policy:exclude -->
 | 1.5 | playback-control.schema.json requiere command | UNIT_PASS | schemas/playback-control.schema.json | test contract: command requerido, action rechazado | 2026-07-15 | no |
 | 1.6 | sync-delta.schema.json usa cursor (string) | UNIT_PASS | schemas/sync-delta.schema.json | npm test valida sync-delta.json | 2026-07-15 | no |
 | 1.7 | error.schema.json usa { error: { code, message, details } } | UNIT_PASS | schemas/error.schema.json | npm test valida error examples | 2026-07-15 | no |
-| 1.8 | Ejemplos validan contra schemas (31 tests) | UNIT_PASS | tests/contract/validate.js | `cd tests/contract && npm test` | 2026-07-15 | no |
+| 1.8 | Ejemplos validan contra schemas (tests/contract: 109 checks) | UNIT_PASS | tests/contract/validate.js | `cd tests/contract && npm test` | 2026-08-05 | no |
 | 1.9 | OpenAPI spec actualizada | UNIT_PASS | openapi/michi-link-v1.yaml | — | 2026-07-15 | no |
 
 ## 2. Autenticación
@@ -51,7 +51,7 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 2.3 | Player token_refresh=false | NOT_TESTED | — | GET /server/info → auth.token_refresh | — | **sí** |
 | 2.4 | Micro Server token_refresh=true | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | test_v1_token_refresh | 2026-07-15 | **sí** |
 | 2.5 | Mobile detecta estrategia y actúa en consecuencia | NOT_TESTED | — | Mobile conecta a Player y Micro | — | **sí** |
-| 2.6 | Receiver expone auth.strategy=RECEIVER_BUTTON | NOT_TESTED | — | GET /receiver/info en Stream | — | no |
+| 2.6 | Receiver expone auth.strategy=RECEIVER_BUTTON | NOT_TESTED | — | GET /receiver-lite/info en Stream | — | no |
 
 ## 3. Pairing
 
@@ -111,7 +111,7 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 7.4 | Manifest incluye cursor | UNIT_PASS | crates/michi-api/tests/api.rs | test_v1_sync_manifest_has_cursor | 2026-07-15 | no |
 | 7.5 | Delta acepta cursor, since y manifest_id (legacy) | UNIT_PASS | crates/michi-api/src/routes/v1/sync.rs | test_v1_sync_manifest_delta_with_cursor | 2026-07-15 | no |
 | 7.6 | Player expone sync endpoints | NOT_TESTED | — | — | — | no |
-| 7.7 | Mobile puede sincronizar desde Micro Server | NOT_TESTED | — | Escenario E2E | — | **sí** |
+| 7.7 | Mobile puede sincronizar desde Micro Server | NOT_TESTED | — | Escenario E2E-05 | — | **sí** |
 
 ## 8. Reproducción
 
@@ -125,7 +125,7 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 8.6 | seek usa position_ms | UNIT_PASS | crates/michi-api/src/routes/v1/playback.rs | test_v1_playback_control_seek | 2026-07-15 | no |
 | 8.7 | set_volume usa volume 0-100 | UNIT_PASS | crates/michi-api/src/routes/v1/playback.rs | test_v1_playback_control_volume | 2026-07-15 | no |
 | 8.8 | Mobile puede controlar Player | NOT_TESTED | — | Escenario E2E-03 | — | **sí** |
-| 8.9 | Mobile puede controlar Micro Server | NOT_TESTED | — | Escenario E2E-06 | — | **sí** |
+| 8.9 | Mobile puede controlar Micro Server | NOT_TESTED | — | Escenario E2E-06 (no dedicated scenario in SCENARIOS.md) | — | **sí** |
 | 8.10 | state devuelve state, track_id, position_ms, volume | UNIT_PASS | crates/michi-api/tests/api.rs | test_v1_playback_state | 2026-07-15 | no |
 
 ## 9. Cola
@@ -137,8 +137,8 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 9.3 | Micro Server expone GET /queue | UNIT_PASS | crates/michi-api/tests/api.rs | test_v1_queue | 2026-07-15 | **sí** |
 | 9.4 | Micro Server acepta POST /queue/items | UNIT_PASS | crates/michi-api/tests/api.rs | test_v1_queue_items | 2026-07-15 | **sí** |
 | 9.5 | Micro Server acepta POST /queue/jump | UNIT_PASS | crates/michi-api/tests/api.rs | test_v1_queue_jump | 2026-07-15 | no |
-| 9.6 | Mobile puede agregar a cola en Player | NOT_TESTED | — | Escenario E2E | — | **sí** |
-| 9.7 | Mobile puede agregar a cola en Micro Server | NOT_TESTED | — | Escenario E2E | — | **sí** |
+| 9.6 | Mobile puede agregar a cola en Player | NOT_TESTED | — | Escenario E2E (no dedicated scenario in SCENARIOS.md) | — | **sí** |
+| 9.7 | Mobile puede agregar a cola en Micro Server | NOT_TESTED | — | Escenario E2E (no dedicated scenario in SCENARIOS.md) | — | **sí** |
 
 ## 10. Importación (Player → Micro Server)
 
@@ -175,7 +175,7 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 12.3 | Revoke elimina ambos tokens | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | link_devices_revoke llama revoke_all_by_device | 2026-07-15 | no |
 | 12.4 | Pairing code expira a los 5 min | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | expires_at = Utc::now() + 5min | 2026-07-15 | no |
 | 12.5 | No se expone file_path en respuestas públicas | UNIT_PASS | crates/michi-api/src/routes/v1/tracks.rs | file_path excluido de serialización | 2026-07-15 | no |
-| 12.6 | Path traversal protegido en stream/download | UNIT_PASS | crates/michi-stream/src/lib.rs | validate_track_path verifica | 2026-07-15 | no |
+| 12.6 | Path traversal protegido en stream/download | UNIT_PASS | docs/DOWNSTREAM_MIGRATION.md + crates/michi-api/src/routes/v1/stream.rs (repo michi-micro-server) | validate_track_path verifica | 2026-07-15 | no |
 | 12.7 | Player protege tokens en memoria | NOT_TESTED | — | — | — | no |
 
 ## 13. Mobile UX
@@ -201,10 +201,10 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 
 | # | Ítem | Certification Level | Evidence | Test command | Last verified | Blocking |
 |---|------|--------|----------|-------------|---------------|----------|
-| 15.1 | Firmware Stream implementa receiver/info | NOT_TESTED | — | — | — | no |
-| 15.2 | Firmware Stream implementa receiver/pair/start | NOT_TESTED | — | — | — | no |
-| 15.3 | Firmware Stream implementa receiver/heartbeat | NOT_TESTED | — | — | — | no |
-| 15.4 | Firmware Stream implementa receiver/session/start | NOT_TESTED | — | — | — | no |
+| 15.1 | Firmware Stream implementa /receiver-lite/info | NOT_TESTED | — | — | — | no |
+| 15.2 | Firmware Stream implementa pairing (POST /pair/start + /pair/confirm, device_type: receiver) | NOT_TESTED | — | — | — | no |
+| 15.3 | Firmware Stream implementa POST /receiver-lite/heartbeat | NOT_TESTED | — | — | — | no |
+| 15.4 | Firmware Stream implementa POST /receiver-lite/session | NOT_TESTED | — | — | — | no |
 | 15.5 | Firmware Stream recibe y reproduce URL de stream | NOT_TESTED | — | — | — | no |
 | 15.6 | Micro Server puede enviar sesión a Stream | NOT_TESTED | — | — | — | no |
 | 15.7 | Audio se escucha en hardware real | NOT_TESTED | — | — | — | no |

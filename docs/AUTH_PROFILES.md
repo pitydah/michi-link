@@ -1,6 +1,6 @@
 # Auth Profiles — Michi Link API v1.0.0-alpha
 
-Michi Link define cuatro estrategias de autenticación (auth profiles). Cada proyecto elige la estrategia según su hardware, UX y modelo de seguridad.
+Michi Link define cinco estrategias de autenticación (auth profiles): `PLAYER_PASSWORD`, `SERVER_CODE`, `ED25519_CHALLENGE`, `RECEIVER_BUTTON` y `LEGACY`. Cada proyecto elige la estrategia según su hardware, UX y modelo de seguridad.
 
 **Regla fundamental:** Todo servidor DEBE incluir `auth.required: true` en `/server/info`. Si un servidor no entrega `auth`, debe tratarse como incompatible con v1.0.0-alpha.
 
@@ -13,9 +13,9 @@ Usado por: **Michi Music Player**
 ### Flujo
 
 1. Player inicia servidor con una contraseña configurada por el usuario (vía UI de preferencias).
-2. El cliente (Mobile, otro Player) envía en `/pair/start` la contraseña como prueba.
-3. El servidor valida la contraseña y genera un `pairing_code` y `device_id`.
-4. El cliente confirma con `/pair/confirm` y recibe un token Bearer.
+2. El cliente envía `/pair/start` con `device_name` y `device_type`.
+3. El usuario ingresa la contraseña en el cliente; actúa como pairing code en `/pair/confirm`.
+4. El servidor valida la contraseña y entrega el token Bearer.
 
 ### Características
 
@@ -142,13 +142,13 @@ Usado por: cualquier dispositivo con identidad Ed25519 inicializada (Player, Mic
 {
   "auth": {
     "required": true,
-    "strategy": "SERVER_CODE",
-    "token_refresh": true,
-    "identity_available": true,
-    "identity_strategies": ["ED25519_CHALLENGE"]
+    "strategy": "ED25519_CHALLENGE",
+    "token_refresh": false
   }
 }
 ```
+
+**Nota:** El objeto `auth` canónico solo expone `required`, `strategy` y `token_refresh` (`additionalProperties: false`). La disponibilidad de identidad se expone mediante los campos opcionales `michi_id` y `public_key` de server-info.
 
 ---
 
@@ -170,7 +170,7 @@ Usado como transición por clientes que aún implementan `action`/`value`.
 |----------|-----------|---------------|-------------------|--------------|
 | Michi Music Player | PLAYER_PASSWORD | No | No (contraseña en UI) | No |
 | Michi Micro Server | SERVER_CODE | Sí | Sí (web/console) | No |
-| Michi Music Mobile | Cliente que detecta estrategia | Según servidor | Según servidor | No |
+| Michi Music Mobile | SERVER_CODE (como servidor); como cliente detecta la estrategia del servidor | Según rol | Según rol | No |
 | Michi Music Stream (receptor) | RECEIVER_BUTTON | No | No | Sí |
 
 ---

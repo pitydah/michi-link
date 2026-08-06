@@ -2,7 +2,7 @@
 
 ## Principio Fundamental
 
-`api_version: "v1"` es **permanente**. Mientras un dispositivo declare `api_version: "v1"`, debe ser compatible con cualquier otro dispositivo que también declare `"v1"`, independientemente de la versión de `michi_link_version` o de las capacidades individuales.
+`api_version: "v1"` es **permanente**. Mientras un dispositivo declare `api_version: "v1"`, debe ser compatible con cualquier otro dispositivo que también declare `"v1"`, independientemente de las versiones de app (`version`) o de las capacidades individuales. La versión del contrato NO cambia con versiones de app.
 
 ## Reglas de Retrocompatibilidad
 
@@ -10,20 +10,18 @@
 2. **Nuevos valores en enum no rompen parsing.** Los clientes ignoran valores desconocidos.
 3. **Announces sin firma se aceptan siempre.** La firma es un campo adicional.
 4. **UUID `device_id` se mantiene para siempre en v1.** `michi_id` es adicional.
-5. **`michi_id: null` es el valor por defecto** para servidores sin identidad.
+5. **`michi_id` se omite** cuando el servidor no tiene identidad inicializada (campo opcional; no se envía `null`).
 
 ## Tabla de Cambios
 
 | Feature | Versión añadida | ¿Rompe v1? | Mecanismo de retrocompatibilidad |
 |---------|----------------|-----------|----------------------------------|
-| `michi_id` en server-info | 1.0.0-beta | ❌ No | Campo opcional. Servidores sin identidad envían `null`. Clientes legacy ignoran el campo. |
-| `public_key` en server-info | 1.0.0-beta | ❌ No | Campo opcional. `null` si no hay identidad. |
+| `michi_id` en server-info | 1.0.0-beta | ❌ No | Campo opcional. Servidores sin identidad lo omiten. Clientes legacy ignoran el campo. |
+| `public_key` en server-info | 1.0.0-beta | ❌ No | Campo opcional. Omitido si no hay identidad. |
 | Announces firmados (mDNS/UDP) | 1.0.0-beta | ❌ No | Firma en campo nuevo (`signature`). Ausente = legacy. Firmas inválidas → se descartan. |
 | `auth_strategy: ED25519_CHALLENGE` | 1.0.0-beta | ❌ No | Nuevo valor en enum. Si el cliente no lo entiende, usa legacy. |
 | QR pairing | 1.0.0-beta | ❌ No | Canal nuevo fuera de banda. No afecta REST API. |
 | TOFU storage | 1.0.0-beta | ❌ No | Solo lectura interna del servidor. No afecta endpoints. |
-| `auth.identity_available` | 1.0.0-beta | ❌ No | Booleano opcional en `auth`. Ausente = `false`. |
-| `auth.identity_strategies` | 1.0.0-beta | ❌ No | Array opcional. Clientes legacy lo ignoran. |
 | `pin_proof` en pair/confirm | 1.0.0-beta | ❌ No | Campo opcional. Pairing legacy funciona sin él. |
 | `device_id` (UUID) | 1.0.0-alpha | ❌ Nunca | Se mantiene para siempre en v1. |
 | `action` legacy | 1.0.0-alpha | ❌ No | Deprecado pero aceptado como alias de `command`. |
@@ -48,8 +46,7 @@
 - **Todo funciona exactamente igual que antes.**
 
 ### Cliente v1.0.0-beta ↔ Servidor v1.0.0-alpha
-- Cliente busca `michi_id` en server-info → no está o es `null`. Sabe que el servidor no tiene identidad.
-- Cliente busca `identity_available` → no está o es `false`. Usa pairing legacy.
+- Cliente busca `michi_id` en server-info → no está (omitido). Sabe que el servidor no tiene identidad.
 - Cliente recibe announce sin firma → lo acepta como `untrusted`.
 - **Todo funciona exactamente igual que antes.**
 
@@ -61,11 +58,9 @@
 
 ## Versionado
 
-| `michi_link_version` | Contrato |
-|----------------------|----------|
-| `1.0.0-alpha` | Sin identidad Ed25519. Contrato base. |
-| `1.0.0-beta` | Identidad Ed25519 opcional. Retrocompatible. |
-| `1.0.0` | Identidad Ed25519 opcional. Estable. |
-| `1.1.0` | Identidad Ed25519 recomendada. Legacy sigue funcionando. |
+`api_version` es la única versión del contrato:
 
-`api_version` siempre es `"v1"`. No existe `"v2"` mientras los cambios sean aditivos.
+- `api_version: "v1"` — contrato completo. Permanente: un dispositivo "v1" debe ser compatible con cualquier otro "v1".
+- `api_version: "v1-lite"` — subconjunto para receivers (codecs pcm_s16le/pcm_s24le, auth RECEIVER_BUTTON, heartbeat 10s; sin library/playlists/search/sync/storage/transcoding/rooms).
+
+La versión del contrato NO cambia con versiones de app (`version` en server-info es la versión de la aplicación, no del contrato). `michi_link_version` fue retirado en v1 y no es parte del contrato. <!-- michi-policy:exclude -->

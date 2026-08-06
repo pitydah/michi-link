@@ -1,4 +1,8 @@
+> **HISTORICAL** — kept for reference only; NOT part of the active contract.
+
 # API Maturity Model — Michi Link v1.0.0-alpha
+
+> **HISTORICAL NOTE:** This document is superseded by `docs/IMPLEMENTATION_MATRIX.md` (per-endpoint evidence levels) and `docs/BETA_GATE.md` (beta conditions). Its "beta-ready certificado" claims for the contract were never backed by E2E certification reports (see `docs/BETA_BLOCKERS.md` and `tests/e2e_certification/reports/`). Kept for reference only.
 
 ## Niveles
 

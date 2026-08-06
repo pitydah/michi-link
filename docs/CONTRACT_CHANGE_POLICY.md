@@ -1,4 +1,8 @@
+> **HISTORICAL** — kept for reference only; NOT part of the active contract.
+
 # Contract Change Policy — Michi Link API v1.0.0-alpha
+
+> **HISTORICAL NOTE:** This document was consolidated into `docs/CONTRACT_GOVERNANCE.md`, which is now the single governance document for contract changes (single source of truth, change process, backward compatibility, deprecation, evidence requirements). Kept for reference only.
 
 ## Propósito
 

@@ -1,87 +1,90 @@
 # Implementation Matrix — Michi Link API v1.0.0-alpha
 
-## Implementation States
+## Evidence Levels
 
-| Estado | Significado |
-|--------|-------------|
-| **stable** | Endpoint completamente implementado, probado y alineado con el contrato oficial. |
-| **partial** | Endpoint implementado pero incompleto (faltan parámetros, respuestas parciales, wrapper legacy). |
-| **stub** | Endpoint declarado pero devuelve 501/empty. |
-| **legacy-wrapper** | Endpoint implementado con campos antiguos que requieren adaptación al contrato oficial. |
-| **planned** | Endpoint planificado pero sin implementación. |
-| **prototype** | Endpoint implementado como prototipo, sin validación en hardware real ni pruebas de producción. |
-| **not-applicable** | El proyecto no implementa ni consume este endpoint (por su rol en el ecosistema). |
-| **consume** | El proyecto consume el endpoint de otro servidor, no lo implementa. |
+| Nivel | Significado |
+|-------|-------------|
+| **NOT_TESTED** | Sin evidencia de certificación |
+| **UNIT_PASS** | Pasa test unitario aislado |
+| **MOCK_PASS** | Pasa contra servidor mock |
+| **LOCAL_E2E_PASS** | Pasa contra localhost real |
+| **NETWORK_E2E_PASS** | Pasa en LAN real |
+| **DEVICE_E2E_PASS** | Pasa en hardware físico real |
+| **FAIL** | No pasa el test |
+| **consume** | El proyecto consume el endpoint de otro servidor, no lo implementa |
+| **not-applicable** | El proyecto no implementa ni consume este endpoint (por su rol en el ecosistema) |
+
+Fuente de evidencia por endpoint: `docs/BETA_READINESS_CHECKLIST.md`. Los niveles `stable`/`DONE`/`manual` NO son niveles de evidencia y están prohibidos en esta matriz.
 
 ## E2E Status
 
 | Valor | Significado |
 |-------|-------------|
-| **not-tested** | No probado end-to-end entre los proyectos involucrados. |
-| **manual** | Probado manualmente por un desarrollador, sin test automatizado. |
-| **automated** | Probado con test automatizado (CI/CD). |
-| **certified** | Probado en múltiples entornos, con resultados documentados. |
+| **NOT_TESTED** | No probado end-to-end entre los proyectos involucrados. |
+| **NETWORK_E2E_PASS** | Certificado en LAN real (reporte en `tests/e2e_certification/reports/`). |
+| **DEVICE_E2E_PASS** | Certificado en hardware físico real. |
+
+> `tests/e2e_certification/reports/` está vacío: todos los flujos E2E están **NOT_TESTED**.
 
 ---
 
-| # | Endpoint | Método | Contrato Oficial | Player | Micro Server | Mobile | Music Stream | E2E Tested | Beta Blocker | Observaciones | Prioridad |
+| # | Endpoint | Método | Contrato Oficial | Player | Micro Server | Mobile | Music Stream | E2E Status | Beta Blocker | Observaciones | Prioridad |
 |---|----------|--------|------------------|--------|-------------|--------|-------------|------------|--------------|---------------|-----------|
-| 1 | `/server/info` | GET | `service`, `name`, `server_id`, `version`, `api_version`, `michi_link_version`, `roles[]`, `features{}`, `auth{strategy}` | **stable** | **stable** | not-applicable | not-applicable | **manual** | no | Player service: `michi-music-player`, MS: `michi-micro-server`. Auth strategy difiere: PLAYER_PASSWORD vs SERVER_CODE. | Crítica |
-| 2 | `/status` | GET | `{ status, version, uptime_seconds, timestamp }` | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | Endpoint público, sin auth | Alta |
-| 3 | `/pair/start` | POST | `{ device_name, device_type }` → `{ pairing_code, device_id }` | **stable** | **stable** | **consume** | **prototype** (v1-lite) | **manual** | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Crítica |
-| 4 | `/pair/confirm` | POST | `{ device_id, pairing_code }` → `{ token, refresh_token, device_id, server_id }` | **stable** | **stable** | **consume** | **prototype** (v1-lite) | **manual** | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Crítica |
-| 5 | `/token/refresh` | POST | `{ refresh_token }` → `{ token, refresh_token }` | **not-applicable** | **stable** | **consume** | not-applicable | **not-tested** | **sí** — Mobile ↔ Micro | Player no implementa token_refresh. Mobile debe tolerar ausencia. | Alta |
-| 6 | `/devices/revoke` | POST | `{ device_id }` → `{ success }` | **planned** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Media |
-| 7 | `/library/stats` | GET | → `{ total_tracks, total_albums, total_artists, total_playlists }` | **stable** | **stable** | not-applicable | not-applicable | **manual** | no | | Alta |
-| 8 | `/library/scan` | POST | → `{ success, scan_id }` | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Media |
-| 9 | `/tracks` | GET | `?q, artist, album, genre, year, page, limit` → paginated | **stable** | **stable** | not-applicable | not-applicable | **manual** | no | | Alta |
-| 10 | `/tracks/{id}` | GET | → Track completo | **stable** | **stable** | not-applicable | not-applicable | **manual** | no | | Alta |
-| 11 | `/albums` | GET | `?q, artist, year, page, limit` → paginated | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Alta |
-| 12 | `/albums/{id}` | GET | → Album + tracks | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Alta |
-| 13 | `/artists` | GET | `?q, page, limit` → paginated | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Alta |
-| 14 | `/artists/{id}` | GET | → Artist + albums | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Alta |
-| 15 | `/search` | GET | `?q, type, limit` → { tracks, albums, artists, playlists } | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Alta |
-| 16 | `/stream/{track_id}` | GET | `Range`, `Accept` → 206 / 200 | **stable** | **stable** | **consume** | **prototype** (v1-lite) | **manual** | **sí** — Mobile ↔ Player, Mobile ↔ Micro | Player: Range tests existentes. MS: streaming nativo. | Crítica |
-| 17 | `/download/{track_id}` | GET | `Accept` → 200 archivo completo | **planned** | **stable** | **consume** | not-applicable | **not-tested** | **sí** — Mobile ↔ Micro | Requiere permisos `download.read`. | Alta |
-| 18 | `/artwork/{cover_id}` | GET | `?size` → imagen | **stable** | **stable** | **consume** | not-applicable | **manual** | **sí** — Mobile ↔ Player, Mobile ↔ Micro | Cache headers | Alta |
-| 19 | `/playlists` | GET | → paginated list | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Media |
-| 20 | `/playlists` | POST | `{ name, description }` → 201 | **stable** | **planned** | not-applicable | not-applicable | **not-tested** | no | | Media |
-| 21 | `/playlists/{id}` | GET | → Playlist | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Media |
-| 22 | `/playlists/{id}` | PUT | `{ name, description }` → updated | **stable** | **planned** | not-applicable | not-applicable | **not-tested** | no | | Baja |
-| 23 | `/playlists/{id}` | DELETE | → 204 | **stable** | **planned** | not-applicable | not-applicable | **not-tested** | no | | Baja |
-| 24 | `/playlists/{id}/tracks` | GET | → lista de tracks | **stable** | **stable** | not-applicable | not-applicable | **not-tested** | no | | Media |
-| 25 | `/playlists/{id}/tracks` | PUT | `{ track_ids }` → updated | **stable** | **planned** | not-applicable | not-applicable | **not-tested** | no | | Media |
-| 26 | `/sync/manifest` | GET | → `{ cursor, generated_at, tracks{} }` | **stable** | **stable** | **consume** | not-applicable | **not-tested** | **sí** — Mobile ↔ Micro | cursor oficial | Crítica |
-| 27 | `/sync/manifest/delta` | GET | `?device_id, cursor` → `{ cursor, added[], updated[], deleted[], playlists_updated[] }` | **stable** | **stable** | **consume** | not-applicable | **not-tested** | **sí** — Mobile ↔ Micro | cursor reemplaza since/manifest_id | Crítica |
-| 28 | `/sync/state` | POST | `{ device_id, cursor, downloaded_tracks }` → `{ success }` | **stable** | **stable** | **consume** | not-applicable | **not-tested** | **sí** — Mobile ↔ Micro | | Alta |
-| 29 | `/playback/state` | GET | → `{ state, track_id, position_ms, volume, shuffle, repeat }` | **stable** | **stable** | **consume** | not-applicable | **manual** | **sí** — Mobile ↔ Player, Mobile ↔ Micro | `position_ms` oficial | Crítica |
-| 30 | `/playback/control` | POST | `{ command, [position_ms\|volume] }` → `{ success, state }` | **stable** | **stable** | **consume** (envía) | not-applicable | **manual** | **sí** — Mobile ↔ Player, Mobile ↔ Micro | `command` oficial, `action` legacy. Player y MS aceptan ambos. | Crítica |
-| 31 | `/playback/session` | POST | `{ device_id, action, queue_id }` → `{ session_id }` | **stable** | **planned** | **planned** | not-applicable | **not-tested** | no | | Media |
-| 32 | `/queue` | GET | → `{ id, current_index, items[], shuffle, repeat }` | **stable** | **stable** | **consume** | not-applicable | **not-tested** | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Alta |
-| 33 | `/queue/items` | POST | `{ track_ids, position }` → `{ items_added }` | **stable** | **stable** | **consume** (envía) | not-applicable | **not-tested** | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Alta |
-| 34 | `/queue/jump` | POST | `{ queue_item_id }` → `{ current_index }` | **stable** | **stable** | **planned** | not-applicable | **not-tested** | no | | Media |
-| 35 | `/queue/reorder` | PUT | `{ queue_item_ids }` → `{ success }` | **stable** | **planned** | **planned** | not-applicable | **not-tested** | no | | Baja |
-| 36 | `/queue/items/{id}` | DELETE | → 204 | **stable** | **stable** | **planned** | not-applicable | **not-tested** | no | | Media |
-| 37 | `/receivers` | GET | → paginated list | **planned** | **partial** | **planned** | not-applicable | **not-tested** | no | MS: lista de receivers conocidos vía heartbeat, sin integración real con Stream. | Baja |
-| 38 | `/receivers/{id}` | GET | → Receiver detail | **planned** | **partial** | **planned** | not-applicable | **not-tested** | no | | Baja |
-| 39 | `/receivers/{id}/session/start` | POST | `{ queue_id }` → `{ session_id }` | **planned** | **partial** | **planned** | not-applicable | **not-tested** | no | | Media |
-| 40 | `/receivers/{id}/session/stop` | POST | → `{ success }` | **planned** | **partial** | **planned** | not-applicable | **not-tested** | no | | Media |
-| 41 | `/receivers/{id}/volume` | POST | `{ volume }` → `{ volume }` | **planned** | **partial** | **planned** | not-applicable | **not-tested** | no | | Media |
-| 42 | `/rooms` | GET | → paginated list | **planned** | **planned** | **planned** | not-applicable | **not-tested** | no | Multiroom v1 | Baja |
-| 43 | `/rooms` | POST | `{ name, receiver_ids }` → 201 | **planned** | **planned** | **planned** | not-applicable | **not-tested** | no | | Baja |
-| 44 | `/rooms/{id}` | GET | → Room detail | **planned** | **planned** | **planned** | not-applicable | **not-tested** | no | | Baja |
-| 45 | `/rooms/{id}` | PUT | `{ name, receiver_ids }` → updated | **planned** | **planned** | **planned** | not-applicable | **not-tested** | no | | Baja |
-| 46 | `/rooms/{id}` | DELETE | → 204 | **planned** | **planned** | **planned** | not-applicable | **not-tested** | no | | Baja |
-| 47 | `/rooms/{id}/play` | POST | `{ queue_id }` → multiroom session | **planned** | **planned** | **planned** | not-applicable | **not-tested** | no | | Baja |
-| 48 | `/events` | WS | WebSocket → eventos tiempo real | **stub** | **partial** | **planned** | not-applicable | **not-tested** | no | Player: stub (endpoint declarado, sin eventos reales). MS: broadcast básico de playback.state_changed. | Media |
-| 49 | `/receiver/info` | GET | v1-lite → identidad | not-applicable | **partial** (consume) | not-applicable | **prototype** | **not-tested** | **sí** — MS ↔ Stream | Sin validación en hardware real. | Alta |
-| 50 | `/receiver/pair/start` | POST | v1-lite → pairing | not-applicable | **partial** (consume) | not-applicable | **prototype** | **not-tested** | **sí** — MS ↔ Stream | | Alta |
-| 51 | `/receiver/pair/confirm` | POST | v1-lite → confirm | not-applicable | **partial** (consume) | not-applicable | **prototype** | **not-tested** | **sí** — MS ↔ Stream | | Alta |
-| 52 | `/receiver/heartbeat` | POST | v1-lite cada 10s | not-applicable | **partial** (consume) | not-applicable | **prototype** | **not-tested** | **sí** — MS ↔ Stream | | Alta |
-| 53 | `/receiver/session/start` | POST | v1-lite → recibe URL stream | not-applicable | **partial** (consume) | not-applicable | **prototype** | **not-tested** | **sí** — MS ↔ Stream | | Alta |
-| 54 | `/receiver/session/stop` | POST | v1-lite → stop | not-applicable | **partial** (consume) | not-applicable | **prototype** | **not-tested** | **sí** — MS ↔ Stream | | Alta |
-| 55 | `/receiver/volume` | POST | v1-lite `{ volume }` | not-applicable | **partial** (consume) | not-applicable | **prototype** | **not-tested** | **sí** — MS ↔ Stream | | Alta |
-| 56 | `/receiver/firmware` | GET | v1-lite → version info | not-applicable | **partial** (consume) | not-applicable | **prototype** | **not-tested** | **sí** — MS ↔ Stream | | Media |
+| 1 | `/server/info` | GET | `service`, `name`, `server_id`, `version`, `api_version`, `roles[]`, `features{}`, `auth{strategy}` | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | Player service: `michi-music-player`, MS: `michi-micro-server`. Auth strategy difiere: PLAYER_PASSWORD vs SERVER_CODE. | Crítica |
+| 2 | `/status` | GET | `{ status, version, uptime_seconds, timestamp }` | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | Endpoint público, sin auth | Alta |
+| 3 | `/pair/start` | POST | `{ device_name, device_type }` → `{ pairing_code, device_id }` | NOT_TESTED | **UNIT_PASS** | **consume** | NOT_TESTED | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Crítica |
+| 4 | `/pair/confirm` | POST | `{ device_id, pairing_code }` → `{ token, refresh_token, device_id, server_id }` | NOT_TESTED | **UNIT_PASS** | **consume** | NOT_TESTED | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Crítica |
+| 5 | `/token/refresh` | POST | `{ refresh_token }` → `{ token, refresh_token }` | not-applicable | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Micro | Player no implementa token_refresh. Mobile debe tolerar ausencia. | Alta |
+| 6 | `/devices/revoke` | POST | `{ device_id }` → `{ success }` | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | | Media |
+| 7 | `/library/stats` | GET | → `{ total_tracks, total_albums, total_artists, total_playlists }` | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
+| 8 | `/library/scan` | POST | → `{ success, scan_id }` | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Media |
+| 9 | `/tracks` | GET | `?q, artist, album, genre, year, page, limit` → paginated | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
+| 10 | `/tracks/{id}` | GET | → Track completo | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
+| 11 | `/albums` | GET | `?q, artist, year, page, limit` → paginated | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
+| 12 | `/albums/{id}` | GET | → Album + tracks | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
+| 13 | `/artists` | GET | `?q, page, limit` → paginated | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
+| 14 | `/artists/{id}` | GET | → Artist + albums | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
+| 15 | `/search` | GET | `?q, type, limit` → { tracks, albums, artists, playlists } | NOT_TESTED | **UNIT_PASS** | not-applicable | not-applicable | NOT_TESTED | no | | Alta |
+| 16 | `/stream/{track_id}` | GET | `Range`, `Accept` → 206 / 200 | NOT_TESTED | **UNIT_PASS** | **consume** | NOT_TESTED | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | Player: Range tests existentes. MS: streaming nativo. | Crítica |
+| 17 | `/download/{track_id}` | GET | `Accept` → 200 archivo completo | NOT_TESTED | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Micro | Requiere permisos `download.read`. | Alta |
+| 18 | `/artwork/{cover_id}` | GET | `?size` → imagen | NOT_TESTED | NOT_TESTED | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | Cache headers | Alta |
+| 19 | `/playlists` | GET | → paginated list | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Media |
+| 20 | `/playlists` | POST | `{ name, description }` → 201 | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Media |
+| 21 | `/playlists/{id}` | GET | → Playlist | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Media |
+| 22 | `/playlists/{id}` | PUT | `{ name, description }` → updated | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Baja |
+| 23 | `/playlists/{id}` | DELETE | → 204 | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Baja |
+| 24 | `/playlists/{id}/tracks` | GET | → lista de tracks | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Media |
+| 25 | `/playlists/{id}/tracks` | PUT | `{ track_ids }` → updated | NOT_TESTED | NOT_TESTED | not-applicable | not-applicable | NOT_TESTED | no | | Media |
+| 26 | `/sync/manifest` | GET | → `{ cursor, generated_at, tracks{} }` | NOT_TESTED | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Micro | cursor oficial | Crítica |
+| 27 | `/sync/manifest/delta` | GET | `?device_id, cursor` → `{ cursor, added[], updated[], deleted[], playlists_updated[] }` | NOT_TESTED | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Micro | cursor reemplaza since/manifest_id | Crítica |
+| 28 | `/sync/state` | POST | `{ device_id, cursor, downloaded_tracks }` → `{ success }` | NOT_TESTED | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Micro | | Alta |
+| 29 | `/playback/state` | GET | → `{ state, track_id, position_ms, volume, shuffle, repeat }` | NOT_TESTED | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | `position_ms` oficial | Crítica |
+| 30 | `/playback/control` | POST | `{ command, [position_ms\|volume] }` → `{ success, state }` | NOT_TESTED | **UNIT_PASS** | **consume** (envía) | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | `command` oficial, `action` legacy. Player y MS aceptan ambos. | Crítica |
+| 31 | `/playback/session` | POST | `{ device_id, action, queue_id }` → `{ session_id }` | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Media |
+| 32 | `/queue` | GET | → `{ id, current_index, items[], shuffle, repeat }` | NOT_TESTED | **UNIT_PASS** | **consume** | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Alta |
+| 33 | `/queue/items` | POST | `{ track_ids, position }` → `{ items_added }` | NOT_TESTED | **UNIT_PASS** | **consume** (envía) | not-applicable | NOT_TESTED | **sí** — Mobile ↔ Player, Mobile ↔ Micro | | Alta |
+| 34 | `/queue/jump` | POST | `{ queue_item_id }` → `{ current_index }` | NOT_TESTED | **UNIT_PASS** | NOT_TESTED | not-applicable | NOT_TESTED | no | | Media |
+| 35 | `/queue/reorder` | PUT | `{ queue_item_ids }` → `{ success }` | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
+| 36 | `/queue/items/{id}` | DELETE | → 204 | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Media |
+| 37 | `/receivers` | GET | → paginated list | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | MS: lista de receivers conocidos vía heartbeat, sin integración real con Stream. | Baja |
+| 38 | `/receivers/{id}` | GET | → Receiver detail | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
+| 39 | `/receivers/{id}/session/start` | POST | `{ queue_id }` → `{ session_id }` | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Media |
+| 40 | `/receivers/{id}/session/stop` | POST | → `{ success }` | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Media |
+| 41 | `/receivers/{id}/volume` | POST | `{ volume }` → `{ volume }` | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Media |
+| 42 | `/rooms` | GET | → paginated list | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | Multiroom v1 | Baja |
+| 43 | `/rooms` | POST | `{ name, receiver_ids }` → 201 | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
+| 44 | `/rooms/{id}` | GET | → Room detail | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
+| 45 | `/rooms/{id}` | PUT | `{ name, receiver_ids }` → updated | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
+| 46 | `/rooms/{id}` | DELETE | → 204 | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
+| 47 | `/rooms/{id}/play` | POST | `{ queue_id }` → multiroom session | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
+| 48 | `/events` | WS | WebSocket → eventos tiempo real | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | Player: stub (endpoint declarado, sin eventos reales). MS: broadcast básico de playback.state_changed. | Media |
+| 49 | `/receiver-lite/info` | GET | v1-lite → identidad | not-applicable | NOT_TESTED | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — MS ↔ Stream | Sin validación en hardware real. | Alta |
+| 50 | `/pair/start` + `/pair/confirm` (device_type: receiver) | POST | v1-lite → pairing | not-applicable | NOT_TESTED | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — MS ↔ Stream | El pairing de receivers usa los endpoints de pairing estándar. | Alta |
+| 51 | `/receiver-lite/session` | POST | v1-lite → recibe URL stream | not-applicable | NOT_TESTED | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — MS ↔ Stream | | Alta |
+| 52 | `/receiver-lite/heartbeat` | POST | v1-lite cada 10s | not-applicable | NOT_TESTED | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — MS ↔ Stream | | Alta |
+| 53 | `/receiver-lite/session` | DELETE | v1-lite → stop | not-applicable | NOT_TESTED | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — MS ↔ Stream | | Alta |
+| 54 | `/receiver-lite/volume` | POST | v1-lite `{ volume }` | not-applicable | NOT_TESTED | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — MS ↔ Stream | | Alta |
+| 55 | `/receiver-lite/firmware` | GET | v1-lite → version info | not-applicable | NOT_TESTED | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — MS ↔ Stream | | Media |
 
 ---
 
@@ -89,9 +92,9 @@
 
 | Rol | Permisos |
 |-----|----------|
-| `mobile_client` | `server.read`, `library.read`, `track.read`, `artwork.read`, `sync.read_manifest`, `sync.download_tracks`, `sync.download_covers`, `sync.upload_state`, `download.read`, `playback.read`, `playback.control`, `queue.read`, `queue.write` |
+| `mobile_player` | `server.read`, `library.read`, `track.read`, `artwork.read`, `sync.read_manifest`, `sync.download_tracks`, `sync.download_covers`, `sync.upload_state`, `download.read`, `playback.read`, `playback.control`, `queue.read`, `queue.write` |
 | `desktop_player` | `server.read`, `library.read`, `library.write`, `library.scan`, `track.read`, `track.write`, `artwork.read`, `playlist.read`, `playlist.write`, `stream.read`, `stream.transcode`, `sync.read_manifest`, `sync.upload_state`, `playback.read`, `playback.control`, `queue.read`, `queue.write`, `receiver.read`, `receiver.control`, `receiver.session`, `receiver.volume`, `room.read`, `room.write`, `system.read`, `system.write` |
-| `library_server` | `server.read`, `library.read`, `library.write`, `track.read`, `track.write`, `artwork.read`, `playlist.read`, `playlist.write`, `sync.read_manifest`, `stream.read`, `stream.transcode`, `system.read` |
+| `music_server` | `server.read`, `library.read`, `library.write`, `track.read`, `track.write`, `artwork.read`, `playlist.read`, `playlist.write`, `sync.read_manifest`, `stream.read`, `stream.transcode`, `system.read` |
 | `audio_receiver` | `server.read`, `stream.read`, `receiver.session`, `receiver.volume` |
 | `remote_controller` | `server.read`, `library.read`, `track.read`, `artwork.read`, `playlist.read`, `playlist.write`, `playback.read`, `playback.control`, `queue.read`, `queue.write`, `receiver.read`, `receiver.control`, `receiver.volume`, `room.read` |
 
@@ -119,4 +122,4 @@
 
 ## Versión
 
-**v1.0.0-alpha** — Contrato oficial del ecosistema. Lista de beta blockers definida para coordinar la fase beta.
+**v1.0.0-alpha** — Contrato oficial del ecosistema. Lista de beta blockers definida para coordinar la fase beta. La matriz usa niveles de evidencia reales; sin reportes E2E (`tests/e2e_certification/reports/` vacío) todo flujo E2E es NOT_TESTED.

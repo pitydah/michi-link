@@ -26,8 +26,8 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 | Escenario | Mínimo requerido | Estado actual |
 |-----------|-----------------|---------------|
 | E2E-01: Mobile ↔ Player pairing | NETWORK_E2E_PASS | NOT_TESTED |
-| E2E-02: Mobile ↔ Player stream | NETWORK_E2E_PASS | NOT_TESTED |
 | E2E-03: Mobile ↔ Player playback | NETWORK_E2E_PASS | NOT_TESTED |
+| —: Mobile ↔ Player stream (no dedicated scenario in SCENARIOS.md) | NETWORK_E2E_PASS | NOT_TESTED |
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/mobile_player_*.json`
 
@@ -37,7 +37,7 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 |-----------|-----------------|---------------|
 | E2E-04: Mobile ↔ Micro pairing | NETWORK_E2E_PASS | NOT_TESTED |
 | E2E-05: Mobile ↔ Micro download/sync | NETWORK_E2E_PASS | NOT_TESTED |
-| E2E-06: Mobile ↔ Micro playback | NETWORK_E2E_PASS | NOT_TESTED |
+| —: Mobile ↔ Micro playback (no dedicated scenario in SCENARIOS.md) | NETWORK_E2E_PASS | NOT_TESTED |
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/mobile_micro_*.json`
 
@@ -53,7 +53,7 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 | Escenario | Mínimo requerido | Estado actual |
 |-----------|-----------------|---------------|
-| E2E-09: Continue on Server (import + queue + playback) | LOCAL_E2E_PASS | NOT_TESTED |
+| —: Continue on Server (import + queue + playback; no dedicated scenario in SCENARIOS.md, import covered by E2E-07) | LOCAL_E2E_PASS | NOT_TESTED |
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/continue_on_server_*.json`
 
@@ -61,7 +61,7 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 | Escenario | Mínimo requerido | Estado actual |
 |-----------|-----------------|---------------|
-| E2E-10: Micro ↔ Stream pairing + session | MOCK_PASS | NOT_TESTED |
+| E2E-09: Micro ↔ Stream pairing + session | MOCK_PASS | NOT_TESTED |
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/micro_stream_receiver_*.json`
 
@@ -88,13 +88,26 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 | Condición | Mínimo requerido | Estado | Evidencia |
 |-----------|-----------------|--------|-----------|
-| service enum correcto | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
-| features booleanas | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
-| auth.required obligatorio | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
-| michi_link_version string | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
-| sync-delta con cursor | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
-| playback-control con command | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
-| error format con details | UNIT_PASS | UNIT_PASS | 34 tests de contrato |
+| service enum correcto | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks (negativos de service enum: rechaza servicios y aliases retirados) |
+| api_version v1/v1-lite estricto | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks (negativos: `api_version: "1.0.0"` rechazado; campo extra `michi_link_version` rechazado por `additionalProperties: false`) | <!-- michi-policy:exclude -->
+| features booleanas | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks |
+| auth.required obligatorio | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks |
+| sync-delta con cursor | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks |
+| playback-control con command | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks (negativo: rechaza `action`) |
+| error format con details | UNIT_PASS | UNIT_PASS | tests/contract: 109 checks |
+| identity ed25519-blake3-v1 (michi_id 43 chars) | UNIT_PASS | UNIT_PASS | tests/identity_contract: 13 checks |
+
+### 8.1 Evidencia de contrato verificada (2026-08-05)
+
+| Check | Resultado |
+|-------|-----------|
+| tests/contract (`npm test`) | 109 checks PASS, 0 failed |
+| tests/identity_contract (`npm test`) | 13 checks PASS, 0 failed |
+| cargo test (crates/michi-identity) | 59 PASS |
+| clippy (crates/michi-identity) | 0 warnings |
+| redocly lint (openapi/michi-link-v1.yaml) | 0 errors |
+
+> Toda la evidencia E2E sigue vacía: `tests/e2e_certification/reports/` no contiene reportes. La beta permanece **CERRADA** hasta lograr `NETWORK_E2E_PASS`/`DEVICE_E2E_PASS` en Mobile↔Player y Mobile↔Micro, y al menos `LOCAL_E2E_PASS` en Player→Micro import y Micro autonomous playback.
 
 ## Resumen
 
