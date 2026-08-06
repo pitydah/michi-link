@@ -1,0 +1,11 @@
+{
+  "name": "michi-link-cross-layer-tests",
+  "private": true,
+  "scripts": {
+    "test": "node validate-generated.js"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  }
+}
