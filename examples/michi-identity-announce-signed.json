@@ -2,7 +2,11 @@
   "device_id": "michi-micro-server-01",
   "name": "Michi Micro Server",
   "service": "michi-micro-server",
-  "roles": ["music_server", "library_host", "playback_host"],
+  "roles": [
+    "music_server",
+    "library_host",
+    "playback_host"
+  ],
   "api_version": "v1",
   "host": "192.168.1.100",
   "port": 8500,
@@ -17,6 +21,6 @@
   "michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
   "public_key": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
   "signature": "-uA_huP-ihEN6MWq4QL2OK4tiPAk-FDmr_olMoLGDUUjWHHomPQTUSMkwI2yJIgT1JZXx5oCxhb6RIOzJ3eTCA",
-  "timestamp_ms": 1785974884586,
+  "timestamp_ms": 1785976444857,
   "nonce": "IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W"
 }

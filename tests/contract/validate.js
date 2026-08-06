@@ -13,512 +13,275 @@ function loadJSON(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
-function loadAllSchemas(dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  const schemas = {};
-  for (const entry of entries) {
-    if (entry.isFile() && entry.name.endsWith(".schema.json")) {
-      const schema = loadJSON(path.join(dir, entry.name));
-      schemas[entry.name.replace(/\.schema\.json$/, "")] = schema;
-    }
-  }
-  return schemas;
+function schemaFiles() {
+  return fs.readdirSync(SCHEMAS_DIR).filter((f) => f.endsWith(".schema.json")).sort();
 }
 
-function exampleFilesFromDir(dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  return entries
-    .filter((e) => e.isFile() && e.name.endsWith(".json"))
-    .map((e) => ({ name: e.name, fullPath: path.join(dir, e.name) }));
+function exampleFiles() {
+  return fs.readdirSync(EXAMPLES_DIR).filter((f) => f.endsWith(".json")).sort();
 }
 
-function mappingRules() {
-  return [
-    { pattern: /^server-info-(.+)\.json$/, schemaBase: "server-info" },
-    { pattern: /^receiver-(.+)-info\.json$/, schemaBase: "receiver-info" },
-    { pattern: /^discovery-announce\.json$/, schemaBase: "discovery-announce" },
-    { pattern: /^pair-start\.json$/, schemaBase: "pair-start" },
-    { pattern: /^pair-confirm\.json$/, schemaBase: "pair-confirm" },
-    { pattern: /^sync-manifest\.json$/, schemaBase: "sync-manifest" },
-    { pattern: /^playback-state\.json$/, schemaBase: "playback-state" },
-    { pattern: /^queue\.json$/, schemaBase: "queue" },
-    { pattern: /^audio-chain\.json$/, schemaBase: "audio-chain" },
-    { pattern: /^event-(.+)\.json$/, schemaBase: "event" },
-    { pattern: /^playback-control-(.+)\.json$/, schemaBase: "playback-control" },
-    { pattern: /^sync-delta\.json$/, schemaBase: "sync-delta" },
-    { pattern: /^error-(.+)\.json$/, schemaBase: "error" },
-    { pattern: /^e2e-(.+)\.json$/, schemaBase: "e2e-report" },
-    { pattern: /^import-preflight-request\.json$/, schemaBase: "import-preflight" },
-    { pattern: /^import-preflight-response\.json$/, schemaBase: "import-preflight-response" },
-    { pattern: /^import-commit-result\.json$/, schemaBase: "import-commit-result" },
-    { pattern: /^continue-on-server-request\.json$/, schemaBase: "continue-on-server" },
-    { pattern: /^upload-result\.json$/, schemaBase: "import-upload-result" },
-    { pattern: /^upload-result-unconfirmed\.json$/, schemaBase: "import-upload-result" },
-    { pattern: /^commit-mapping-result\.json$/, schemaBase: "import-commit-result" },
-    { pattern: /^queue-transfer-request\.json$/, schemaBase: "queue-transfer" },
-    { pattern: /^queue-transfer-response\.json$/, schemaBase: "queue-transfer-response" },
-    { pattern: /^michi-identity-announce-signed\.json$/, schemaBase: "discovery-announce" },
-    { pattern: /^tracks-bulk-request\.json$/, schemaBase: "track-bulk" },
-    { pattern: /^queue-bulk-request\.json$/, schemaBase: "queue-bulk" },
-    { pattern: /^error-idempotency-key-reuse\.json$/, schemaBase: "error" },
-    { pattern: /^error-invalid-request\.json$/, schemaBase: "error" },
-    { pattern: /^error-unauthorized\.json$/, schemaBase: "error" },
-    { pattern: /^error-forbidden\.json$/, schemaBase: "error" },
-    { pattern: /^error-not-found\.json$/, schemaBase: "error" },
-    { pattern: /^error-conflict\.json$/, schemaBase: "error" },
-    { pattern: /^error-rate-limited\.json$/, schemaBase: "error" },
-    { pattern: /^error-internal\.json$/, schemaBase: "error" },
-  ];
+const SCHEMA_BASE = "https://michi.link/schemas/";
+
+// Exact mapping: example file name -> schema base name (without .schema.json).
+const EXAMPLE_MAP = {
+  "audio-chain.json": "audio-chain",
+  "commit-mapping-result.json": "import-commit-result",
+  "continue-on-server-request.json": "continue-on-server",
+  "discovery-announce.json": "discovery-announce",
+  "e2e-failure-auth.json": "e2e-report",
+  "e2e-mobile-player-pass.json": "e2e-report",
+  "e2e-player-micro-import-pass.json": "e2e-report",
+  "event-playback-state-changed.json": "event",
+  "identity-document.json": "michi-identity",
+  "import-commit-result.json": "import-commit-result",
+  "import-preflight-request.json": "import-preflight",
+  "import-preflight-response.json": "import-preflight-response",
+  "michi-identity-announce-signed.json": "discovery-announce",
+  "pair-confirm.json": "pair-confirm",
+  "pair-start.json": "pair-start",
+  "playback-control-seek.json": "playback-control",
+  "playback-control-volume.json": "playback-control",
+  "playback-state.json": "playback-state",
+  "queue-bulk-request.json": "queue-bulk",
+  "queue.json": "queue",
+  "queue-transfer-request.json": "queue-transfer",
+  "queue-transfer-response.json": "queue-transfer-response",
+  "receiver-hifi-info.json": "receiver-info",
+  "receiver-standard-info.json": "receiver-info",
+  "server-info-micro-server.json": "server-info",
+  "server-info-mobile.json": "server-info",
+  "server-info-player.json": "server-info",
+  "sync-delta.json": "sync-delta",
+  "sync-manifest.json": "sync-manifest",
+  "tracks-bulk-request.json": "track-bulk",
+  "upload-result.json": "import-upload-result",
+  "upload-result-unconfirmed.json": "import-upload-result",
+};
+
+function schemaBaseFor(exampleName) {
+  if (exampleName.startsWith("error-")) return "error";
+  return EXAMPLE_MAP[exampleName] || null;
 }
 
-function matchRule(exampleName) {
-  for (const rule of mappingRules()) {
-    const match = exampleName.match(rule.pattern);
-    if (match) return rule;
+function printErrors(validate) {
+  for (const err of validate.errors || []) {
+    console.log(`       ${err.instancePath || "/"} ${err.keyword} ${err.message}`);
   }
-  return null;
-}
-
-function rewriteRelativeRefs(schema, allSchemas, visited) {
-  if (!schema || typeof schema !== "object") return;
-  if (visited.has(schema)) return;
-  visited.add(schema);
-
-  for (const key of Object.keys(schema)) {
-    if (key === "$ref" && typeof schema.$ref === "string" && !schema.$ref.includes("://") && !schema.$ref.startsWith("#")) {
-      const refKey = schema.$ref.replace(/\.schema\.json$/, "");
-      if (allSchemas[refKey]) {
-        schema.$ref = allSchemas[refKey].$id || `https://michi.link/schemas/${refKey}.schema.json`;
-      }
-    } else {
-      rewriteRelativeRefs(schema[key], allSchemas, visited);
-    }
-  }
-}
-
-function compileWithRefs(baseName, allSchemas) {
-  const mainSchema = allSchemas[baseName];
-  if (!mainSchema) return null;
-
-  const root = JSON.parse(JSON.stringify(mainSchema));
-  rewriteRelativeRefs(root, allSchemas, new Set());
-
-  const ajv = new Ajv({ allErrors: true, strict: false });
-  addFormats(ajv);
-
-  const refIds = new Set();
-  function collectRefs(s) {
-    if (!s || typeof s !== "object") return;
-    if (s.$ref && s.$ref.includes("://")) refIds.add(s.$ref);
-    for (const v of Object.values(s)) collectRefs(v);
-  }
-  collectRefs(root);
-
-  for (const refId of refIds) {
-    const refName = refId.split("/").pop().replace(/\.schema\.json$/, "");
-    const refSchema = allSchemas[refName];
-    if (refSchema) {
-      const copy = JSON.parse(JSON.stringify(refSchema));
-      rewriteRelativeRefs(copy, allSchemas, new Set());
-      if (!ajv.getSchema(refId)) {
-        ajv.addSchema(copy, refId);
-      }
-    }
-  }
-
-  return ajv.compile(root);
 }
 
 function main() {
-  const allSchemas = loadAllSchemas(SCHEMAS_DIR);
-  const examples = exampleFilesFromDir(EXAMPLES_DIR);
+  const ajv = new Ajv({ strict: true, allErrors: true });
+  addFormats(ajv);
 
   let passed = 0;
   let failed = 0;
 
-  for (const example of examples) {
-    const rule = matchRule(example.name);
-    if (!rule) {
-      console.log(`${FAIL} ${example.name} -> no matching schema found`);
-      failed++;
-      continue;
-    }
-
-    const data = loadJSON(example.fullPath);
-    const validate = compileWithRefs(rule.schemaBase, allSchemas);
-
-    if (!validate) {
-      console.log(`${FAIL} ${example.name} -> schema ${rule.schemaBase}.schema.json not found`);
-      failed++;
-      continue;
-    }
-
-    const valid = validate(data);
-
-    if (valid) {
-      console.log(`${PASS} ${example.name} matches ${rule.schemaBase}.schema.json`);
+  function check(label, ok, validate) {
+    if (ok) {
+      console.log(`${PASS} ${label}`);
       passed++;
-      continue;
-    }
-
-    let altValid = false;
-
-    if (rule.schemaBase === "server-info" && !altValid) {
-      const hasService = typeof data.service === "string";
-      const hasRoles = Array.isArray(data.roles) && data.roles.length > 0;
-      const hasFeatures = data.features && typeof data.features === "object";
-      if (hasService && hasRoles && hasFeatures) {
-        console.log(`${PASS} ${example.name} matches server-info.schema.json (official v1 format)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "receiver-info" && !altValid) {
-      const fields = ["device_id", "device_name", "device_type"];
-      const matchCount = fields.filter((f) => f in data).length;
-      if (matchCount >= 2) {
-        console.log(`${PASS} ${example.name} matches receiver-info.schema.json`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "event" && !altValid) {
-      const hasType = typeof data.type === "string" && data.type.length > 0;
-      const hasData = data.data !== undefined && typeof data.data === "object";
-      if (hasType && hasData) {
-        console.log(`${PASS} ${example.name} matches event.schema.json (validated type+data fields)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "audio-chain" && !altValid) {
-      const required = ["id", "name", "source", "controller", "output"];
-      if (required.every((f) => f in data)) {
-        console.log(`${PASS} ${example.name} matches audio-chain.schema.json (validated required fields)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "discovery-announce" && !altValid) {
-      const required = ["device_id", "device_name", "device_type", "roles", "api_version", "host", "port"];
-      if (required.every((f) => f in data)) {
-        console.log(`${PASS} ${example.name} matches discovery-announce.schema.json (validated required fields)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "playback-state" && !altValid) {
-      const hasState = typeof data.state === "string";
-      const hasDeviceId = typeof data.device_id === "string";
-      const hasTrackInfo = data.current_track && typeof data.current_track === "object";
-      const hasPosition = typeof data.position_ms === "number";
-      if (hasState && hasDeviceId && hasTrackInfo && hasPosition) {
-        console.log(`${PASS} ${example.name} matches playback-state.schema.json (validated official fields)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "queue" && !altValid) {
-      const hasItems = Array.isArray(data.items);
-      const hasIndex = typeof data.current_index === "number";
-      const validItems = hasItems && data.items.every(
-        (item) => typeof item.id === "string" && typeof item.track_id === "string" && typeof item.title === "string"
-      );
-      if (hasItems && hasIndex && validItems) {
-        console.log(`${PASS} ${example.name} matches queue.schema.json (validated queue item structure)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "sync-manifest" && !altValid) {
-      const hasCursor = typeof data.cursor === "string";
-      const hasGeneratedAt = typeof data.generated_at === "string";
-      const hasTracks = Array.isArray(data.tracks) && data.tracks.length > 0;
-      const validTracks = hasTracks && data.tracks.every(
-        (t) => typeof t.id === "string" && typeof t.title === "string"
-      );
-      if (hasCursor && hasGeneratedAt && hasTracks && validTracks) {
-        console.log(`${PASS} ${example.name} matches sync-manifest.schema.json (validated core fields)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "playback-control" && !altValid) {
-      if (typeof data.command === "string" && data.command.length > 0) {
-        console.log(`${PASS} ${example.name} matches playback-control.schema.json (command field present)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "sync-delta" && !altValid) {
-      if (typeof data.cursor === "string" && Array.isArray(data.added) && Array.isArray(data.updated) && Array.isArray(data.deleted) && Array.isArray(data.playlists_updated)) {
-        console.log(`${PASS} ${example.name} matches sync-delta.schema.json (simple cursor format)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (rule.schemaBase === "error" && !altValid) {
-      if (data.error && typeof data.error.code === "string" && typeof data.error.message === "string") {
-        console.log(`${PASS} ${example.name} matches error.schema.json (nested error format)`);
-        altValid = true;
-        passed++;
-      }
-    }
-
-    if (!altValid) {
-      console.log(`${FAIL} ${example.name} against ${rule.schemaBase}.schema.json`);
-      for (const err of validate.errors || []) {
-        console.log(`       ${err.instancePath} ${err.message}`);
-      }
+    } else {
+      console.log(`${FAIL} ${label}`);
+      if (validate) printErrors(validate);
       failed++;
     }
   }
 
-  // --- Negative test 1: server-info rejects old format ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const oldFormat = {
-      server_name: "Michi Link Server",
-      server_version: "1.0.0",
-      api_version: "1.0.0",
-      device_id: "old-device",
-      roles: ["core", "sync_leader", "library_service"],
-      capabilities: { streaming_formats: ["flac"] },
-      uptime_seconds: 84720
-    };
-    if (validate && !validate(oldFormat)) {
-      console.log(`${PASS} server-info rejects old format (server_name, device_id, capabilities)`);
-      passed++;
-    } else {
-      console.log(`${FAIL} server-info did NOT reject old format (should fail)`);
-      failed++;
+  // Pass 1: register every schema by its $id so cross-schema $refs resolve.
+  const schemaIds = {};
+  for (const name of schemaFiles()) {
+    const schema = loadJSON(path.join(SCHEMAS_DIR, name));
+    const id = SCHEMA_BASE + name;
+    schemaIds[name] = id;
+    try {
+      ajv.addSchema(schema);
+    } catch (err) {
+      console.error(`FATAL: failed to register schema ${name}: ${err.message}`);
+      process.exit(1);
     }
-  })();
+  }
 
-  // --- Negative test 2: server-info rejects "michi-player" (deprecated name) ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const wrongService = {
-      service: "michi-player",
-      name: "Wrong",
-      api_version: "v1",
-      michi_link_version: "1.0.0-alpha",
-      roles: ["desktop_player"],
-      features: { library: true },
-      auth: { required: true, strategy: "PLAYER_PASSWORD", token_refresh: false }
-    };
-    if (validate && !validate(wrongService)) {
-      console.log(`${PASS} server-info rejects service: \"michi-player\" (should be \"michi-music-player\")`);
-      passed++;
-    } else {
-      console.log(`${FAIL} server-info accepted service: \"michi-player\" (should reject)`);
-      failed++;
+  // Pass 2: compile every schema. Each successful compilation counts as a check.
+  for (const name of schemaFiles()) {
+    let validate;
+    try {
+      validate = ajv.getSchema(schemaIds[name]);
+    } catch (err) {
+      validate = null;
     }
-  })();
+    check(`schema ${name} compiles`, typeof validate === "function", null);
+  }
 
-  // --- Negative test 3: server-info rejects missing auth.required ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const noAuthRequired = {
-      service: "michi-micro-server",
-      name: "Test",
-      api_version: "v1",
-      michi_link_version: "1.0.0-alpha",
-      roles: ["home_server"],
-      features: { library: true },
-      auth: { strategy: "SERVER_CODE", token_refresh: true }
-    };
-    if (validate && !validate(noAuthRequired)) {
-      console.log(`${PASS} server-info rejects missing auth.required`);
-      passed++;
-    } else {
-      console.log(`${FAIL} server-info accepted missing auth.required (should reject)`);
-      failed++;
+  // Validate every example against its mapped schema with real AJV.
+  const orphaned = [];
+  for (const name of exampleFiles()) {
+    const base = schemaBaseFor(name);
+    if (!base) {
+      orphaned.push(name);
+      continue;
     }
-  })();
-
-  // --- Negative test 4: playback-control rejects "action" ---
-  (function () {
-    const validate = compileWithRefs("playback-control", allSchemas);
-    const bad = { action: "play", value: 30000 };
-    if (validate && !validate(bad)) {
-      console.log(`${PASS} playback-control rejects \"action\" as field name`);
-      passed++;
-    } else {
-      console.log(`${FAIL} playback-control did NOT reject \"action\" (should fail)`);
-      failed++;
+    const data = loadJSON(path.join(EXAMPLES_DIR, name));
+    const validate = ajv.getSchema(SCHEMA_BASE + base + ".schema.json");
+    if (typeof validate !== "function") {
+      check(`example ${name} -> ${base}.schema.json compiled`, false, null);
+      continue;
     }
-  })();
+    check(`example ${name} matches ${base}.schema.json`, validate(data), validate);
+  }
 
-  // --- Negative test 5: playback-control rejects missing command ---
-  (function () {
-    const validate = compileWithRefs("playback-control", allSchemas);
-    const bad = { position_ms: 90000 };
-    if (validate && !validate(bad)) {
-      console.log(`${PASS} playback-control rejects missing command field`);
-      passed++;
-    } else {
-      console.log(`${FAIL} playback-control did NOT reject missing command (should fail)`);
-      failed++;
-    }
-  })();
+  // Anti-orphan: any example without a schema mapping fails the suite.
+  for (const name of orphaned) {
+    check(`example ${name} has no schema mapping`, false, null);
+  }
 
-  // --- Positive test: server-info with "michi-music-player" is valid ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const correct = {
-      service: "michi-music-player",
-      name: "Michi Music Player",
-      api_version: "v1",
-      michi_link_version: "1.0.0-alpha",
-      roles: ["desktop_player"],
-      features: { library: true },
-      auth: { required: true, strategy: "PLAYER_PASSWORD", token_refresh: false }
-    };
-    if (validate && validate(correct)) {
-      console.log(`${PASS} server-info with service: \"michi-music-player\" is valid`);
-      passed++;
-    } else {
-      console.log(`${FAIL} server-info with service: \"michi-music-player\" failed`);
-      for (const err of validate.errors || []) {
-        console.log(`       ${err.instancePath} ${err.message}`);
-      }
-      failed++;
-    }
-  })();
+  // --- Negative checks: minimal valid base payloads, one mutation each ---
 
-  // --- Positive test: michi_link_version as string --- (included in server-info test below)
-  // Note: michi_link_version is no longer part of the schema. api_version is the only version field.
+  const serverInfoBase = {
+    service: "michi-micro-server",
+    name: "Test Server",
+    version: "0.1.0",
+    api_version: "v1",
+    roles: ["music_server", "library_host", "playback_host"],
+    features: { library: true, search: true },
+    auth: { required: true, strategy: "SERVER_CODE", token_refresh: true },
+  };
 
-  // --- Positive test: features accept booleans ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const boolFeatures = {
-      service: "michi-micro-server",
-      name: "Test",
-      api_version: "v1",
-      michi_link_version: "1.0.0-alpha",
-      roles: ["home_server"],
-      features: { library: true, search: false, streaming: true },
-      auth: { required: true, strategy: "SERVER_CODE", token_refresh: true }
-    };
-    if (validate && validate(boolFeatures)) {
-      console.log(`${PASS} features with simple booleans is valid`);
-      passed++;
-    } else {
-      console.log(`${FAIL} features with simple booleans failed`);
-      for (const err of validate.errors || []) {
-        console.log(`       ${err.instancePath} ${err.message}`);
-      }
-      failed++;
-    }
-  })();
+  const receiverBase = {
+    service: "michi-stream-standard",
+    name: "Test Receiver",
+    version: "0.1.0",
+    firmware: "0.1.0",
+    api_version: "v1-lite",
+    roles: ["audio_receiver"],
+    auth: { required: true, strategy: "RECEIVER_BUTTON", token_refresh: false },
+    audio: { codecs: ["pcm_s16le"], max_sample_rate: 96000, max_channels: 2 },
+    features: { session: true, volume: true, heartbeat: true },
+  };
 
-  // --- Positive test: sync-delta with simple cursor string ---
-  (function () {
-    const validate = compileWithRefs("sync-delta", allSchemas);
-    const simpleDelta = {
-      cursor: "simple_cursor_abc123",
-      added: [{ type: "track", id: "t1", data: { title: "Test" } }],
-      updated: [],
-      deleted: [],
-      playlists_updated: []
-    };
-    if (validate && validate(simpleDelta)) {
-      console.log(`${PASS} sync-delta with simple cursor string is valid`);
-      passed++;
-    } else {
-      console.log(`${FAIL} sync-delta with simple cursor string failed`);
-      for (const err of validate.errors || []) {
-        console.log(`       ${err.instancePath} ${err.message}`);
-      }
-      failed++;
-    }
-  })();
+  const announceBase = {
+    device_id: "dev-01",
+    name: "Test Device",
+    service: "michi-micro-server",
+    roles: ["music_server"],
+    api_version: "v1",
+    host: "192.168.1.10",
+    port: 8400,
+    features: { library: true },
+    michi_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+    public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+    signature: "-uA_huP-ihEN6MWq4QL2OK4tiPAk-FDmr_olMoLGDUUjWHHomPQTUSMkwI2yJIgT1JZXx5oCxhb6RIOzJ3eTCA",
+    timestamp_ms: Date.now(),
+    nonce: "IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W",
+  };
 
-  // --- Positive test: error format with nested error object ---
-  (function () {
-    const validate = compileWithRefs("error", allSchemas);
-    const errorObj = {
-      error: {
-        code: "NOT_IMPLEMENTED",
-        message: "Not implemented",
-        details: { endpoint: "/api/v1/rooms" }
-      }
-    };
-    if (validate && validate(errorObj)) {
-      console.log(`${PASS} error format with nested error.code, error.message, error.details is valid`);
-      passed++;
-    } else {
-      console.log(`${FAIL} error format with nested object failed`);
-      for (const err of validate.errors || []) {
-        console.log(`       ${err.instancePath} ${err.message}`);
-      }
-      failed++;
-    }
-  })();
+  const identityBase = {
+    identity_scheme: "ed25519-blake3-v1",
+    michi_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+    public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+  };
 
-  // --- Positive test: server-info Player example validates ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const data = loadJSON(path.join(EXAMPLES_DIR, "server-info-player.json"));
-    if (validate && validate(data)) {
-      console.log(`${PASS} server-info Player example validates (service: ${data.service})`);
-      passed++;
-    } else {
-      console.log(`${FAIL} server-info Player example failed validation`);
-      for (const err of validate.errors || []) {
-        console.log(`       ${err.instancePath} ${err.message}`);
-      }
-      failed++;
-    }
-  })();
+  const V = (base) => ajv.getSchema(SCHEMA_BASE + base + ".schema.json");
+  const rejects = (label, base, payload) => {
+    const validate = V(base);
+    const valid = validate(payload);
+    check(label, !valid, valid ? null : validate);
+  };
 
-  // --- Positive test: server-info Micro Server example validates ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const data = loadJSON(path.join(EXAMPLES_DIR, "server-info-micro-server.json"));
-    if (validate && validate(data)) {
-      console.log(`${PASS} server-info Micro Server example validates (service: ${data.service}, michi_link_version: ${data.michi_link_version})`);
-      passed++;
-    } else {
-      console.log(`${FAIL} server-info Micro Server example failed validation`);
-      for (const err of validate.errors || []) {
-        console.log(`       ${err.instancePath} ${err.message}`);
-      }
-      failed++;
-    }
-  })();
-
-  // --- Positive test: server-info Mobile example validates ---
-  (function () {
-    const validate = compileWithRefs("server-info", allSchemas);
-    const data = loadJSON(path.join(EXAMPLES_DIR, "server-info-mobile.json"));
-    if (validate && validate(data)) {
-      console.log(`${PASS} server-info Mobile example validates`);
-      passed++;
-    } else {
-      console.log(`${FAIL} server-info Mobile example failed validation`);
-      for (const err of validate.errors || []) {
-        console.log(`       ${err.instancePath} ${err.message}`);
-      }
-      failed++;
-    }
-  })();
+  rejects("negative: server-info rejects service \"michi-big-server\"", "server-info", {
+    ...serverInfoBase,
+    service: "michi-big-server",
+  });
+  rejects("negative: server-info rejects deprecated service \"michi-player\"", "server-info", {
+    ...serverInfoBase,
+    service: "michi-player",
+  });
+  rejects("negative: server-info rejects extra michi_link_version", "server-info", {
+    ...serverInfoBase,
+    michi_link_version: "1.0.0",
+  });
+  rejects("negative: server-info rejects api_version \"1.0.0\"", "server-info", {
+    ...serverInfoBase,
+    api_version: "1.0.0",
+  });
+  rejects("negative: server-info rejects auth.required false", "server-info", {
+    ...serverInfoBase,
+    auth: { ...serverInfoBase.auth, required: false },
+  });
+  rejects("negative: server-info rejects non-boolean feature", "server-info", {
+    ...serverInfoBase,
+    features: { ...serverInfoBase.features, library: "yes" },
+  });
+  rejects("negative: playback-control rejects \"action\" field", "playback-control", {
+    action: "play",
+  });
+  rejects("negative: discovery-announce rejects signed announce missing nonce", "discovery-announce", {
+    ...announceBase,
+    nonce: undefined,
+  });
+  rejects("negative: discovery-announce rejects signature without timestamp_ms", "discovery-announce", {
+    ...announceBase,
+    timestamp_ms: undefined,
+  });
+  rejects("negative: receiver-info rejects codec \"opus\"", "receiver-info", {
+    ...receiverBase,
+    audio: { ...receiverBase.audio, codecs: ["opus"] },
+  });
+  rejects("negative: receiver-info rejects api_version \"v1\"", "receiver-info", {
+    ...receiverBase,
+    api_version: "v1",
+  });
+  rejects("negative: michi-identity rejects non-base64url public_key", "michi-identity", {
+    ...identityBase,
+    public_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  });
+  rejects("negative: michi-identity rejects 64-char hex michi_id", "michi-identity", {
+    ...identityBase,
+    michi_id: "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+  });
+  rejects("negative: discovery-announce rejects too-short nonce", "discovery-announce", {
+    ...announceBase,
+    nonce: "short",
+  });
+  rejects("negative: pair-confirm rejects pairing_code violating pattern", "pair-confirm", {
+    device_id: "d3c4e5f6a7b89012cdef123456789012",
+    pairing_code: "abcd-1234",
+  });
+  rejects("negative: server-info rejects role \"home_server\"", "server-info", {
+    ...serverInfoBase,
+    roles: ["home_server"],
+  });
+  rejects("negative: error rejects code \"NOPE\"", "error", {
+    error: { code: "NOPE", message: "nope" },
+  });
+  rejects("negative: server-info if/then rejects audio_receiver role for michi-music-player", "server-info", {
+    ...serverInfoBase,
+    service: "michi-music-player",
+    roles: ["audio_receiver"],
+  });
+  rejects("negative: discovery-announce rejects null features", "discovery-announce", {
+    ...announceBase,
+    features: null,
+  });
+  rejects("negative: event rejects type \"queue.updated\"", "event", {
+    type: "queue.updated",
+    data: {},
+    timestamp: "2026-08-05T12:00:00Z",
+  });
+  rejects("negative: server-info rejects missing auth", "server-info", {
+    service: "michi-micro-server",
+    name: "Test Server",
+    version: "0.1.0",
+    api_version: "v1",
+    roles: ["music_server"],
+    features: { library: true },
+  });
+  rejects("negative: error rejects missing message", "error", {
+    error: { code: "NOT_FOUND" },
+  });
 
   const total = passed + failed;
-  console.log(`\n${total} total, ${passed} passed, ${failed} failed`);
-
+  console.log(`\n${total} checks: ${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
 }
 
