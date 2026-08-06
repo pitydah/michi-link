@@ -405,11 +405,7 @@ Inicia el flujo de emparejamiento. Un código se muestra en pantalla para que el
 {
   "device_name": "Mi Teléfono",
   "device_type": "mobile",
-  "roles": ["controller", "player"],
-  "capabilities": {
-    "streaming_formats": ["mp3"],
-    "max_bitrate": 320
-  }
+  "roles": ["mobile_player", "remote_controller", "sync_client"]
 }
 ```
 
@@ -457,8 +453,8 @@ Confirma el emparejamiento con el código obtenido en `/pair/start`.
 
 ```json
 {
-  "token": "eyJhbGciOiJI...",
-  "refresh_token": "eyJhbGciOiJI...",
+  "token": "tok_michi_opaco_7f3a...",
+  "refresh_token": "tok_michi_refresh_c2b9...",
   "expires_in_seconds": 3600,
   "device_id": "uuid-del-dispositivo",
   "server_id": "uuid-del-servidor"
@@ -489,7 +485,7 @@ Renueva el token de acceso usando el refresh token.
 
 ```json
 {
-  "refresh_token": "eyJhbGciOiJI..."
+  "refresh_token": "tok_michi_refresh_c2b9..."
 }
 ```
 
@@ -497,8 +493,8 @@ Renueva el token de acceso usando el refresh token.
 
 ```json
 {
-  "token": "eyJhbGciOiJI...",
-  "refresh_token": "eyJhbGciOiJI...",
+  "token": "tok_michi_opaco_7f3a...",
+  "refresh_token": "tok_michi_refresh_c2b9...",
   "expires_in_seconds": 3600
 }
 ```
@@ -1609,11 +1605,6 @@ Lista los receptores (dispositivos de reproducción) disponibles en la red.
       "is_active": true,
       "ip_address": "192.168.1.42",
       "last_seen": "2026-06-29T11:59:00Z",
-      "capabilities": {
-        "streaming_formats": ["flac", "mp3"],
-        "max_bitrate": 320,
-        "multiroom": true
-      }
     }
   ],
   "total": 3
@@ -1637,13 +1628,13 @@ Obtiene los detalles de un receptor específico.
   "volume": 60,
   "is_active": true,
   "ip_address": "192.168.1.42",
-  "port": 52051,
+  "port": 8600,
   "firmware_version": "1.2.3",
   "last_seen": "2026-06-29T11:59:00Z",
-  "capabilities": {
-    "streaming_formats": ["flac", "mp3"],
-    "max_bitrate": 320,
-    "multiroom": true
+  "audio": {
+    "codecs": ["pcm_s16le"],
+    "max_sample_rate": 192000,
+    "max_channels": 2
   }
 }
 ```
@@ -1876,7 +1867,7 @@ Inicia reproducción sincronizada en todos los miembros de la sala.
 {
   "success": true,
   "room_id": "uuid-de-la-sala",
-  "session_id": "uuid-de-la-sesion-multiroom",
+  "session_id": "uuid-de-la-sesion-sala",
   "active_members": 3,
   "state": "playing"
 }
@@ -1892,7 +1883,7 @@ Conexión WebSocket para recibir eventos en tiempo real.
 
 **URL:** `ws://{host}:{port}/api/v1/events`
 
-**Autenticación:** Token vía query parameter: `?token=eyJ...`
+**Autenticación:** Token opaco vía query parameter: `?token=tok_michi_opaco_7f3a...`
 
 **Eventos emitidos:**
 
