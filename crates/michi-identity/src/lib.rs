@@ -1,28 +1,24 @@
-//! michi-identity: Sistema de Identidad y Confianza Descentralizado para el ecosistema Michi.
+//! michi-identity: decentralized identity and trust for the Michi ecosystem.
 //!
-//! Basado en criptografía Ed25519, permite que los dispositivos se reconozcan
-//! por su identidad única (michi_id) en lugar de IP. Incluye:
+//! Built on Ed25519 + BLAKE3 (scheme `ed25519-blake3-v1`), with
+//! ChaCha20-Poly1305 authenticated at-rest encryption for the private key.
 //!
-//! - `IdentityManager`: generación y persistencia de pares de claves Ed25519.
-//! - `DiscoveryEngine`: anuncio y descubrimiento con announces firmados.
-//! - `PairingProtocol`: emparejamiento TOFU + PIN de 6 dígitos.
-//! - `QRConnector`: URIs firmadas para pairing fuera de banda.
+//! - `IdentityManager`: generation, persistence (AEAD, atomic writes),
+//!   automatic migration from the legacy v1 format, explicit corruption errors.
+//! - `DiscoveryEngine`: canonical multicast constants, deterministic signed
+//!   announces, timestamp window, replay protection, UNTRUSTED classification.
+//! - `PairingRegistry`: TOFU + 6-digit PIN with 5-minute expiry, 5 attempts,
+//!   single use and a keyed (non-offline-verifiable) PIN verifier.
+//! - `QRConnector`: versioned `michi-link-pairing` QR URIs.
 //!
-//! ## Retrocompatibilidad
-//!
-//! Todos los cambios son aditivos. Los announces legacy (sin firma) se aceptan
-//! como `untrusted`. `michi_id: null` indica que un dispositivo no tiene
-//! identidad Ed25519 inicializada. `api_version: "v1"` se mantiene.
-//!
-//! ## Uso rápido
+//! ## Quick start
 //!
 //! ```rust,no_run
 //! use michi_identity::init;
 //!
-//! #[tokio::main]
-//! async fn main() {
+//! fn main() {
 //!     let config_dir = std::path::Path::new("/home/user/.config/michi");
-//!     let (identity, discovery) = init(config_dir, "Mi Dispositivo").await.unwrap();
+//!     let (identity, discovery) = init(config_dir, "My Device", "password").unwrap();
 //!     println!("Michi ID: {}", identity.michi_id());
 //! }
 //! ```
@@ -39,26 +35,29 @@ use std::sync::Arc;
 pub use discovery::DiscoveryEngine;
 pub use error::IdentityError;
 pub use identity::IdentityManager;
-pub use pairing::PairingProtocol;
+pub use pairing::PairingRegistry;
 pub use qr::QRConnector;
 pub use types::{
-    AuthChallenge, AuthStrategy, IdentityDocument, MichiId, PairingSession, PeerInfo,
-    SignedAnnounce, TrustLevel,
+    Announce, ApiVersion, AuthStrategy, IdentityDocument, MichiId, PairingQr, PairingSession, Role,
+    Service, TrustLevel,
 };
 
-/// Inicializa el sistema de identidad completo.
+/// Initializes the full identity system.
 ///
-/// 1. Carga o genera el par de claves Ed25519.
-/// 2. Crea el DiscoveryEngine.
+/// 1. Loads (or generates on first run) the Ed25519 keypair.
+/// 2. Creates the DiscoveryEngine.
 ///
-/// Este es el punto de entrada recomendado para Player, Micro Server, etc.
-pub async fn init(
+/// This is the recommended entry point for Player, Micro Server, etc.
+pub fn init(
     config_dir: &std::path::Path,
     device_name: &str,
+    password: &str,
 ) -> Result<(Arc<IdentityManager>, DiscoveryEngine), IdentityError> {
-    let identity = Arc::new(
-        IdentityManager::load_or_generate(config_dir, device_name).await?,
-    );
+    let identity = Arc::new(IdentityManager::load_or_generate(
+        config_dir,
+        device_name,
+        password,
+    )?);
     let discovery = DiscoveryEngine::new(identity.clone());
     Ok((identity, discovery))
 }
