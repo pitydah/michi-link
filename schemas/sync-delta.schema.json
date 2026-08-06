@@ -5,6 +5,7 @@
   "description": "Incremental sync delta response. Cursor is the official field; since/manifest_id are legacy.",
   "type": "object",
   "required": ["cursor", "added", "updated", "deleted", "playlists_updated"],
+  "additionalProperties": false,
   "properties": {
     "cursor": {
       "type": "string",
@@ -18,10 +19,11 @@
       "items": {
         "type": "object",
         "required": ["type", "id", "data"],
+        "additionalProperties": false,
         "properties": {
           "type": { "type": "string", "enum": ["track", "album", "artist", "playlist"] },
-          "id": { "type": "string", "description": "Entity ID" },
-          "data": { "type": "object", "description": "Full entity data" }
+          "id": { "type": "string", "minLength": 1, "description": "Entity ID" },
+          "data": { "type": "object", "description": "Full entity data (free-form map)" }
         }
       }
     },
@@ -31,10 +33,11 @@
       "items": {
         "type": "object",
         "required": ["type", "id", "data"],
+        "additionalProperties": false,
         "properties": {
           "type": { "type": "string", "enum": ["track", "album", "artist", "playlist"] },
-          "id": { "type": "string", "description": "Entity ID" },
-          "data": { "type": "object", "description": "Updated entity data" }
+          "id": { "type": "string", "minLength": 1, "description": "Entity ID" },
+          "data": { "type": "object", "description": "Updated entity data (free-form map)" }
         }
       }
     },
@@ -44,9 +47,10 @@
       "items": {
         "type": "object",
         "required": ["type", "id"],
+        "additionalProperties": false,
         "properties": {
           "type": { "type": "string", "enum": ["track", "album", "artist", "playlist"] },
-          "id": { "type": "string", "description": "Removed entity ID" }
+          "id": { "type": "string", "minLength": 1, "description": "Removed entity ID" }
         }
       }
     },
@@ -56,10 +60,11 @@
       "items": {
         "type": "object",
         "required": ["playlist_id"],
+        "additionalProperties": false,
         "properties": {
-          "playlist_id": { "type": "string" },
-          "added": { "type": "array", "items": { "type": "string" }, "description": "Track IDs added" },
-          "removed": { "type": "array", "items": { "type": "string" }, "description": "Track IDs removed" }
+          "playlist_id": { "type": "string", "minLength": 1 },
+          "added": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Track IDs added" },
+          "removed": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Track IDs removed" }
         }
       }
     }

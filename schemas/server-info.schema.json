@@ -2,90 +2,273 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/server-info.schema.json",
   "title": "ServerInfo",
-  "description": "Server identity and capabilities payload. api_version is always 'v1' — the only contract version.",
+  "description": "Server identity and capabilities payload. api_version is always 'v1' \u2014 the only contract version.",
   "type": "object",
-  "required": ["service", "name", "api_version", "roles", "features", "auth"],
+  "required": [
+    "service",
+    "name",
+    "version",
+    "api_version",
+    "roles",
+    "auth",
+    "features"
+  ],
+  "additionalProperties": false,
   "properties": {
     "service": {
       "type": "string",
       "description": "Service identifier",
-      "enum": ["michi-music-player", "michi-micro-server", "michi-big-server", "michi-mobile", "michi-stream-standard", "michi-stream-hifi"],
-      "examples": ["michi-micro-server"]
+      "enum": [
+        "michi-music-player",
+        "michi-micro-server",
+        "michi-mobile",
+        "michi-stream-standard",
+        "michi-stream-hifi"
+      ],
+      "examples": [
+        "michi-micro-server"
+      ]
     },
     "name": {
       "type": "string",
       "description": "Human-readable server name (user-configurable)",
       "minLength": 1,
       "maxLength": 128,
-      "examples": ["Michi Micro Server"]
+      "examples": [
+        "Michi Micro Server"
+      ]
     },
     "server_id": {
       "type": "string",
       "description": "Unique server UUID",
       "format": "uuid",
-      "examples": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
+      "examples": [
+        "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      ]
     },
     "version": {
       "type": "string",
       "description": "Application version (internal, not contract version)",
-      "examples": ["0.1.0"]
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": [
+        "0.1.0"
+      ]
     },
     "api_version": {
       "type": "string",
-      "description": "API contract version. Always 'v1'. Never changes without a deliberate breaking change.",
-      "examples": ["v1"]
+      "description": "API contract version. Never changes without a deliberate breaking change.",
+      "enum": [
+        "v1",
+        "v1-lite"
+      ],
+      "examples": [
+        "v1"
+      ]
     },
     "roles": {
       "type": "array",
       "description": "Active roles (see ARCHITECTURE.md for official list)",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string",
+        "enum": [
+          "desktop_player",
+          "library_master",
+          "sync_host",
+          "music_server",
+          "library_host",
+          "playback_host",
+          "mobile_player",
+          "remote_controller",
+          "sync_client",
+          "audio_receiver"
+        ]
+      },
       "uniqueItems": true,
       "minItems": 1,
-      "examples": [["home_server", "library_server", "stream_server"]]
+      "examples": [
+        [
+          "music_server",
+          "library_host",
+          "playback_host"
+        ]
+      ]
     },
     "features": {
       "type": "object",
       "description": "Boolean capability flags. Extended capabilities may be added in a future /api/v1/capabilities endpoint.",
-      "additionalProperties": { "type": "boolean" },
+      "additionalProperties": {
+        "type": "boolean"
+      },
       "minProperties": 1,
-      "examples": [{ "library": true, "search": true, "streaming": true, "sync_manifest": true, "playback": true, "queue": true, "artwork": true, "events": false }]
+      "examples": [
+        {
+          "library": true,
+          "search": true,
+          "streaming": true,
+          "sync_manifest": true,
+          "playback": true,
+          "queue": true,
+          "artwork": true,
+          "events": false
+        }
+      ]
     },
     "michi_id": {
-      "oneOf": [
-        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-        { "type": "null" }
-      ],
-      "description": "Ed25519-derived identity hash (64 hex chars), or null if identity not initialized"
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), 43 chars, present when identity is initialized"
     },
     "public_key": {
-      "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
-      ],
-      "description": "Ed25519 public key in base64, or null if identity not initialized"
+      "type": "string",
+      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$",
+      "description": "Ed25519 public key in base64url, present when identity is initialized"
     },
     "auth": {
       "type": "object",
       "description": "Authentication configuration. REQUIRED for all servers.",
-      "required": ["required", "strategy", "token_refresh"],
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "strategy",
+        "token_refresh"
+      ],
       "properties": {
-        "required": { "type": "boolean", "description": "Whether authentication is mandatory. Always true for v1." },
+        "required": {
+          "type": "boolean",
+          "enum": [
+            true
+          ],
+          "description": "Whether authentication is mandatory. Always true for v1."
+        },
         "strategy": {
           "type": "string",
           "description": "Auth strategy (see AUTH_PROFILES.md)",
-          "enum": ["PLAYER_PASSWORD", "SERVER_CODE", "RECEIVER_BUTTON", "ED25519_CHALLENGE", "LEGACY"]
+          "enum": [
+            "PLAYER_PASSWORD",
+            "SERVER_CODE",
+            "RECEIVER_BUTTON",
+            "ED25519_CHALLENGE",
+            "LEGACY"
+          ]
         },
-        "token_refresh": { "type": "boolean", "description": "Whether /token/refresh is supported" },
-        "identity_available": {
+        "token_refresh": {
           "type": "boolean",
-          "description": "Whether Ed25519 identity is available for this server"
-        },
-        "identity_strategies": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Available identity-based auth strategies"
+          "description": "Whether /token/refresh is supported"
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "service": {
+            "const": "michi-music-player"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "roles": {
+            "items": {
+              "enum": [
+                "desktop_player",
+                "library_master",
+                "sync_host"
+              ]
+            },
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "service": {
+            "const": "michi-micro-server"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "roles": {
+            "items": {
+              "enum": [
+                "music_server",
+                "library_host",
+                "playback_host"
+              ]
+            },
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "service": {
+            "const": "michi-mobile"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "roles": {
+            "items": {
+              "enum": [
+                "mobile_player",
+                "remote_controller",
+                "sync_client"
+              ]
+            },
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "service": {
+            "const": "michi-stream-standard"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "roles": {
+            "items": {
+              "enum": [
+                "audio_receiver"
+              ]
+            },
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "service": {
+            "const": "michi-stream-hifi"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "roles": {
+            "items": {
+              "enum": [
+                "audio_receiver"
+              ]
+            },
+            "type": "array"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -5,6 +5,7 @@
   "description": "Result of a single track upload via POST /api/v1/import/track/upload",
   "type": "object",
   "required": ["local_track_id", "remote_track_id", "status"],
+  "additionalProperties": false,
   "properties": {
     "local_track_id": { "type": "string" },
     "remote_track_id": {

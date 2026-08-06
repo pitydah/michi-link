@@ -4,12 +4,12 @@
   "server_id": "d3e4f5a6-b7c8-9012-defa-1234567890ab",
   "version": "0.1.0",
   "api_version": "v1",
-  "roles": ["mobile_client", "offline_player", "remote_controller"],
+  "roles": ["mobile_player", "remote_controller", "sync_client"],
   "features": {
     "sync_manifest": true,
     "playback": true,
     "queue": true,
     "events": false
   },
-  "auth": { "required": true, "strategy": "LEGACY", "token_refresh": true }
+  "auth": { "required": true, "strategy": "SERVER_CODE", "token_refresh": true }
 }

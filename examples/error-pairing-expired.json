@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "PAIRING_EXPIRED",
+    "message": "The pairing code has expired.",
+    "details": {
+      "pairing_code_ttl_seconds": 300
+    },
+    "request_id": "d4a0c1b4-8ce7-4ff4-afc3-b4c5d6e7f809"
+  }
+}

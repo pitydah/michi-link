@@ -5,6 +5,7 @@
   "description": "A music artist or band entry in the library",
   "type": "object",
   "required": ["id", "name"],
+  "additionalProperties": false,
   "properties": {
     "id": {
       "type": "string",

@@ -5,6 +5,7 @@
   "description": "Token refresh request and response payload",
   "type": "object",
   "required": ["token", "device_id"],
+  "additionalProperties": false,
   "properties": {
     "token": {
       "type": "string",

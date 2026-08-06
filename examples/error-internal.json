@@ -2,6 +2,7 @@
   "error": {
     "code": "INTERNAL_ERROR",
     "message": "An unexpected error occurred on the server.",
-    "details": {}
+    "details": {},
+    "request_id": "6c3f5a4d-1b70-4d9f-af5c-4d5e6f708192"
   }
 }

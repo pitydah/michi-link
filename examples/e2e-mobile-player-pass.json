@@ -6,7 +6,7 @@
   "client": { "type": "michi-mobile", "version": "0.1.0" },
   "timestamp": "2026-07-15T14:00:00Z",
   "checks": [
-    { "name": "discovery", "status": "pass", "detail": "UDP announce recibido en 192.168.1.100:42069" },
+    { "name": "discovery", "status": "pass", "detail": "UDP announce recibido en 192.168.1.100:53318" },
     { "name": "server_info", "status": "pass", "detail": "service: michi-music-player, auth.strategy: PLAYER_PASSWORD" },
     { "name": "pair_start", "status": "pass", "detail": "pairing_code de 6 caracteres recibido, expires en 300s" },
     { "name": "pair_confirm", "status": "pass", "detail": "Bearer token obtenido, permissions: 8 permisos" },

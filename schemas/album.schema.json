@@ -5,6 +5,7 @@
   "description": "A music album grouping tracks by release",
   "type": "object",
   "required": ["id", "title", "artist"],
+  "additionalProperties": false,
   "properties": {
     "id": {
       "type": "string",

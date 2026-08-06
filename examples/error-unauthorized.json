@@ -2,6 +2,7 @@
   "error": {
     "code": "UNAUTHORIZED",
     "message": "Missing or invalid authentication token.",
-    "details": {}
+    "details": {},
+    "request_id": "c39fb0a3-7bd6-4ff3-afb2-a3b4c5d6e7f8"
   }
 }

@@ -5,10 +5,12 @@
   "description": "Full library manifest used for initial synchronisation or full resync",
   "type": "object",
   "required": ["cursor", "generated_at", "tracks"],
+  "additionalProperties": false,
   "properties": {
     "cursor": {
       "type": "string",
       "description": "Opaque cursor token for the first delta request",
+      "minLength": 1,
       "examples": ["initial_cursor_a1b2c3d4"]
     },
     "generated_at": {
@@ -21,36 +23,40 @@
       "type": "array",
       "description": "Full list of track objects in the library",
       "items": {
-        "type": "object",
-        "required": ["id", "title", "artist"],
-        "properties": {
-          "id": { "type": "string" },
-          "title": { "type": "string" },
-          "artist": { "type": "string" },
-          "album": { "type": "string" },
-          "duration_ms": { "type": "integer" },
-          "duration": { "type": "number" },
-          "track_number": { "type": "integer" },
-          "disc_number": { "type": "integer" },
-          "year": { "type": "integer" },
-          "format": { "type": "string" },
-          "size": { "type": "integer" },
-          "md5": { "type": "string" },
-          "artwork_md5": { "type": "string" },
-          "modified_at": { "type": "string", "format": "date-time" }
-        }
+        "$ref": "track.schema.json"
       }
     },
-    "albums": { "type": "array", "items": { "type": "object" } },
-    "artists": { "type": "array", "items": { "type": "object" } },
-    "playlists": { "type": "array", "items": { "type": "object" } },
+    "albums": {
+      "type": "array",
+      "description": "Full list of album objects in the library",
+      "items": {
+        "$ref": "album.schema.json"
+      }
+    },
+    "artists": {
+      "type": "array",
+      "description": "Full list of artist objects in the library",
+      "items": {
+        "$ref": "artist.schema.json"
+      }
+    },
+    "playlists": {
+      "type": "array",
+      "description": "Full list of playlist objects in the library",
+      "items": {
+        "$ref": "playlist.schema.json"
+      }
+    },
     "artworks": {
       "type": "array",
+      "description": "List of artwork references with content hashes",
       "items": {
         "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "md5"],
         "properties": {
-          "id": { "type": "string" },
-          "md5": { "type": "string" }
+          "id": { "type": "string", "minLength": 1 },
+          "md5": { "type": "string", "pattern": "^[a-fA-F0-9]{32}$" }
         }
       }
     }

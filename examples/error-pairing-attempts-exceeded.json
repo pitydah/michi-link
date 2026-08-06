@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "PAIRING_ATTEMPTS_EXCEEDED",
+    "message": "Too many invalid pairing attempts.",
+    "details": {
+      "max_attempts": 5,
+      "retry_after_seconds": 900
+    },
+    "request_id": "e5b1d2c5-9df8-4ff5-afd4-c5d6e7f8091a"
+  }
+}

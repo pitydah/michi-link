@@ -5,6 +5,7 @@
   "description": "Response from queue transfer operation",
   "type": "object",
   "required": ["queue_id", "accepted", "items_count"],
+  "additionalProperties": false,
   "properties": {
     "queue_id": { "type": "string" },
     "accepted": { "type": "boolean" },

@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "PAIRING_KEY_MISMATCH",
+    "message": "The presented identity key does not match the expected one.",
+    "details": {
+      "expected_michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays"
+    },
+    "request_id": "f6c2e3d6-ae09-4ff6-afe5-d6e7f8091a2b"
+  }
+}

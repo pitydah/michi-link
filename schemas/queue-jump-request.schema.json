@@ -5,6 +5,7 @@
   "description": "Jump to a specific position in the playback queue",
   "type": "object",
   "required": ["queue_item_id"],
+  "additionalProperties": false,
   "properties": {
     "queue_item_id": {
       "type": "string",

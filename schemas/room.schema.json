@@ -5,6 +5,7 @@
   "description": "A logical room or zone grouping devices and receivers",
   "type": "object",
   "required": ["id", "name", "devices", "receivers"],
+  "additionalProperties": false,
   "properties": {
     "id": {
       "type": "string",

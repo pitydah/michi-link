@@ -4,7 +4,8 @@
     "message": "Token does not have the required permission.",
     "details": {
       "required_permission": "library.write",
-      "device_id": "uuid-del-dispositivo"
-    }
+      "device_id": "b1a2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    "request_id": "4a1d3f2b-9c5e-4b7f-8d3a-2b3c4d5e6f70"
   }
 }

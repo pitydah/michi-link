@@ -4,8 +4,9 @@
     "message": "Resource already exists or state conflict.",
     "details": {
       "resource_type": "playlist",
-      "resource_id": "uuid-existente",
+      "resource_id": "playlist_123",
       "reason": "A playlist with this name already exists"
-    }
+    },
+    "request_id": "3f9c2e1a-8b4d-4a6e-9c2f-1a2b3c4d5e6f"
   }
 }

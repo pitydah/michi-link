@@ -5,6 +5,7 @@
   "description": "Bulk add multiple tracks to the playback queue at once",
   "type": "object",
   "required": ["track_ids"],
+  "additionalProperties": false,
   "properties": {
     "track_ids": {
       "type": "array",

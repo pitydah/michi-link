@@ -5,6 +5,7 @@
   "description": "Library statistics response",
   "type": "object",
   "required": ["total_tracks", "total_albums", "total_artists"],
+  "additionalProperties": false,
   "properties": {
     "total_tracks": { "type": "integer", "minimum": 0 },
     "total_albums": { "type": "integer", "minimum": 0 },

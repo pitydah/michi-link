@@ -5,6 +5,7 @@
   "description": "Result of an import commit operation, including track mapping between source and server",
   "type": "object",
   "required": ["session_id", "tracks_imported", "total_tracks", "mapping"],
+  "additionalProperties": false,
   "properties": {
     "session_id": {
       "type": "string",
@@ -32,9 +33,10 @@
       "items": {
         "type": "object",
         "required": ["local_track_id", "remote_track_id", "status"],
+        "additionalProperties": false,
         "properties": {
-          "local_track_id": { "type": "string" },
-          "remote_track_id": { "type": "string" },
+          "local_track_id": { "type": "string", "minLength": 1 },
+          "remote_track_id": { "type": "string", "minLength": 1 },
           "status": { "type": "string", "enum": ["uploaded", "already_present"] },
           "match": { "type": "string", "enum": ["exact_hash", "quick_hash", "metadata_duration", "none"] }
         }

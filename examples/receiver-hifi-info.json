@@ -1,18 +1,24 @@
 {
   "device_id": "rec-hifi-001",
-  "device_name": "Michi Music Stream Hi-Fi",
-  "device_type": "michi_stream_hifi",
-  "api_version": "v1",
-  "host": "192.168.1.60",
-  "port": 9002,
-  "firmware_version": "2.1.0",
-  "capabilities": {
-    "formats": ["pcm", "flac", "aac"],
-    "sample_rates": [44100, 48000, 96000],
-    "bit_depths": [16, 24],
+  "service": "michi-stream-hifi",
+  "name": "Michi Music Stream Hi-Fi",
+  "version": "0.1.0",
+  "firmware": "0.1.0",
+  "api_version": "v1-lite",
+  "roles": ["audio_receiver"],
+  "auth": {
+    "required": true,
+    "strategy": "RECEIVER_BUTTON",
+    "token_refresh": false
+  },
+  "audio": {
+    "codecs": ["pcm_s16le", "pcm_s24le"],
+    "max_sample_rate": 192000,
     "max_channels": 2
   },
-  "volume": 65,
-  "is_playing": true,
-  "session_id": "session_x1y2z3"
+  "features": {
+    "session": true,
+    "volume": true,
+    "heartbeat": true
+  }
 }

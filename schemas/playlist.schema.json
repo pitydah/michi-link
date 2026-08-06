@@ -5,6 +5,7 @@
   "description": "A user-defined or curated playlist",
   "type": "object",
   "required": ["id", "name", "tracks"],
+  "additionalProperties": false,
   "properties": {
     "id": {
       "type": "string",

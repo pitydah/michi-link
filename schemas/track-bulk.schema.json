@@ -5,6 +5,7 @@
   "description": "Bulk create multiple tracks at once",
   "type": "object",
   "required": ["tracks"],
+  "additionalProperties": false,
   "properties": {
     "tracks": {
       "type": "array",

@@ -4,7 +4,7 @@
   "server_id": "c2b3d4e5-f6a7-8901-bcde-f12345678901",
   "version": "0.1.0",
   "api_version": "v1",
-  "roles": ["home_server", "library_server", "stream_server"],
+  "roles": ["music_server", "library_host", "playback_host"],
   "features": {
     "library": true,
     "search": true,

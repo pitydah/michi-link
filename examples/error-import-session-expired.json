@@ -1,0 +1,10 @@
+{
+  "error": {
+    "code": "IMPORT_SESSION_EXPIRED",
+    "message": "The import session has expired before commit.",
+    "details": {
+      "session_id": "d4e5f6a7-b8c9-0123-defa-1234567890ab"
+    },
+    "request_id": "d1a6c7ba-e24d-4ffa-afe9-1a2b3c4d5e6f"
+  }
+}

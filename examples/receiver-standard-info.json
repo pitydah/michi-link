@@ -1,18 +1,24 @@
 {
   "device_id": "rec-std-001",
-  "device_name": "Michi Music Stream Standard",
-  "device_type": "michi_stream_standard",
-  "api_version": "v1",
-  "host": "192.168.1.50",
-  "port": 9001,
-  "firmware_version": "1.2.1",
-  "capabilities": {
-    "formats": ["pcm", "mp3"],
-    "sample_rates": [44100, 48000],
-    "bit_depths": [16],
+  "service": "michi-stream-standard",
+  "name": "Michi Music Stream Standard",
+  "version": "0.1.0",
+  "firmware": "0.1.0",
+  "api_version": "v1-lite",
+  "roles": ["audio_receiver"],
+  "auth": {
+    "required": true,
+    "strategy": "RECEIVER_BUTTON",
+    "token_refresh": false
+  },
+  "audio": {
+    "codecs": ["pcm_s16le"],
+    "max_sample_rate": 96000,
     "max_channels": 2
   },
-  "volume": 50,
-  "is_playing": false,
-  "session_id": null
+  "features": {
+    "session": true,
+    "volume": true,
+    "heartbeat": true
+  }
 }

@@ -5,25 +5,36 @@
   "description": "Confirms a pairing handshake",
   "type": "object",
   "required": ["device_id", "pairing_code"],
+  "additionalProperties": false,
   "properties": {
     "device_id": {
       "type": "string",
       "description": "Device identifier from /pair/start response",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "examples": ["d3c4e5f6a7b89012cdef123456789012"]
     },
     "pairing_code": {
       "type": "string",
       "description": "The pairing code displayed by the other device",
-      "minLength": 1,
+      "pattern": "^[A-Z0-9-]{5,16}$",
       "examples": ["ABCD-1234"]
+    },
+    "michi_id": {
+      "type": "string",
+      "description": "Identity derived as base64url(BLAKE3(public_key)), 43 chars",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
     },
     "pin_proof": {
       "type": "string",
-      "description": "blake3(pin + server_nonce) to prove PIN knowledge without revealing it"
+      "description": "base64url(BLAKE3(pin + server_nonce)) proving PIN knowledge without revealing it, 43 chars",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
     },
     "pin_proof_signature": {
       "type": "string",
-      "description": "Ed25519 signature of pin_proof (base64)"
+      "description": "Ed25519 signature of pin_proof in base64url",
+      "pattern": "^([A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{86})$"
     }
   }
 }

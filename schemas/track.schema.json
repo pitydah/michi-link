@@ -5,6 +5,7 @@
   "description": "A single audio track entry in the library",
   "type": "object",
   "required": ["id", "title", "artist", "album", "duration_ms"],
+  "additionalProperties": false,
   "properties": {
     "id": {
       "type": "string",

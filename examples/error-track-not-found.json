@@ -1,7 +1,10 @@
 {
   "error": {
     "code": "TRACK_NOT_FOUND",
-    "message": "Track no encontrado.",
-    "details": { "track_id": "track_inexistente_999" }
+    "message": "The requested track was not found.",
+    "details": {
+      "track_id": "track_inexistente_999"
+    },
+    "request_id": "b28eaf92-6ac5-4fe2-ffa1-92a3b4c5d6e7"
   }
 }

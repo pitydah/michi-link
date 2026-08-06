@@ -4,7 +4,8 @@
     "message": "The requested resource was not found.",
     "details": {
       "resource_type": "track",
-      "resource_id": "uuid-inexistente"
-    }
+      "resource_id": "track_inexistente_999"
+    },
+    "request_id": "8e5b7c6f-3d92-4fbf-cf7e-6f708192a3b4"
   }
 }
