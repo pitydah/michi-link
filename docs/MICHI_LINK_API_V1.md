@@ -2,8 +2,8 @@
 
 - **API Version:** `v1` (permanent — only changes with a deliberate breaking change)
 - **Primary Transport:** HTTP/1.1 REST (HTTPS recommended) — all data operations
-- **RTC Transport:** WebSocket at `/api/v1/events` — real-time event notifications only
-- **Discovery:** UDP multicast (port 42069) and/or mDNS (`_michi-link._tcp`)
+- **Real-time Transport:** WebSocket at `/api/v1/events` — real-time event notifications only
+- **Discovery:** UDP multicast (`224.0.0.167:53318`) and/or mDNS (`_michi-link._tcp.local`)
 - **Content-Type:** `application/json`
 - **Authentication:** Bearer Token via `Authorization` header
 - **Base URL:** `http://{host}:{port}/api/v1`
@@ -26,7 +26,7 @@ The following field names are **official** and MUST be used by all implementatio
 | Sync Manifest | `cursor` | string | Next cursor for delta requests |
 | Track | `duration_ms` | int | Milliseconds. `duration_seconds` → legacy alias |
 | Volume | `volume` | int | 0–100 inclusive |
-| API Version | `api_version` | string | `"v1"`. Siempre la misma. No hay `michi_link_version`. |
+| API Version | `api_version` | string | `"v1"`. Siempre la misma. El antiguo campo de versión de enlace fue retirado del contrato: no usarlo. |
 
 ---
 
@@ -310,7 +310,7 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
-| `service` | string | Identificador del servicio: `michi-music-player`, `michi-micro-server`, `michi-big-server` |
+| `service` | string | Identificador del servicio: `michi-music-player`, `michi-micro-server`, `michi-mobile`, `michi-stream-standard`, `michi-stream-hifi` |
 | `name` | string | Nombre legible del servidor (configurable por el usuario) |
 | `server_id` | string | UUID único del servidor |
 | `version` | string | Versión de la aplicación |
@@ -1927,167 +1927,75 @@ Conexión WebSocket para recibir eventos en tiempo real.
 
 ### Receiver Lite (v1-lite)
 
-Estos endpoints son implementados por los receptores ligeros (firmware nativo en speakers/amplificadores) y consumidos por el servidor. No requieren autenticación Bearer (usan un token interno de dispositivo).
+Estos endpoints son implementados por los receptores ligeros (firmware nativo en speakers/amplificadores) y consumidos por el servidor. El receptor declara `api_version: "v1-lite"`, `service: "michi-stream-standard" | "michi-stream-hifi"`, `roles: ["audio_receiver"]` y `auth: { "required": true, "strategy": "RECEIVER_BUTTON", "token_refresh": false }`.
 
-#### `GET /receiver/info`
+Un receptor v1-lite **no declara**: library, playlists, search, sync, storage, reproducción autónoma, transcoding, rooms ni token refresh. Codecs soportados: `pcm_s16le` (standard) y `pcm_s24le` (hi-fi).
 
-Obtiene la información de identidad del receptor.
+El emparejamiento del receptor usa el flujo canónico de pairing (`POST /pair/start`, `GET /pair/status`, `POST /pair/confirm`) con la estrategia `RECEIVER_BUTTON` (botón físico en el dispositivo). Las peticiones autenticadas usan el token de dispositivo obtenido en el confirm.
 
-**Respuesta `200 OK`:**
+#### `POST /receiver-lite/session`
 
-```json
-{
-  "device_id": "uuid-del-receptor",
-  "device_name": "Cocina Speaker",
-  "device_type": "speaker",
-  "firmware_version": "1.2.3",
-  "roles": ["receiver"],
-  "capabilities": {
-    "streaming_formats": ["flac", "mp3"],
-    "max_bitrate": 320,
-    "multiroom": true
-  },
-  "uptime_seconds": 604800
-}
-```
-
----
-
-#### `POST /receiver/pair/start`
-
-Inicia el emparejamiento desde el receptor hacia el servidor.
+Crea una sesión de reproducción ligera en el receptor.
 
 **Cuerpo de solicitud:**
 
 ```json
 {
-  "server_url": "http://192.168.1.100:52050",
-  "device_name": "Cocina Speaker",
-  "device_type": "speaker",
-  "roles": ["receiver"],
-  "capabilities": {
-    "streaming_formats": ["flac", "mp3"],
-    "max_bitrate": 320,
-    "multiroom": true
-  }
+  "deviceId": "uuid-del-receptor",
+  "trackId": "uuid-del-track",
+  "startPlaying": true
 }
 ```
 
-**Respuesta `200 OK`:**
+Campos: `deviceId` (obligatorio), `trackId`, `trackIds`, `playlistId`, `startPlaying` (default `true`), `syncGroup`.
+
+**Respuesta `201 Created`:**
 
 ```json
 {
-  "pairing_code": "ABCD-1234",
-  "expires_in_seconds": 300
+  "sessionId": "uuid-de-la-sesion",
+  "status": "active"
 }
 ```
 
 ---
 
-#### `POST /receiver/pair/confirm`
+#### `DELETE /receiver-lite/session`
 
-Confirma el emparejamiento del receptor.
+Finaliza la sesión activa del receptor.
+
+**Respuesta `204 No Content`.**
+
+---
+
+#### `POST /receiver-lite/heartbeat`
+
+Mantiene viva la conexión del receptor con el servidor. Debe enviarse cada **10 segundos**.
 
 **Cuerpo de solicitud:**
 
 ```json
 {
-  "device_id": "uuid-del-receptor",
-  "pairing_code": "ABCD-1234"
+  "sessionId": "uuid-de-la-sesion",
+  "state": "playing",
+  "positionMs": 78000
 }
 ```
+
+Campos: `sessionId` y `state` (obligatorios), `positionMs`, `bufferLevel`, `volume`, `latencyMs`, `timestamp`.
 
 **Respuesta `200 OK`:**
 
 ```json
 {
-  "token": "token-interno-del-receptor",
-  "server_id": "uuid-del-servidor",
-  "server_url": "http://192.168.1.100:52050"
+  "status": "ok",
+  "serverTime": "2026-06-29T12:00:00Z"
 }
 ```
 
 ---
 
-#### `POST /receiver/heartbeat`
-
-Mantiene viva la conexión del receptor con el servidor. Debe enviarse cada 30 segundos.
-
-**Cuerpo de solicitud:**
-
-```json
-{
-  "device_id": "uuid-del-receptor",
-  "state": "idle",
-  "volume": 60,
-  "current_track_id": "uuid-del-track",
-  "position_seconds": 78
-}
-```
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "success": true,
-  "server_time": "2026-06-29T12:00:00Z",
-  "next_action": "none"
-}
-```
-
----
-
-#### `POST /receiver/session/start`
-
-El servidor solicita al receptor que inicie una sesión de reproducción.
-
-**Cuerpo de solicitud:**
-
-```json
-{
-  "session_id": "uuid-de-la-sesion",
-  "stream_url": "http://192.168.1.100:52050/api/v1/stream/uuid-del-track",
-  "token": "token-de-streaming",
-  "volume": 70
-}
-```
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "success": true,
-  "session_id": "uuid-de-la-sesion",
-  "state": "playing"
-}
-```
-
----
-
-#### `POST /receiver/session/stop`
-
-El servidor solicita al receptor que detenga la sesión.
-
-**Cuerpo de solicitud:**
-
-```json
-{
-  "session_id": "uuid-de-la-sesion"
-}
-```
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "success": true,
-  "previous_state": "playing"
-}
-```
-
----
-
-#### `POST /receiver/volume`
+#### `PUT /receiver-lite/volume`
 
 El servidor establece el volumen del receptor.
 
@@ -2095,7 +2003,9 @@ El servidor establece el volumen del receptor.
 
 ```json
 {
-  "volume": 75
+  "sessionId": "uuid-de-la-sesion",
+  "volume": 75,
+  "muted": false
 }
 ```
 
@@ -2103,14 +2013,16 @@ El servidor establece el volumen del receptor.
 
 ```json
 {
-  "success": true,
-  "volume": 75
+  "volume": 75,
+  "muted": false
 }
 ```
 
+Rango: 0–100 (entero).
+
 ---
 
-#### `GET /receiver/firmware`
+#### `GET /receiver-lite/firmware`
 
 Consulta si hay una actualización de firmware disponible.
 
@@ -2118,11 +2030,74 @@ Consulta si hay una actualización de firmware disponible.
 
 ```json
 {
-  "current_version": "1.2.3",
-  "available_version": "1.3.0",
-  "update_available": true,
-  "download_url": "http://192.168.1.100:52050/firmware/v1.3.0.bin",
-  "changelog": "Correcciones de seguridad y mejoras de rendimiento."
+  "currentVersion": "1.2.3",
+  "latestVersion": "1.3.0",
+  "updateAvailable": true,
+  "releaseDate": "2026-06-01T00:00:00Z",
+  "changelog": "Correcciones de seguridad y mejoras de rendimiento.",
+  "updateUrl": "http://192.168.1.100:8500/firmware/v1.3.0.bin",
+  "checksum": "sha256:a1b2c3d4...",
+  "lastChecked": "2026-06-29T10:00:00Z",
+  "lastUpdated": "2026-05-01T10:00:00Z"
+}
+```
+
+---
+
+#### `POST /receiver-lite/firmware`
+
+Inicia la actualización de firmware.
+
+**Cuerpo de solicitud:**
+
+```json
+{
+  "url": "http://192.168.1.100:8500/firmware/v1.3.0.bin",
+  "checksum": "sha256:a1b2c3d4..."
+}
+```
+
+**Respuesta `202 Accepted`:**
+
+```json
+{
+  "status": "updating",
+  "startedAt": "2026-06-29T12:00:00Z"
+}
+```
+
+---
+
+#### `GET /receiver-lite/config`
+
+Obtiene la configuración actual del receptor.
+
+**Respuesta `200 OK`:**
+
+```json
+{
+  "deviceName": "Cocina Speaker",
+  "audioOutput": "analog",
+  "sampleRate": 48000,
+  "bitDepth": 24,
+  "bufferSize": 2048,
+  "volumeControl": true,
+  "autoSync": false
+}
+```
+
+---
+
+#### `PUT /receiver-lite/config`
+
+Actualiza la configuración del receptor.
+
+**Respuesta `200 OK`:**
+
+```json
+{
+  "status": "applied",
+  "requiresReboot": false
 }
 ```
 
@@ -2167,19 +2142,4 @@ Si un cliente WebSocket se desconecta, debe reconectar con backoff exponencial:
 1. Esperar 1 segundo.
 2. Si falla, esperar 2 segundos.
 3. Si falla, esperar 4, 8, 16... hasta un máximo de 30 segundos.
-4. Al reconectar, el servidor reenvía el último evento de estado conocido.<｜end▁of▁thinking｜>
-
-
-Consulta si hay una actualización de firmware disponible.
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "current_version": "1.2.3",
-  "available_version": "1.3.0",
-  "update_available": true,
-  "download_url": "http://192.168.1.100:52050/firmware/v1.3.0.bin",
-  "changelog": "Correcciones de seguridad y mejoras de rendimiento."
-}
-```
+4. Al reconectar, el servidor reenvía el último evento de estado conocido.
