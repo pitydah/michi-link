@@ -523,7 +523,9 @@ mod tests {
         let engine = DiscoveryEngine::new(mgr.clone());
         let a = signed_announce_at(
             &mgr,
-            DiscoveryEngine::now_ms() + TIMESTAMP_WINDOW_MS + 1,
+            // 5s margin: sign-to-verify latency must never pull the future
+            // timestamp back inside the window (deterministic test).
+            DiscoveryEngine::now_ms() + TIMESTAMP_WINDOW_MS + 5000,
             "future-nonce-01",
         );
         let err = engine.verify_announce(&a, None).unwrap_err();

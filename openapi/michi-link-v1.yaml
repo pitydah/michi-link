@@ -3574,7 +3574,7 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
+      description: Opaque bearer token (not JWT) issued by pairing or /token/refresh
       description: |
         Bearer token obtained from the pairing flow.
         Include in the Authorization header as: Authorization: Bearer <token>
