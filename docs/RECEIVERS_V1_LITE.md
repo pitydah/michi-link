@@ -77,19 +77,19 @@ Creates a lightweight playback session on the receiver.
 
 ```json
 {
-  "deviceId": "uuid-del-receptor",
-  "trackId": "uuid-del-track",
-  "startPlaying": true
+  "device_id": "rec-std-001",
+  "track_id": "uuid-del-track",
+  "start_playing": true
 }
 ```
 
-Fields: `deviceId` (required), `trackId`, `trackIds`, `playlistId`, `startPlaying` (default `true`), `syncGroup`.
+Fields: `device_id` (required), `track_id`, `track_ids`, `playlist_id`, `start_playing` (default `true`), `sync_group`.
 
 **Response `201 Created`:**
 
 ```json
 {
-  "sessionId": "uuid-de-la-sesion",
+  "session_id": "uuid-de-la-sesion",
   "status": "active"
 }
 ```

@@ -56,9 +56,10 @@ Michi Link is a **contract** — a wire-format specification that any Michi comp
 The canonical contract is defined in `schemas/` (JSON Schema draft-07), `openapi/michi-link-v1.yaml` (OpenAPI 3.0) and `crates/michi-identity/` (reference implementation of identity, pairing and discovery primitives).
 
 - **API version:** `api_version` is an enum — `"v1"` (full contract) or `"v1-lite"` (constrained devices). Never a semantic version. Version is tracked in three independent dimensions: `api_version` (contract), `version` (application), `firmware` (receiver).
-- **Identity:** scheme `ed25519-blake3-v1`. `michi_id` is the BLAKE3 hash of the raw Ed25519 public key, encoded base64url (43 chars). See [docs/MICHI_IDENTITY.md](docs/MICHI_IDENTITY.md).
+- **Identity:** scheme `ed25519-blake3-v1`. `michi_id` is the BLAKE3 hash of the raw Ed25519 public key, encoded base64url (43 chars). At-rest encryption uses **Argon2id** (64 MiB, t=3, p=1) + ChaCha20-Poly1305 with the full canonical header as AAD; legacy v1/v2 files migrate automatically to format v3. See [docs/MICHI_IDENTITY.md](docs/MICHI_IDENTITY.md).
+- **Converged contract:** the wire format is strict base64url without padding (`michi_id`/`public_key` exactly 43 chars, signatures 86, nonces ≥ 22; `+`, `/`, `=` forbidden), and pairing is a single unified session + PIN + Ed25519 challenge flow. See [docs/PAIRING.md](docs/PAIRING.md) and [docs/DISCOVERY.md](docs/DISCOVERY.md).
 - **Auth:** bearer tokens obtained through the pairing flow; strategies `PLAYER_PASSWORD`, `SERVER_CODE`, `ED25519_CHALLENGE`, `RECEIVER_BUTTON`, `LEGACY`.
-- **Errors:** canonical envelope `{"error": {"code", "message", "details"?, "request_id"?}}` with 17 error codes. See [docs/MICHI_LINK_API_V1.md](docs/MICHI_LINK_API_V1.md).
+- **Errors:** canonical envelope `{"error": {"code", "message", "details"?, "request_id"?}}` with 20 error codes. See [docs/MICHI_LINK_API_V1.md](docs/MICHI_LINK_API_V1.md).
 
 ---
 
@@ -70,9 +71,10 @@ The canonical contract is defined in `schemas/` (JSON Schema draft-07), `openapi
 | `openapi/` | OpenAPI 3.0 specification |
 | `schemas/` | JSON Schema (draft-07) for every entity |
 | `examples/` | Annotated JSON examples for every flow |
-| `tests/contract/` | Conformance tests validating examples against schemas |
-| `tests/identity_contract/` | Identity contract tests (michi_id, signatures, announcements) |
-| `crates/michi-identity/` | Reference implementation: identity, pairing, discovery, QR (Rust) |
+| `tests/contract/` | Conformance tests validating examples against schemas (150 checks) |
+| `tests/identity_contract/` | Identity contract tests — michi_id, signatures, announcements (22 checks) |
+| `tests/cross_layer/` | Cross-layer checks: schemas ↔ OpenAPI ↔ crate types (67 checks) |
+| `crates/michi-identity/` | Reference implementation: identity, pairing, discovery, QR (Rust, 88 tests) |
 | `scripts/` | Repository tooling (contract policy scanner) |
 
 ---
@@ -96,13 +98,16 @@ The canonical contract is defined in `schemas/` (JSON Schema draft-07), `openapi
 The repository ships a contract test suite and a policy scanner. Run them before merging changes:
 
 ```bash
-# JSON contract conformance (examples vs schemas)
+# JSON contract conformance (examples vs schemas) — 150 checks
 cd tests/contract && npm test && cd ../..
 
-# Identity contract (michi_id, signatures, discovery announcements)
+# Identity contract (michi_id, signatures, discovery announcements) — 22 checks
 cd tests/identity_contract && npm test && cd ../..
 
-# Reference implementation
+# Cross-layer checks (schemas ↔ OpenAPI ↔ crate types) — 67 checks
+cd tests/cross_layer && npm test && cd ../..
+
+# Reference implementation — 88 tests, clippy 0 warnings
 cd crates/michi-identity && cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-targets --all-features && cd ../..
 
 # OpenAPI lint

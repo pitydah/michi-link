@@ -19,9 +19,10 @@
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 1 | Mobile envía `POST /api/v1/pair/start` con contraseña del Player | Recibe `pairing_code` + `device_id` |
-| 2 | Mobile envía `POST /api/v1/pair/confirm` con device_id + pairing_code | Recibe `token` (Bearer) |
-| 3 | Mobile usa token en header `Authorization: Bearer <token>` | Acceso concedido |
+| 1 | Mobile envía `POST /api/v1/pair/start` con identidad (`michi_id`/`public_key`) + challenge Ed25519 (`challenge_nonce`/`challenge_signature`) | Recibe `session_id` + `expires_at` + identidad del servidor |
+| 2 | Usuario lee el PIN de 6 dígitos en la pantalla del Player | — |
+| 3 | Mobile envía `POST /api/v1/pair/confirm` con `session_id` + `pin` | Recibe `token` (Bearer) |
+| 4 | Mobile usa token en header `Authorization: Bearer <token>` | Acceso concedido |
 
 ### A.3 Library Browse
 
@@ -79,9 +80,9 @@
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 1 | `POST /api/v1/pair/start` con device_name | Recibe pairing_code + expires_at |
-| 2 | Usuario ingresa código en Micro Server UI | — |
-| 3 | `POST /api/v1/pair/confirm` con device_id + code | Recibe device_token + refresh_token + permissions |
+| 1 | `POST /api/v1/pair/start` con identidad + challenge Ed25519 | Recibe session_id + expires_at |
+| 2 | Usuario lee el PIN de 6 dígitos en la UI del Micro Server | — |
+| 3 | `POST /api/v1/pair/confirm` con session_id + pin | Recibe device_token + refresh_token |
 
 ### B.3 Token Refresh
 
@@ -172,9 +173,9 @@
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
 | 1 | Stream enciende y anuncia vía UDP (`224.0.0.167:53318`) | Micro Server recibe announce |
-| 2 | Stream envía `POST /api/v1/pair/start` (device_type: receiver) a Micro Server | pairing_code |
-| 3 | Usuario confirma en Micro Server | — |
-| 4 | Stream confirma `POST /api/v1/pair/confirm` y recibe token interno | device_id + token |
+| 2 | Stream envía `POST /api/v1/pair/start` (device_type: receiver) a Micro Server | session_id + identidad del servidor |
+| 3 | Usuario confirma el PIN en Micro Server | — |
+| 4 | Stream confirma `POST /api/v1/pair/confirm` con session_id + pin y recibe token interno | device_id + token |
 
 ### D.2 Heartbeat
 

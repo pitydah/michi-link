@@ -35,12 +35,13 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 1.1 | server-info.schema.json service enum tiene `michi-music-player` | UNIT_PASS | schemas/server-info.schema.json | `npx ajv validate -s schemas/server-info.schema.json -d examples/server-info-player.json` | 2026-07-15 | no |
 | 1.2 | server-info.schema.json features son booleanos | UNIT_PASS | schemas/server-info.schema.json | test contract negativo: features con objetos falla | 2026-07-15 | no |
 | 1.3 | server-info.schema.json auth.required es obligatorio | UNIT_PASS | schemas/server-info.schema.json | test contract negativo: falta auth.required | 2026-07-15 | no |
-| 1.4 | server-info.schema.json api_version validada estrictamente (enum v1/v1-lite; `additionalProperties: false` rechaza campos extra, incl. `michi_link_version` retirado) | UNIT_PASS | tests/contract/validate.js | test contract negativo: `api_version: "1.0.0"` rechazado; `michi_link_version` extra rechazado (109 checks) | 2026-08-05 | no | <!-- michi-policy:exclude -->
+| 1.4 | server-info.schema.json api_version validada estrictamente (enum v1/v1-lite; `additionalProperties: false` rechaza campos extra, incl. `michi_link_version` retirado) | UNIT_PASS | tests/contract/validate.js | test contract negativo: `api_version: "1.0.0"` rechazado; `michi_link_version` extra rechazado (150 checks) | 2026-08-05 | no | <!-- michi-policy:exclude -->
 | 1.5 | playback-control.schema.json requiere command | UNIT_PASS | schemas/playback-control.schema.json | test contract: command requerido, action rechazado | 2026-07-15 | no |
 | 1.6 | sync-delta.schema.json usa cursor (string) | UNIT_PASS | schemas/sync-delta.schema.json | npm test valida sync-delta.json | 2026-07-15 | no |
 | 1.7 | error.schema.json usa { error: { code, message, details } } | UNIT_PASS | schemas/error.schema.json | npm test valida error examples | 2026-07-15 | no |
-| 1.8 | Ejemplos validan contra schemas (tests/contract: 109 checks) | UNIT_PASS | tests/contract/validate.js | `cd tests/contract && npm test` | 2026-08-05 | no |
-| 1.9 | OpenAPI spec actualizada | UNIT_PASS | openapi/michi-link-v1.yaml | — | 2026-07-15 | no |
+| 1.8 | Ejemplos validan contra schemas (tests/contract: 150 checks) | UNIT_PASS | tests/contract/validate.js | `cd tests/contract && npm test` | 2026-08-05 | no |
+| 1.9 | Wire base64url estricto (michi_id/public_key 43 chars, signature 86, sin padding ni `+`/`/`/`=`) | UNIT_PASS | tests/identity_contract/validate.js | `cd tests/identity_contract && npm test` (22 checks) | 2026-08-05 | no |
+| 1.10 | OpenAPI spec actualizada | UNIT_PASS | openapi/michi-link-v1.yaml | — | 2026-07-15 | no |
 
 ## 2. Autenticación
 
@@ -57,14 +58,15 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 
 | # | Ítem | Certification Level | Evidence | Test command | Last verified | Blocking |
 |---|------|--------|----------|-------------|---------------|----------|
-| 3.1 | Player acepta POST /pair/start | NOT_TESTED | — | `curl -X POST http://PLAYER:8400/api/v1/pair/start -H 'Content-Type: application/json' -d '{"device_name":"test","device_type":"mobile"}'` | — | **sí** |
-| 3.2 | Player acepta POST /pair/confirm | NOT_TESTED | — | `curl -X POST http://PLAYER:8400/api/v1/pair/confirm -H 'Content-Type: application/json' -d '{"device_id":"...","pairing_code":"..."}'` | — | **sí** |
+| 3.1 | Player acepta POST /pair/start | NOT_TESTED | — | `curl -X POST http://PLAYER:8400/api/v1/pair/start -H 'Content-Type: application/json' -d '{"device_name":"test","device_type":"mobile","roles":["mobile_player"],"auth_strategy":"ED25519_CHALLENGE","michi_id":"<43 chars base64url>","public_key":"<43 chars base64url>","challenge_nonce":"<>=22 chars base64url>","challenge_signature":"<86 chars base64url>"}'` | — | **sí** |
+| 3.2 | Player acepta POST /pair/confirm | NOT_TESTED | — | `curl -X POST http://PLAYER:8400/api/v1/pair/confirm -H 'Content-Type: application/json' -d '{"session_id":"<uuid>","pin":"482391","michi_id":"<43 chars base64url>","public_key":"<43 chars base64url>"}'` | — | **sí** |
 | 3.3 | Micro Server acepta POST /pair/start | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | test_v1_pair_start | 2026-07-15 | **sí** |
 | 3.4 | Micro Server acepta POST /pair/confirm | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | test_v1_pair_confirm | 2026-07-15 | **sí** |
 | 3.5 | Mobile puede pairar con Player | NOT_TESTED | — | Escenario E2E-01 | — | **sí** |
 | 3.6 | Mobile puede pairar con Micro Server | NOT_TESTED | — | Escenario E2E-04 | — | **sí** |
-| 3.7 | Pairing code expira (5 min) | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | expires_at verificado | 2026-07-15 | no |
+| 3.7 | La sesión de pairing expira (5 min) | RUST_REFERENCE_PASS | crates/michi-identity/src/pairing.rs | MAX_SESSION_DURATION + test_expired_session (88 tests) | 2026-08-05 | no |
 | 3.8 | Pairing confirm devuelve token + permisos canónicos | UNIT_PASS | crates/michi-api/tests/api.rs | test_v1_pair_confirm_returns_canonical_permissions | 2026-07-15 | no |
+| 3.9 | Límites del registry de pairing (1024 global / 8 por origen / 4 por identidad / 20 starts por min) | RUST_REFERENCE_PASS | crates/michi-identity/src/pairing.rs | constantes MAX_* + test_rate_limit_pair_start (88 tests) | 2026-08-05 | no |
 
 ## 4. Biblioteca
 
@@ -96,7 +98,7 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | # | Ítem | Certification Level | Evidence | Test command | Last verified | Blocking |
 |---|------|--------|----------|-------------|---------------|----------|
 | 6.1 | Micro Server sirve GET /download/{id} | UNIT_PASS | crates/michi-api/src/routes/v1/stream.rs | test_v1_stream_download | 2026-07-15 | **sí** |
-| 6.2 | Requiere permiso download.read | UNIT_PASS | crates/michi-link/src/permissions.rs | test_v1_pair_confirm_returns_canonical_permissions | 2026-07-15 | **sí** |
+| 6.2 | Requiere permiso download.read | UNIT_PASS | crates/michi-api/tests/api.rs (repo michi-micro-server) | test_v1_pair_confirm_returns_canonical_permissions | 2026-07-15 | **sí** |
 | 6.3 | Responde Content-Disposition: attachment | UNIT_PASS | crates/michi-api/tests/api.rs | test_v1_stream_download_attachment | 2026-07-15 | no |
 | 6.4 | Player implementa GET /download | NOT_TESTED | — | — | — | no |
 | 6.5 | Mobile puede descargar desde Micro Server | NOT_TESTED | — | Escenario E2E-05 | — | **sí** |
@@ -170,10 +172,10 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 
 | # | Ítem | Certification Level | Evidence | Test command | Last verified | Blocking |
 |---|------|--------|----------|-------------|---------------|----------|
-| 12.1 | Tokens hasheados (SHA-256) en store | UNIT_PASS | crates/michi-link/src/auth.rs | hash_token() verificado | 2026-07-15 | no |
-| 12.2 | Refresh token es separado del device token | UNIT_PASS | crates/michi-link/src/device_registry.rs | TokenPair con device + refresh | 2026-07-15 | no |
+| 12.1 | Tokens opacos (no JWT) en el contrato | CONTRACT_PASS | schemas/pair-confirm-response.schema.json | token opaque, minLength ≥ 1 | 2026-08-05 | no |
+| 12.2 | Refresh token es separado del device token | CONTRACT_PASS | schemas/pair-confirm-response.schema.json | refresh_token campo opcional independiente de token | 2026-08-05 | no |
 | 12.3 | Revoke elimina ambos tokens | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | link_devices_revoke llama revoke_all_by_device | 2026-07-15 | no |
-| 12.4 | Pairing code expira a los 5 min | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | expires_at = Utc::now() + 5min | 2026-07-15 | no |
+| 12.4 | La sesión de pairing expira a los 5 min | RUST_REFERENCE_PASS | crates/michi-identity/src/pairing.rs | MAX_SESSION_DURATION (5 min) + test_expired_session | 2026-08-05 | no |
 | 12.5 | No se expone file_path en respuestas públicas | UNIT_PASS | crates/michi-api/src/routes/v1/tracks.rs | file_path excluido de serialización | 2026-07-15 | no |
 | 12.6 | Path traversal protegido en stream/download | UNIT_PASS | docs/DOWNSTREAM_MIGRATION.md + crates/michi-api/src/routes/v1/stream.rs (repo michi-micro-server) | validate_track_path verifica | 2026-07-15 | no |
 | 12.7 | Player protege tokens en memoria | NOT_TESTED | — | — | — | no |
