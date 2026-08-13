@@ -93,7 +93,7 @@ Rules (frozen):
 - The three identity fields are mandatory for `michi-stream-*`.
 - `roles` contains exactly one element: `audio_receiver`.
 - `service` can only be `michi-stream-standard` or `michi-stream-hifi`.
-- `version` is the firmware version. No `firmware_version` or `michi_link_version` fields.
+- `version` is the firmware version. No `firmware_version` or `michi_link_version` fields. <!-- michi-policy:exclude -->
 - A feature is `true` only when its handler is registered and has a positive test.
 - `audio` declares reproducible capability, not the DAC's theoretical capability.
 - Reject additional properties in the schema.
