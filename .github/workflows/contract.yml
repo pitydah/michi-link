@@ -110,3 +110,21 @@ jobs:
       - name: Write job summary
         if: always()
         run: 'echo "## contract-policy job result: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"'
+
+  bundle-reproducibility:
+    name: Receiver v1-lite bundle reproducibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Generate deterministic contract and receiver vectors
+        working-directory: crates/michi-identity
+        run: cargo run -q --example generate_contract_vectors -- ${{ github.workspace }}/tests/vectors/generated --receiver ${{ github.workspace }}/tests/vectors/receiver-v1-lite
+      - name: Build the receiver v1-lite conformance bundle
+        run: python3 scripts/build-receiver-bundle.py
+      - name: Verify byte-for-byte reproducibility
+        run: git diff --exit-code -- contracts/receiver-v1-lite tests/vectors/receiver-v1-lite tests/vectors/generated

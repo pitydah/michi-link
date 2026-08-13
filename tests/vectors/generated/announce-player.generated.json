@@ -16,9 +16,9 @@
     "remote_control": true,
     "streaming": true
   },
-  "michi_id": "p3vpOMKPvKtqyctfdU7fUuTp_3v3aWagt4ehjS29ats",
-  "public_key": "MUEDSmbWf4rZBknP34OHWrSsR6kzCCW-OVxQSR792l4",
-  "signature": "-9M021a4cbNX8kV6t0UMkawc5OeHKb_ivoV5EBZgr3-3fFGAEvqYJIy40wREq_wGweAkoQlxl4_uFYNGY3a8CQ",
-  "timestamp_ms": 1785979792352,
-  "nonce": "s2shw68nRURbbpGHrCr04Q"
+  "michi_id": "KbOl4D8NYJG5oWEni1BT9VnCDSoMmrXejuwKG1zqo6k",
+  "public_key": "gcHspAqCJtSSQX34ikRitVBiRl9Z_7vv2FrRDP1p8GQ",
+  "signature": "0ifD_pkFSJBZUKu33xUgsl9bytNSi6MjDTa4t5T6mSOw_FLPiGb_gHXNHDPabY0mkNCf21VOHSdRGEEC543hBg",
+  "timestamp_ms": 1767225600000,
+  "nonce": "AQgPFh0kKzI5QEdOVVxjag"
 }

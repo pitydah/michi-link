@@ -13,9 +13,9 @@
     "session": true,
     "volume": true
   },
-  "michi_id": "p3vpOMKPvKtqyctfdU7fUuTp_3v3aWagt4ehjS29ats",
-  "public_key": "MUEDSmbWf4rZBknP34OHWrSsR6kzCCW-OVxQSR792l4",
-  "signature": "OHEOstmwCRtmXbWB4FjJNkdTSkZX2jGuNZPRXD8JENN7W9d3LPxsJUDSeWa7XVTGD-WYhn0JGH4aoKARY5HwBQ",
-  "timestamp_ms": 1785979792352,
-  "nonce": "R38ZZmLlez1iDKfPa9v6Rg"
+  "michi_id": "KbOl4D8NYJG5oWEni1BT9VnCDSoMmrXejuwKG1zqo6k",
+  "public_key": "gcHspAqCJtSSQX34ikRitVBiRl9Z_7vv2FrRDP1p8GQ",
+  "signature": "KDPp20E2PknbZHrRNL5onR1tb5bJItSfxcNKhOT-eMYXcT6qYN2wNDcwgGxiZFNrXFT16HWKRXSVgV7dO-TuAQ",
+  "timestamp_ms": 1767225602000,
+  "nonce": "AwoRGB8mLTQ7QklQV15lbA"
 }
