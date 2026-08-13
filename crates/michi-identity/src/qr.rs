@@ -133,7 +133,12 @@ impl QRConnector {
         })
     }
 
-    fn build_uri(
+    /// Builds a versioned pairing URI from raw identity fields.
+    ///
+    /// Public so deterministic vector generators can emit canonical pairing
+    /// URIs without a persisted `IdentityManager`. The URI never carries
+    /// private secrets: only the server identity, session and endpoint.
+    pub fn build_uri(
         server_michi_id: &str,
         server_public_key: &str,
         session_id: Uuid,

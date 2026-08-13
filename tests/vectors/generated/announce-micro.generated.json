@@ -20,9 +20,9 @@
     "streaming": true,
     "sync": true
   },
-  "michi_id": "p3vpOMKPvKtqyctfdU7fUuTp_3v3aWagt4ehjS29ats",
-  "public_key": "MUEDSmbWf4rZBknP34OHWrSsR6kzCCW-OVxQSR792l4",
-  "signature": "H0NHEZzkjUsYZAhZijTTdvU5WxK1Qjcz-O92BEtfvPllgN3nHL8EzzDjh7aPixS_F5ASoQ8U1kVxUVTp9tDDBw",
-  "timestamp_ms": 1785979792352,
-  "nonce": "GfvFiKREHG0co9G-etcmtw"
+  "michi_id": "KbOl4D8NYJG5oWEni1BT9VnCDSoMmrXejuwKG1zqo6k",
+  "public_key": "gcHspAqCJtSSQX34ikRitVBiRl9Z_7vv2FrRDP1p8GQ",
+  "signature": "M8qqQYlam8JvqfAs_aFSep80mzr0aHS9rgQyPnMlMMg4MfkmMdLxxznwu39Q6sN3aufp25QFCBgiC8eap8kqAA",
+  "timestamp_ms": 1767225601000,
+  "nonce": "AgkQFx4lLDM6QUhPVl1kaw"
 }
