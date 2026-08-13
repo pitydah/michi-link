@@ -65,6 +65,8 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 **Evidencia:** Reporte en `tests/e2e_certification/reports/micro_stream_receiver_*.json`
 
+> **Micro ↔ Stream Simulator: NOT_TESTED.** No existe certificación física ni de simulador todavía: el contrato está publicado (bundle `contracts/receiver-v1-lite/`), pero el simulador y el firmware de Stream aún no han certificado el flujo contra él. No afirmar compatibilidad física certificada.
+
 ### 6. Micro Autonomous Playback
 
 | Escenario | Mínimo requerido | Estado actual |
@@ -88,28 +90,29 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 | Condición | Mínimo requerido | Estado | Evidencia |
 |-----------|-----------------|--------|-----------|
-| service enum correcto | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks (negativos de service enum: rechaza servicios y aliases retirados) |
-| api_version v1/v1-lite estricto | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks (negativos: `api_version: "1.0.0"` rechazado; campo extra `michi_link_version` rechazado por `additionalProperties: false`) | <!-- michi-policy:exclude -->
-| features booleanas | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks |
-| auth.required obligatorio | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks |
-| sync-delta con cursor | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks |
-| playback-control con command | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks (negativo: rechaza `action`) |
-| error format con details | UNIT_PASS | CONTRACT_PASS | tests/contract: 150 checks |
+| service enum correcto | UNIT_PASS | CONTRACT_PASS | tests/contract: 248 checks (negativos de service enum: rechaza servicios y aliases retirados) |
+| api_version v1/v1-lite estricto | UNIT_PASS | CONTRACT_PASS | tests/contract: 248 checks (negativos: `api_version: "1.0.0"` rechazado; campo extra `michi_link_version` rechazado por `additionalProperties: false`) | <!-- michi-policy:exclude -->
+| features booleanas | UNIT_PASS | CONTRACT_PASS | tests/contract: 248 checks |
+| auth.required obligatorio | UNIT_PASS | CONTRACT_PASS | tests/contract: 248 checks |
+| sync-delta con cursor | UNIT_PASS | CONTRACT_PASS | tests/contract: 248 checks |
+| playback-control con command | UNIT_PASS | CONTRACT_PASS | tests/contract: 248 checks (negativo: rechaza `action`) |
+| error format con details | UNIT_PASS | CONTRACT_PASS | tests/contract: 248 checks |
 | identity ed25519-blake3-v1 (michi_id 43 chars) | UNIT_PASS | CONTRACT_PASS | tests/identity_contract: 22 checks |
 | Wire base64url estricto (43/86, sin padding, sin `+`/`/`/`=`) | UNIT_PASS | CONTRACT_PASS | tests/identity_contract: 22 checks (negativos de padding) |
 | Pairing canónico (challenge + session + PIN) | UNIT_PASS | RUST_REFERENCE_PASS | crates/michi-identity/src/pairing.rs |
 
-### 8.1 Evidencia de contrato verificada (2026-08-05)
+### 8.1 Evidencia de contrato verificada (2026-08-13)
 
 | Check | Nivel | Resultado |
 |-------|-------|-----------|
-| tests/contract (`npm test`) | CONTRACT_PASS | 150 checks PASS, 0 failed |
+| tests/contract (`npm test`) | CONTRACT_PASS | 248 checks PASS, 0 failed |
 | tests/identity_contract (`npm test`) | CONTRACT_PASS | 22 checks PASS, 0 failed |
-| tests/cross_layer (`npm test`) | CROSS_LAYER_PASS | 67 checks PASS, 0 failed |
+| tests/cross_layer (`npm test`) | CROSS_LAYER_PASS | 84 checks PASS, 0 failed |
 | cargo test (crates/michi-identity) | RUST_REFERENCE_PASS | 88 PASS |
 | clippy (crates/michi-identity) | RUST_REFERENCE_PASS | 0 warnings |
 | redocly lint (openapi/michi-link-v1.yaml) | CONTRACT_PASS | 0 errors |
 | python3 scripts/contract-policy.py | CONTRACT_PASS | PASS (0 findings) |
+| bundle-reproducibility (CI) | BUNDLE_PASS | regenera `contracts/receiver-v1-lite/` byte a byte, sin diff |
 
 > Toda la evidencia E2E sigue vacía: `tests/e2e_certification/reports/` no contiene reportes. La beta permanece **CERRADA** — no hay LOCAL_E2E_PASS / NETWORK_E2E_PASS / DEVICE_E2E_PASS — hasta lograr `NETWORK_E2E_PASS`/`DEVICE_E2E_PASS` en Mobile↔Player y Mobile↔Micro, y al menos `LOCAL_E2E_PASS` en Player→Micro import y Micro autonomous playback.
 
@@ -128,6 +131,7 @@ Seguridad                     UNIT_PASS        CONTRACT_PASS  ✅
 Contrato                      UNIT_PASS        CONTRACT_PASS  ✅
 Reference implementation      RUST_REFERENCE_PASS  RUST_REFERENCE_PASS ✅
 Cross-layer                   CROSS_LAYER_PASS  CROSS_LAYER_PASS ✅
+Bundle reproducible           BUNDLE_PASS      BUNDLE_PASS    ✅
 ──────────────────────────────────────────────────────────────────────────
 Beta gate overall:            ❌ CERRADA
 ```
@@ -141,7 +145,7 @@ Beta gate overall:            ❌ CERRADA
 
 ## Postergados para v1.0.0-beta (no bloquean alpha)
 
-- Music Stream physical hardware (prototype, sigue como MOCK_PASS).
+- Music Stream physical hardware (NOT_TESTED; el pase contra simulador está previsto en MS-09).
 - WebSocket events (stub/partial, baja prioridad).
 - Rooms/Multiroom (planned).
 - Capability probing (future v1.1).

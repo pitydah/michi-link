@@ -1,240 +1,189 @@
-# Arquitectura de Michi Link Ecosystem
+# Arquitectura del ecosistema Michi
 
 ## Diagrama de alto nivel
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        MICHI LINK ECOSYSTEM                         │
+│                        ECOSISTEMA MICHI                              │
 ├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌──────────────────────┐        ┌──────────────────────────────┐   │
-│  │    michi-link-server │◄──────►│      michi-link-client       │   │
-│  │  (Núcleo del sistema)│        │  (App móvil / escritorio)    │   │
-│  └──────────┬───────────┘        └──────────────┬───────────────┘   │
-│             │                                    │                   │
-│             │       ┌──────────────────┐         │                   │
-│             └──────►│  michi-link-web  │◄────────┘                   │
-│                     │  (Interfaz web)  │                             │
-│                     └──────────────────┘                             │
-│                              │                                       │
-│                              ▼                                       │
-│                     ┌──────────────────┐                             │
-│                     │ michi-link-cli   │                             │
-│                     │  (Línea de       │                             │
-│                     │   comandos)      │                             │
-│                     └──────────────────┘                             │
-│                              │                                       │
-│                              ▼                                       │
-│                     ┌──────────────────┐                             │
-│                     │  michi-link-     │                             │
-│                     │  receiver-nim    │                             │
-│                     │  (Firmware       │                             │
-│                     │   para speakers) │                             │
-│                     └──────────────────┘                             │
-│                                                                     │
-│              ◄─────────── Descubrimiento mDNS ──────────────────►   │
-│              ◄─────────── Streaming audio ─────────────────────►   │
-│              ◄─────────── Sincronización multiroom ────────────►    │
-│                                                                     │
+│                                                                      │
+│   michi-link (este repo)                                             │
+│   Contrato + implementación de referencia                            │
+│   schemas/ · openapi/ · contracts/ · crates/michi-identity           │
+│                                                                      │
+│        ┌──────────────────────┐        ┌───────────────────────────┐ │
+│        │  michi-music-player  │◄──────►│     michi-music-mobile    │ │
+│        │  (escritorio, Linux) │        │  (Android, app móvil)     │ │
+│        └──────────┬───────────┘        └───────────┬───────────────┘ │
+│                   │                                │                 │
+│                   │      ┌──────────────────┐      │                 │
+│                   └─────►│ michi-micro-server│◄────┘                 │
+│                          │  (servidor hogar) │                       │
+│                          └────────┬─────────┘                       │
+│                                   │  API v1-lite (HTTP) + RTP/UDP   │
+│                                   ▼                                  │
+│                          ┌──────────────────┐                       │
+│                          │michi-music-stream │                       │
+│                          │ (receptor físico  │                       │
+│                          │  Standard / Hi-Fi)│                       │
+│                          └──────────────────┘                       │
+│                                                                      │
+│         ◄───────── Descubrimiento mDNS / UDP firmado ───────────►    │
+│         ◄───────── HTTP REST /api/v1 · WebSocket eventos ───────►    │
+│         ◄───────── Sesión RTP/UDP PCM (solo receptores) ────────►    │
+│                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Los 5 proyectos del ecosistema
+## Los proyectos del ecosistema
 
-### 1. `michi-link-server`
+Este repositorio (`michi-link`) define el contrato; los demás repositorios lo consumen. No existen otros proyectos.
 
-**Rol:** Núcleo del sistema. Servidor central que gestiona la biblioteca, la autenticación, la sincronización y orquesta la reproducción.
+### 1. `michi-link` — el contrato
 
-**Responsabilidades:**
-- Servir la API REST y WebSocket.
-- Gestionar la biblioteca de música (escaneo, metadatos, almacenamiento).
-- Autenticar y autorizar dispositivos via pairing.
-- Coordinar la reproducción multiroom.
-- Mantener el manifiesto de sincronización.
-- Descubrir receptores en la red via mDNS.
-- Servir streaming de audio y carátulas.
+**Rol:** fuente normativa única del protocolo. No es una aplicación: define el wire format que cualquier componente puede hablar.
 
-**Tecnologías:** Nim, HTTP/1.1, WebSockets, SQLite, mDNS.
+**Contenido:**
+- `schemas/` — JSON Schemas (draft-07) canónicos, incluidos los del perfil receiver v1-lite.
+- `openapi/michi-link-v1.yaml` — superficie HTTP canónica.
+- `contracts/receiver-v1-lite/` — bundle versionado e inmutable (OpenAPI, schemas, ejemplos, vectores, manifest SHA-256). Es la única entrada contractual para receptores.
+- `crates/michi-identity/` — implementación de referencia de identidad, pairing, discovery y QR (Rust).
+- `tests/contract`, `tests/identity_contract`, `tests/cross_layer` — suites de conformidad.
 
----
-
-### 2. `michi-link-client`
-
-**Rol:** Aplicación cliente móvil y de escritorio. Interfaz principal para el usuario final.
-
-**Responsabilidades:**
-- Navegar y buscar la biblioteca musical.
-- Controlar la reproducción (play, pause, skip, volumen).
-- Gestionar playlists y favoritos.
-- Descargar tracks para reproducción offline.
-- Emparejarse con el servidor via pairing.
-- Mostrar estado de reproducción en tiempo real.
-- Controlar receptores y salas multiroom.
-
-**Tecnologías:** Kotlin Multiplatform / Flutter / React Native (según la implementación).
+**Tecnologías:** JSON Schema, OpenAPI 3.0, Rust.
 
 ---
 
-### 3. `michi-link-web`
+### 2. `michi-music-player`
 
-**Rol:** Interfaz web administrativa y de control. Accesible desde cualquier navegador en la red local.
+**Rol:** reproductor de escritorio para Linux. Centro maestro de gestión de biblioteca, metadatos, carátulas, letras, playlists y sincronización.
 
 **Responsabilidades:**
-- Dashboard de estado del servidor.
-- Gestión de biblioteca (escaneo, edición de metadatos).
-- Administración de dispositivos emparejados.
-- Control básico de reproducción.
-- Visualización de estadísticas.
+- Servir la API v1 (`api_version: "v1"`): biblioteca, streaming HTTP Range, playback, cola, sync, import.
+- Autenticación `PLAYER_PASSWORD` con `token_refresh: false`.
+- Roles: `desktop_player`, `library_master`, `sync_host`.
 
-**Tecnologías:** React / Vue.js / Svelte (según la implementación).
+**Tecnologías:** Python, PySide6, GStreamer.
 
 ---
 
-### 4. `michi-link-cli`
+### 3. `michi-micro-server`
 
-**Rol:** Herramienta de línea de comandos para administración y automatización.
+**Rol:** servidor hogareño liviano. Recibe la biblioteca desde Player, la respalda, la sirve a Mobile y distribuye audio en la casa.
 
 **Responsabilidades:**
-- Scriptear operaciones de biblioteca.
-- Automatizar escaneos y sincronización.
-- Administrar dispositivos y pares.
-- Integración con pipelines CI/CD y sistemas de automatización del hogar.
+- Servir la API v1 (`api_version: "v1"`): biblioteca, descargas, sync, playback, cola, import.
+- Autenticación `SERVER_CODE` con `token_refresh: true`.
+- Roles: `music_server`, `library_host`, `playback_host`.
+- Consumir receptores v1-lite: discovery, pairing (`device_type: "server"`), creación de sesión RTP/UDP, heartbeat, control de volumen/pausa vía la superficie canónica de receiver-lite. La gestión server-side de receptores usa `GET /api/v1/receivers` y `POST /api/v1/receivers/discover`.
 
-**Tecnologías:** Nim / Python / Shell.
+**Tecnologías:** Rust, Tokio, Axum, SQLite.
 
 ---
 
-### 5. `michi-link-receiver-nim`
+### 4. `michi-music-mobile`
 
-**Rol:** Firmware para dispositivos de reproducción (speakers inteligentes, amplificadores, Raspberry Pi con DAC).
+**Rol:** app Android. Reproducción local/offline, descarga/stream desde Micro Server y control remoto del ecosistema.
 
 **Responsabilidades:**
-- Recibir y reproducir streaming de audio.
-- Reportar estado y heartbeat al servidor.
-- Sincronización multiroom (audio sincronizado entre múltiples receptores).
-- Control de volumen local.
-- Actualización de firmware OTA.
+- Consumir la API v1 de Player y Micro Server.
+- Discovery canónico (mDNS / UDP firmado), pairing como iniciador, validación de `api_version`.
+- Roles: `mobile_player`, `remote_controller`, `sync_client`.
 
-**Tecnologías:** Nim, ALSA / PulseAudio, mDNS.
+**Tecnologías:** Kotlin, Jetpack Compose, Media3.
 
 ---
 
-## Cómo Michi Link conecta los proyectos
+### 5. `michi-music-stream`
 
-```
-                        michi-link-web
-                             │
-                    HTTP API (navegador)
-                             │
-michi-link-client ──HTTP API/WS──► michi-link-server ◄──HTTP API── michi-link-cli
-                                        │
-                                  v1-lite API (HTTP)
-                                        │
-                                        ▼
-                             michi-link-receiver-nim
-                                  (reproductor)
-```
+**Rol:** familia de receptores de audio físicos. Solo recibe audio y lo convierte a salida física. No tiene biblioteca, playlists ni reproducción autónoma.
 
-El servidor actúa como el orquestador central:
-- **Clientes** (app móvil, web, CLI) se comunican con el servidor via la **API REST v1** y **WebSockets** para eventos en tiempo real.
-- **Receptores** se comunican con el servidor via la **API v1-lite** (endpoints más simples, pensados para firmware con recursos limitados).
-- El **descubrimiento** inicial se realiza mediante **mDNS** (Bonjour/Avahi) en la red local.
-- El **streaming** de audio fluye desde el servidor hacia los receptores, ya sea directo o mediante relay.
+**Responsabilidades:**
+- Implementar el perfil receiver v1-lite congelado (`api_version: "v1-lite"`, `service` `michi-stream-standard` o `michi-stream-hifi`, `roles: ["audio_receiver"]`).
+- Identidad persistente Ed25519; pairing `RECEIVER_BUTTON` con ventana física de 120 s; tokens emitidos por el receptor.
+- Una única sesión RTP/UDP PCM (48 kHz, 16-bit, estéreo, 10 ms, PT 97) con lease renovado por heartbeat cada 10 s.
+- Variantes: **Standard** (jack 3.5mm) y **Hi-Fi** (DAC, RCA). Ambas anuncian inicialmente el mismo audio certificado.
+
+**Tecnologías:** firmware C (ESP-IDF), simulador Python para pruebas de contrato.
 
 ---
 
 ## Modelo de identidad de dispositivo
 
-Cada dispositivo en el ecosistema tiene una identidad única representada por:
+Cada dispositivo expone su identidad en `GET /api/v1/server/info`:
 
 ```json
 {
-  "device_id": "uuid-unico",
-  "device_name": "Cocina Speaker",
-  "device_type": "speaker",
-  "roles": ["receiver", "player"],
-  "capabilities": {
-    "streaming_formats": ["flac", "mp3", "ogg"],
-    "max_bitrate": 320,
-    "max_sample_rate": 192000,
-    "multiroom": true,
-    "transcoding": false,
-    "sync": true
+  "service": "michi-stream-standard",
+  "name": "Michi Stream Cocina",
+  "server_id": "550e8400-e29b-41d4-a716-446655440000",
+  "version": "0.3.0",
+  "api_version": "v1-lite",
+  "roles": ["audio_receiver"],
+  "identity_scheme": "ed25519-blake3-v1",
+  "michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+  "public_key": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+  "auth": { "required": true, "strategy": "RECEIVER_BUTTON", "token_refresh": false },
+  "features": { "session": true, "heartbeat": true, "volume": true, "now_playing": true, "diagnostics": true, "ota": true },
+  "audio": {
+    "transports": ["rtp_udp"], "codecs": ["pcm_s16le"], "sample_rates": [48000],
+    "bit_depths": [16], "channels": [2], "packet_ms": [10], "payload_types": [97],
+    "buffer_ms_min": 50, "buffer_ms_max": 500
   }
 }
 ```
 
 ### Campos
 
-| Campo           | Tipo     | Descripción                                              |
-|-----------------|----------|----------------------------------------------------------|
-| `device_id`     | UUID     | Identificador único del dispositivo, generado en pairing.|
-| `device_name`   | string   | Nombre legible asignado por el usuario.                  |
-| `device_type`   | enum     | `server`, `mobile`, `desktop`, `speaker`, `amplifier`, `cli`, `web`. |
-| `roles`         | string[] | Lista de roles que el dispositivo desempeña.             |
-| `capabilities`  | object   | Mapa de capacidades técnicas del dispositivo.            |
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `service` | enum | `michi-music-player`, `michi-micro-server`, `michi-mobile`, `michi-stream-standard` o `michi-stream-hifi`. |
+| `name` | string | Nombre legible configurado por el usuario. |
+| `server_id` | UUID v4 | Identificador estable, generado una vez y persistido (NVS en receptores). |
+| `version` | string | Versión de la aplicación; en receptores, la versión de firmware. |
+| `api_version` | enum | `v1` (servidores completos) o `v1-lite` (receptores). No es semver. |
+| `roles` | string[] | Roles activos, del enum canónico (ver abajo). |
+| `identity_scheme` | string | `ed25519-blake3-v1`. Obligatorio junto con `michi_id` y `public_key` para `michi-stream-*` (todo o nada). |
+| `michi_id` | string | Derivado de `public_key` (BLAKE3, base64url, 43 chars). Nunca igual a `server_id`. |
+| `auth` | object | `required`, `strategy`, `token_refresh`. |
+| `features` | object | Flags booleanos; una feature vale `true` solo si su handler está registrado y tiene prueba positiva. |
+| `audio` | object | Capacidad reproducible real, no la capacidad teórica del DAC. |
 
 ---
 
 ## Roles
 
-| #  | Rol                  | Descripción                                                    |
-|----|----------------------|----------------------------------------------------------------|
-| 1  | `core`               | Núcleo del sistema. Ejecuta el servidor central.               |
-| 2  | `controller`         | Controla la reproducción (play, pause, skip, volumen).         |
-| 3  | `player`             | Capaz de iniciar y gestionar sesiones de reproducción.         |
-| 4  | `receiver`           | Recibe y reproduce audio (speaker físico o virtual).           |
-| 5  | `sync_leader`        | Lidera la sincronización multiroom.                            |
-| 6  | `sync_follower`      | Sigue la sincronización de otro dispositivo.                   |
-| 7  | `library_service`    | Provee acceso a la biblioteca de música.                      |
-| 8  | `library_consumer`   | Consume la biblioteca (navegación, búsqueda, descarga).        |
-| 9  | `library_admin`      | Administra la biblioteca (escaneo, edición de metadatos).      |
-| 10 | `auth_service`       | Provee servicios de autenticación y autorización.              |
-| 11 | `auth_consumer`      | Consume servicios de autenticación.                            |
-| 12 | `pairing_initiator`  | Inicia el flujo de emparejamiento.                             |
-| 13 | `pairing_responder`  | Responde y confirma el emparejamiento.                         |
-| 14 | `stream_source`      | Fuente de streaming de audio.                                  |
-| 15 | `stream_sink`        | Receptor de streaming de audio.                                |
-| 16 | `websocket_publisher`| Publica eventos via WebSocket.                                 |
-| 17 | `websocket_subscriber`| Suscribe a eventos via WebSocket.                             |
-| 18 | `discovery_agent`    | Participa en el descubrimiento mDNS.                           |
+| Rol | Descripción |
+|-----|-------------|
+| `desktop_player` | Reproductor de escritorio (Player). |
+| `library_master` | Dueño de la biblioteca canónica (Player). |
+| `sync_host` | Anfitrión de sincronización (Player). |
+| `music_server` | Servidor de música (Micro Server). |
+| `library_host` | Anfitrión de biblioteca (Micro Server). |
+| `playback_host` | Anfitrión de reproducción (Micro Server). |
+| `mobile_player` | Reproductor móvil (Mobile). |
+| `remote_controller` | Control remoto del ecosistema (Mobile). |
+| `sync_client` | Cliente de sincronización offline (Mobile). |
+| `audio_receiver` | Receptor de audio v1-lite (Stream); exactamente este único rol. |
 
 ---
 
 ## Permisos
 
-| #  | Permiso                       | Descripción                                                |
-|----|-------------------------------|------------------------------------------------------------|
-| 1  | `server.info.read`            | Leer información del servidor.                             |
-| 2  | `server.status.read`          | Leer estado de salud del servidor.                         |
-| 3  | `pairing.start`               | Iniciar proceso de emparejamiento.                         |
-| 4  | `pairing.confirm`             | Confirmar emparejamiento.                                  |
-| 5  | `token.refresh`               | Renovar tokens de autenticación.                           |
-| 6  | `devices.revoke`              | Revocar acceso de dispositivos.                            |
-| 7  | `library.stats.read`          | Leer estadísticas de la biblioteca.                        |
-| 8  | `library.scan`                | Iniciar escaneo de biblioteca.                             |
-| 9  | `tracks.read`                 | Leer información de tracks.                                |
-| 10 | `albums.read`                 | Leer información de álbumes.                               |
-| 11 | `artists.read`                | Leer información de artistas.                              |
-| 12 | `search.execute`              | Ejecutar búsquedas globales.                               |
-| 13 | `stream.audio`                | Hacer streaming de audio.                                  |
-| 14 | `download.track`              | Descargar tracks para offline.                             |
-| 15 | `artwork.read`                | Leer carátulas.                                            |
-| 16 | `playlists.read`              | Leer playlists.                                            |
-| 17 | `playlists.create`            | Crear playlists.                                           |
-| 18 | `playlists.update`            | Actualizar playlists.                                      |
-| 19 | `playlists.delete`            | Eliminar playlists.                                        |
-| 20 | `playlists.tracks.write`      | Modificar tracks en playlists.                             |
-| 21 | `sync.read`                   | Leer manifiestos de sincronización.                        |
-| 22 | `sync.write`                  | Subir estado de sincronización.                            |
-| 23 | `playback.state.read`         | Leer estado de reproducción.                               |
-| 24 | `playback.control`            | Controlar la reproducción.                                 |
-| 25 | `queue.read`                  | Leer la cola de reproducción.                              |
-| 26 | `queue.write`                 | Modificar la cola de reproducción.                         |
-| 27 | `receivers.control`           | Controlar receptores.                                      |
-| 28 | `rooms.manage`                | Gestionar salas multiroom.                                 |
+Los permisos se otorgan durante el pairing y cada endpoint declara el que exige. Lista completa en [docs/PERMISSIONS.md](PERMISSIONS.md).
+
+Permisos mínimos emitidos por un receptor v1-lite tras el pairing (fijados por ADR-0001):
+
+| Permiso | Descripción |
+|---------|-------------|
+| `receiver.status` | Consultar estado del receptor. |
+| `receiver.session` | Crear y gestionar la sesión de audio. |
+| `receiver.volume` | Controlar volumen y pausa. |
+| `receiver.now_playing` | Publicar metadatos now-playing (extensión opcional). |
+
+`receiver.ota` **no** se concede por defecto.
 
 ---
 
@@ -242,325 +191,101 @@ Cada dispositivo en el ecosistema tiene una identidad única representada por:
 
 ### 1. Descubrimiento → Pairing → Comunicación autorizada
 
-```
-CLIENTE                              SERVIDOR
-   │                                     │
-   │  1. mDNS: ¿Hay servidores?          │
-   │────────────────────────────────────►│
-   │                                     │
-   │  2. mDNS: Aquí estoy (server.info)  │
-   │◄────────────────────────────────────│
-   │                                     │
-   │  3. POST /pair/start                │
-   │  {device_name, device_type, roles,  │
-   │   auth_strategy, michi_id,          │
-   │   public_key, challenge_nonce,      │
-   │   challenge_signature}              │
-   │────────────────────────────────────►│
-   │                                     │
-   │  4. {session_id, expires_at,        │
-   │     attempts_remaining,             │
-   │     server_michi_id,                │
-   │     server_public_key}              │
-   │◄────────────────────────────────────│
-   │                                     │
-   │  5. (Usuario lee el PIN de 6        │
-   │     dígitos en la pantalla del      │
-   │     servidor — nunca viaja por la   │
-   │     red)                            │
-   │                                     │
-   │  6. POST /pair/confirm              │
-   │  {session_id, pin, michi_id,        │
-   │   public_key}                       │
-   │────────────────────────────────────►│
-   │                                     │
-   │  7. {token, refresh_token?,         │
-   │     expires_in, device_id,          │
-   │     server_id}                      │
-   │◄────────────────────────────────────│
-   │                                     │
-   │  8. GET /tracks (con Bearer token)  │
-   │────────────────────────────────────►│
-   │                                     │
-   │  9. {data: [...], page, total, ...} │
-   │◄────────────────────────────────────│
-```
-
-**Pasos:**
-1. El cliente descubre el servidor en la red local via **mDNS**.
-2. El servidor responde con su información (`server.info`).
-3. El cliente inicia el pairing enviando su identidad y un **challenge Ed25519** (firma sobre los bytes crudos del nonce, que prueba posesión de la clave).
-4. El servidor verifica la firma, crea la sesión (5 min, 5 intentos, uso único) y devuelve la sesión con la identidad del servidor. El **PIN de 6 dígitos se muestra en el servidor** y nunca viaja por la red.
-5. El usuario lee el PIN en el dispositivo servidor.
-6. El cliente confirma el pairing con `session_id` + `pin`.
-7. El servidor entrega un token Bearer opaco (y refresh token si lo soporta).
-8. En adelante, todas las solicitudes se realizan con el token en el header `Authorization`.
+1. El receptor se anuncia por **mDNS** (`_michi-link._tcp.local`, TXT con `device_id`, `service`, `api_version`, `roles`, `michi_id`) y por **UDP multicast firmado** (`224.0.0.167:53318`, TTL 1, datagrama JSON compacto ≤ 1200 bytes, cada 30 s ± 3 s y ante cambios de IP). El grupo firmado (`michi_id`, `public_key`, `nonce`, `timestamp_ms`, `signature`) es obligatorio para Stream y sigue los golden vectors de Michi Link.
+2. El cliente consulta `GET /server/info` (público, sin Bearer).
+3. Una **pulsación física** en el receptor abre una ventana de 120 s. Fuera de ella, `POST /pair/start` responde `403 FORBIDDEN`.
+4. `POST /pair/start`: el cliente (por ejemplo el Micro Server con `device_type: "server"`, `roles: ["music_server"]`) envía identidad + challenge Ed25519 (firma sobre los bytes crudos del `challenge_nonce`). El receptor valida firma y correspondencia `michi_id ↔ public_key`; crea un PIN de 6 dígitos aleatorio, lo muestra localmente y **nunca** lo devuelve por HTTP.
+5. `GET /pair/status?session_id=...` informa `pending`, `confirmed`, `expired` o `locked` (máx. 5 intentos de PIN; luego `429 RATE_LIMITED` y sesión consumida).
+6. `POST /pair/confirm`: el receptor verifica identidad y PIN, genera el token (32 bytes CSPRNG, base64url sin padding, devuelto una sola vez, persistido solo como SHA-256), responde `expires_in: 0` (sin expiración automática; válido hasta revocación o factory reset) y consume la sesión (un segundo confirm: `409 CONFLICT`).
+7. En adelante: `Authorization: Bearer <pairing_token>`; las mutaciones de una sesión activa añaden `X-Michi-Session: <session_token>`. Los tokens nunca viajan en query string ni en el cuerpo.
 
 ---
 
-### 2. Autenticación
+### 2. Sesión de audio (receptor v1-lite)
 
 ```
-┌─────────┐         ┌──────────────┐         ┌──────────┐
-│ Cliente │         │ Auth Service │         │ Token DB│
-└────┬────┘         └──────┬───────┘         └────┬─────┘
-     │                     │                      │
-     │ POST /pair/start    │                      │
-     │ {michi_id,          │                      │
-     │  public_key,        │                      │
-     │  challenge_nonce,   │                      │
-     │  challenge_sig}     │                      │
-     │────────────────────►│                      │
-     │                     │ Valida challenge     │
-     │                     │ (firma Ed25519 sobre │
-     │                     │ bytes crudos del     │
-     │                     │ nonce)               │
-     │                     │ Crea sesión + PIN    │
-     │                     │ (5 min, 5 intentos,  │
-     │                     │ uso único)           │
-     │                     │──────►               │
-     │ session_id, expires │                      │
-     │◄────────────────────│                      │
-     │                     │ (PIN mostrado en el  │
-     │                     │ servidor, nunca en   │
-     │                     │ el wire)             │
-     │                     │                      │
-     │ POST /pair/confirm  │                      │
-     │ {session_id, pin}   │                      │
-     │────────────────────►│                      │
-     │                     │ Valida PIN           │
-     │                     │ (constante, keyed)   │
-     │                     │──────►               │
-     │                     │◄──────               │
-     │                     │                      │
-     │                     │ Genera token opaco   │
-     │                     │ (device_id, roles,   │
-     │                     │  permissions, exp)   │
-     │                     │──────►               │
-     │ {token, refresh}    │                      │
-     │◄────────────────────│                      │
-     │                     │                      │
-     │ GET /tracks         │                      │
-     │ Authorization: Bearer <token>              │
-     │───────────────────────────────────────────►│
-     │                     │                      │
-     │                     │ Valida token        │
-     │                     │ Verifica permisos    │
-     │                     │◄─────────────────────│
-     │ {data: [...]}       │                      │
-     │◄───────────────────────────────────────────│
+MICRO SERVER (controlador)              STREAM (receptor)
+   │                                         │
+   │  POST /receiver-lite/session            │
+   │  {transport, codec, sample_rate,        │
+   │   bit_depth, channels, packet_ms,       │
+   │   buffer_ms, payload_type, ssrc,        │
+   │   volume}                               │
+   │────────────────────────────────────────►│
+   │                                         │  reserva socket UDP (49152..65535),
+   │  201 {session_id, session_token,        │  buffer y motor; fija la IP RTP a la
+   │       lease_seconds: 30, effective{…,   │  IP TCP del request; estado idle→starting→playing
+   │       stream_port}}                     │
+   │◄────────────────────────────────────────│
+   │                                         │
+   │  RTP/UDP PCM S16LE 48 kHz estéreo 10 ms │
+   │  (PT 97, SSRC negociado, 1920 bytes)    │
+   │════════════════════════════════════════►│
+   │                                         │  rechaza y contabiliza paquetes con IP/PT/SSRC/tamaño incorrectos;
+   │  POST /receiver-lite/heartbeat          │  secuencia tolera wrap, pérdida y reorden
+   │  {session_id, sequence, sent_at_ms}     │
+   │────────────────────────────────────────►│  renueva el lease a 30 s (secuencia estrictamente creciente)
+   │  200 {status: alive, lease_seconds: 30} │
+   │◄────────────────────────────────────────│
+   │                                         │
+   │  PATCH /receiver-lite/session           │
+   │  {volume: 55, paused: true}             │
+   │────────────────────────────────────────►│  único dueño de sesión: michi_session
+   │  200 (mismo cuerpo de estado que GET)   │
+   │◄────────────────────────────────────────│
+   │                                         │
+   │  DELETE /receiver-lite/session          │
+   │────────────────────────────────────────►│  deja de aceptar RTP, silencia, detiene motor,
+   │  204                                     │  libera socket/buffers, borra token de RAM → idle
+   │◄────────────────────────────────────────│
 ```
 
-**Flujo:**
-- El token es un bearer token **opaco** (no JWT): un valor aleatorio resuelto server-side con `device_id`, `roles` y `permissions` asociados.
-- El servidor valida el token en cada solicitud.
-- Los permisos se verifican contra el endpoint solicitado.
-- Los tokens expiran (por defecto en 1 hora) y se renuevan via `/token/refresh`.
+Reglas fijadas por ADR-0001:
+
+- Una sola sesión activa; un segundo `POST` responde `409 CONFLICT`.
+- `GET /receiver-lite/session` nunca devuelve `session_token`.
+- El watchdog usa reloj monotónico: a los 30 s sin heartbeat válido ejecuta el mismo cierre seguro que `DELETE`, incrementa `lease_expirations` y vuelve a `idle` (aunque sigan llegando paquetes RTP).
+- Ante fallo parcial en la creación, rollback completo: liberar socket/buffer/motor y volver a `idle`; sin sesiones fantasma.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Starting: POST válido
+    Starting --> Playing: recursos listos
+    Starting --> Idle: rollback completo
+    Playing --> Paused: PATCH pausa
+    Paused --> Playing: PATCH reanuda
+    Playing --> Stopping: DELETE o lease
+    Paused --> Stopping: DELETE o lease
+    Stopping --> Idle: recursos liberados
+```
+
+### 3. Streaming de biblioteca (Player / Micro Server)
+
+- `GET /stream/{track_id}` con soporte `Range` (`206 Partial Content`, `Accept-Ranges: bytes`).
+- `GET /download/{track_id}` para copia offline (permiso `download.read`).
+- No aplica a receptores: el audio llega al receptor exclusivamente por la sesión RTP/UDP de receiver-lite.
+
+### 4. Sincronización (Mobile ↔ Micro Server)
+
+Manifiesto completo (`GET /sync/manifest`), delta incremental (`GET /sync/manifest/delta` con `cursor`) y reporte de estado (`POST /sync/state`). El campo oficial es `cursor`.
+
+### 5. Extensión opcional de los receptores
+
+`PUT /receiver-lite/now-playing`, `GET /receiver-lite/diagnostics` y `GET/POST /receiver-lite/firmware` son extensiones opcionales anunciadas por feature flags; sus shapes no congelados se definen cuando cada extensión se certifique. La actualización de firmware exige permiso `receiver.ota` (no otorgado por defecto).
 
 ---
 
-### 3. Sincronización
+## Compatibilidad de versiones
 
-```
-CLIENTE                              SERVIDOR
-   │                                     │
-   │  GET /sync/manifest                 │
-   │────────────────────────────────────►│
-   │                                     │
-   │  {manifest_id, tracks: {id: vers..}}│
-   │◄────────────────────────────────────│
-   │                                     │
-   │  (Cliente compara con su estado     │
-   │   local y determina diferencias)    │
-   │                                     │
-   │  GET /sync/manifest/delta           │
-   │  ?since=2026-06-28T12:00:00Z        │
-   │────────────────────────────────────►│
-   │                                     │
-   │  {changes: {tracks: {added,         │
-   │   updated, removed}, albums: ...}}  │
-   │◄────────────────────────────────────│
-   │                                     │
-   │  (Cliente aplica cambios locales)   │
-   │                                     │
-   │  POST /sync/state                   │
-   │  {device_id, manifest_id,           │
-   │   downloaded_tracks,                │
-   │   storage_used_bytes}               │
-   │────────────────────────────────────►│
-   │                                     │
-   │  {success: true, acknowledged_at}   │
-   │◄────────────────────────────────────│
-```
+- El contrato se versiona por bundle: `contracts/receiver-v1-lite/` fija `VERSION`, `UPSTREAM_COMMIT` y el manifest SHA-256. Un cambio contractual posterior exige nueva versión/tag y actualización explícita del consumidor.
+- `api_version` es un enum (`v1` / `v1-lite`); nunca un semver.
+- No hay compatibilidad legacy paralela: las rutas y dialectos retirados (ver "No admitido" en `docs/RECEIVERS_V1_LITE.md`) no se conservan ni se aceptan.
 
-**Objetivo:** Mantener una copia offline coherente de la biblioteca en los dispositivos clientes.
+## No admitido en esta convergencia
 
-- El **manifiesto completo** contiene todos los elementos con sus versiones.
-- El **manifiesto delta** solo incluye cambios desde la última sincronización.
-- El cliente reporta su estado para que el servidor pueda rastrear qué dispositivos están al día.
-
----
-
-### 4. Streaming
-
-```
-CLIENTE / RECEPTOR                     SERVIDOR
-   │                                        │
-   │  GET /stream/{track_id}                │
-   │  Range: bytes=0-                       │
-   │  Accept: audio/flac                    │
-   │──────────────────────────────────────► │
-   │                                        │
-   │  206 Partial Content                   │
-   │  Content-Type: audio/flac              │
-   │  Content-Range: bytes 0-1023/35000000  │
-   │  Accept-Ranges: bytes                  │
-   │◄───────────────────────────────────────│
-   │                                        │
-   │  (Cliente bufferiza y reproduce)       │
-   │                                        │
-   │  GET /stream/{track_id}                │
-   │  Range: bytes=1024-                    │
-   │──────────────────────────────────────► │
-   │                                        │
-   │  206 Partial Content                   │
-   │  Content-Range: bytes 1024-2047/35000000
-   │◄───────────────────────────────────────│
-   │                                        │
-   │  (Continúa hasta completar el archivo  │
-   │   o hasta que el usuario detiene)      │
-```
-
-**Características:**
-- Soporte para **peticiones parciales (Range)** para búsqueda y reanudación.
-- El cliente puede solicitar el formato que prefiera via `Accept` header.
-- El servidor puede transcodificar sobre la marcha si es necesario.
-- El streaming es **stateless**: cada petición es independiente.
-- Para receptores, el servidor puede enviar la URL de stream directamente.
-
----
-
-### 5. Control
-
-```
-┌──────────┐     ┌─────────┐     ┌───────────┐
-│ Cliente  │     │ Servidor│     │ Receptor  │
-└────┬─────┘     └────┬────┘     └─────┬─────┘
-     │                │                │
-     │ POST /playback/control          │
-     │ {action: "play"}               │
-     │───────────────►                │
-     │                │                │
-     │                │ POST /receiver │
-     │                │ /session/start │
-     │                │ {stream_url,   │
-     │                │  token, vol...}│
-     │                │───────────────►│
-     │                │                │
-     │                │ {success,      │
-     │                │  session_id,   │
-     │                │  state}        │
-     │                │◄───────────────│
-     │                │                │
-     │ {success,      │                │
-     │  state,        │                │
-     │  position}     │                │
-     │◄───────────────│                │
-     │                │                │
-     │ (Cada 30s heartbeat)            │
-     │                │◄───────────────│
-     │                │ {device_id,    │
-     │                │  state, vol,   │
-     │                │  position}     │
-     │                │                │
-     │ WebSocket:     │                │
-     │ playback.      │                │
-     │ state_changed  │                │
-     │◄───────────────│                │
-```
-
-**Flujo de control:**
-1. El cliente envía un comando de control al servidor.
-2. El servidor traduce el comando a la API v1-lite del receptor.
-3. El receptor ejecuta la acción y responde.
-4. El servidor confirma al cliente.
-5. El receptor envía heartbeats periódicos con su estado.
-6. El servidor propaga cambios de estado via WebSocket a todos los suscriptores.
-
----
-
-### 6. Multiroom
-
-```
-SERVIDOR
-   │
-   ├──► RECEPTOR A (Cocina)
-   │    │   Stream URL: /stream/uuid-track?sync=true
-   │    │   Sync Leader
-   │    │
-   ├──► RECEPTOR B (Salón)
-   │    │   Stream URL: /stream/uuid-track?sync=true
-   │    │   Sync Follower (delay = offset calculado)
-   │    │
-   └──► RECEPTOR C (Comedor)
-        │   Stream URL: /stream/uuid-track?sync=true
-            Sync Follower (delay = offset calculado)
-```
-
-**Flujo:**
-1. El usuario crea una **sala** (room) que agrupa múltiples receptores.
-2. El usuario inicia reproducción en la sala via `POST /rooms/{id}/play`.
-3. El servidor inicia sesiones en cada receptor miembro.
-4. Un receptor actúa como **sync_leader** (referencia de tiempo).
-5. Los demás receptores actúan como **sync_followers**.
-6. El servidor calcula delays para compensar latencias de red.
-7. El audio se reproduce sincronizado en todos los miembros.
-
-**Sincronización:**
-- El sync_leader envía su timeline de reproducción.
-- Los sync_followers calculan el offset necesario.
-- Se realizan ajustes periódicos para mantener la sincronía.
-- El margen típico es < 10ms entre dispositivos.
-
----
-
-## Estrategia de compatibilidad de versiones
-
-### Versionado semántico
-
-Todos los proyectos del ecosistema siguen **SemVer 2.0**: `MAJOR.MINOR.PATCH`.
-
-### API v1
-
-- La API v1 es estable. Los cambios rompientes requieren una nueva versión mayor (`v2`).
-- Los campos en las respuestas JSON pueden ser añadidos (nuevas claves) en versiones menores.
-- Los campos existentes no serán eliminados ni renombrados dentro de v1.
-- Los endpoints nuevos pueden agregarse en versiones menores.
-- Los parámetros opcionales nuevos pueden agregarse en versiones menores.
-
-### Matriz de compatibilidad
-
-| Servidor ↓ \ Cliente → | v1.0.x | v1.1.x | v1.2.x | v2.0.x |
-|------------------------|--------|--------|--------|--------|
-| v1.0.x                 | ✅     | ✅     | ✅     | ❌     |
-| v1.1.x                 | ✅     | ✅     | ✅     | ❌     |
-| v1.2.x                 | ✅     | ✅     | ✅     | ❌     |
-| v2.0.x                 | ❌     | ❌     | ❌     | ✅     |
-
-### Reglas
-
-- **Dentro de la misma versión mayor:** Compatibilidad total hacia adelante y atrás para el mismo rango MINOR. Un servidor v1.2.x puede servir a un cliente v1.0.x siempre que el cliente ignore los campos nuevos.
-- **Entre versiones mayores:** No hay compatibilidad garantizada. La API puede cambiar completamente.
-- **Receptores (firmware):** Los receptores deben ser compatibles con al menos una versión mayor completa del servidor. Los receptores v1 pueden funcionar con servidores v2 si el servidor implementa un adaptador de compatibilidad.
-
-### Negociación de versión
-
-- El servidor expone `api_version` en `GET /server/info`.
-- El cliente debe verificar la versión antes de operar.
-- Si hay incompatibilidad, el cliente debe informar al usuario y sugerir actualizar.
-
-### Deprecación
-
-- Los endpoints deprecados se anuncian con el header `Deprecation: true`.
-- Se mantienen por al menos **2 versiones menores** antes de ser eliminados.
-- La documentación marca claramente los endpoints deprecados.
+- Rutas legacy de receptor: `/receiver/info`, `/receiver/session/start`, `/receiver/session/stop`, `/receiver/pair/*`, `/receiver-lite/info`, `/receiver-lite/volume`, `/receiver-lite/config`.
+- Biblioteca en receptores: playlists, búsqueda, `track_id`, descarga, reproducción autónoma.
+- Codecs/transports extra: Opus, FLAC, MP3, `pcm_s24le`, 96 kHz; AirPlay, Spotify Connect, Bluetooth, HDMI, óptico.
+- Multiroom, sincronización de reloj, RTCP, compensación de drift (futuro).
+- TLS, PAKE, Secure Boot y Flash Encryption quedan para los paquetes de producción.

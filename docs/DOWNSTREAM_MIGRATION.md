@@ -4,6 +4,33 @@ This document is the migration matrix for the four consumer repositories — **P
 
 > The canonical contract is the source of truth: `schemas/`, `openapi/michi-link-v1.yaml`, and `crates/michi-identity` (reference implementation).
 
+## The versioned contract bundle
+
+For the receiver v1-lite profile the contractual input is **not** the repository at HEAD — it is the versioned, immutable bundle at `contracts/receiver-v1-lite/`:
+
+```text
+contracts/receiver-v1-lite/
+  VERSION            # "1.0.0-alpha.1"
+  UPSTREAM_COMMIT    # exact git commit the bundle was cut from
+  manifest.json      # version, upstream commit, ordered file list, SHA-256 per file
+  openapi/michi-link-v1.yaml
+  schemas/*.schema.json
+  examples/positive/*.json
+  examples/negative/*.json
+  vectors/identity/*.json
+  vectors/discovery/*.json
+  vectors/pairing/*.json
+```
+
+Rules for downstream repositories (e.g. Michi Music Stream):
+
+1. **What it is.** A frozen snapshot of the receiver contract: OpenAPI, JSON Schemas, positive/negative examples and golden vectors (identity, discovery, pairing). It contains no timestamps — two generations are byte-for-byte identical.
+2. **How it is pinned in Stream.** Stream vendors the bundle byte-for-byte into its own `contracts/` directory and pins it by `VERSION` and `UPSTREAM_COMMIT`. No reformatting, no cherry-picking: all files, exactly as published.
+3. **How it is verified.** A sync script on the Stream side (`scripts/sync_michi_link_contract.py --check`) recomputes the SHA-256 of every vendored file against `manifest.json` and fails on any modification, missing file or extra file. Verification is also possible directly: recompute `sha256sum` of each file listed in `manifest.json` and compare with the recorded digest.
+4. **How this repo proves reproducibility.** The bundle is regenerated deterministically with `scripts/build-receiver-bundle.py` (after `cargo run -q --example generate_contract_vectors`), and the CI job `bundle-reproducibility` fails if `git diff --exit-code -- contracts/receiver-v1-lite tests/vectors/generated tests/vectors/receiver-v1-lite` shows any difference.
+
+Contract drift between Link and Stream must be detected by CI, never by inspection.
+
 ## Common to all consumers
 
 | Change | Old (retired) | New (canonical) | Automatic? |
@@ -22,7 +49,7 @@ This document is the migration matrix for the four consumer repositories — **P
 | Identity file KDF | XOR wrap (v1), `blake3`-direct (v2) | **Argon2id** (64 MiB, t=3, p=1, 0x13) + ChaCha20-Poly1305, AAD = full canonical header | **Automatic** in the crate (v1→v3 and v2→v3 on load) |
 | Identity file format | `format_version` 1 / 2 | `format_version` **3** | **Automatic** in the crate (v1→v3 and v2→v3 on load) |
 | Announce profiles | Ad-hoc roles per service | Fixed per-service invariants: player/micro/mobile → `v1`; streams → `v1-lite` with exactly `["audio_receiver"]`; incoherent profiles rejected (`ContractViolation`) | Manual |
-| Receiver audio profiles | Ad-hoc codec lists | `michi-stream-standard`: `pcm_s16le`, ≤ 96000 Hz, 2 ch; `michi-stream-hifi`: `pcm_s16le` (+ optional `pcm_s24le`), ≤ 192000 Hz, 2 ch. No lossy codecs (opus forbidden) | Manual |
+| Receiver audio profiles | Ad-hoc codec lists | Frozen: both `michi-stream-standard` and `michi-stream-hifi` announce the **same certified audio** — `rtp_udp`, `pcm_s16le`, 48000 Hz, 16-bit, 2 channels, 10 ms packets, payload type 97. No lossy codecs, no `pcm_s24le`, no 96 kHz. `audio` declares reproducible capability, not the DAC's theoretical capability | Manual |
 
 The full 20 error codes: `INVALID_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `RATE_LIMITED`, `INTERNAL_ERROR`, `NOT_IMPLEMENTED`, `PAIRING_EXPIRED`, `PAIRING_ATTEMPTS_EXCEEDED`, `PAIRING_KEY_MISMATCH`, `IDENTITY_CORRUPTED`, `SIGNATURE_INVALID`, `REPLAY_DETECTED`, `IDEMPOTENCY_KEY_REUSE`, `TRACK_NOT_FOUND`, `IMPORT_SESSION_EXPIRED`, `PAIRING_NOT_FOUND`, `PAIRING_ALREADY_CONSUMED`, `PAIRING_PIN_MISMATCH`.
 
@@ -63,14 +90,17 @@ The full 20 error codes: `INVALID_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FO
 
 ## Michi Music Stream
 
+Stream is the reference consumer of the receiver v1-lite profile. It vendors the tagged bundle (see [The versioned contract bundle](#the-versioned-contract-bundle)) and implements the frozen surface from `docs/RECEIVERS_V1_LITE.md` — no adapters, no aliases, no receiver-local schemas.
+
 | Change | Detail |
 |--------|--------|
 | Drop `michi_link_version` | Advertise `api_version: "v1-lite"` | <!-- michi-policy:exclude -->
-| Codecs | Receiver audio profile: standard = `pcm_s16le` only, ≤ 96000 Hz, 2 ch; hi-fi = `pcm_s16le` (+ optional `pcm_s24le`), ≤ 192000 Hz, 2 ch. Remove any other codec (e.g. opus) from advertised capabilities |
-| Identity & pairing | Receiver identity per `ed25519-blake3-v1`; announce profile `v1-lite` with exactly `["audio_receiver"]`; pairing with `RECEIVER_BUTTON`, `token_refresh: false`, via canonical `/pair/start` → `/pair/confirm` |
-| Endpoints | Serve `/api/v1/receiver-lite/{session,heartbeat,volume,firmware,config}`; presence via discovery (no announce endpoint) |
-| Heartbeat | Every 10 seconds |
-| Simulator & firmware | Align the simulator and firmware images to the same receiver contract |
+| Codecs | Both profiles announce the same certified audio: `rtp_udp` / `pcm_s16le` / 48000 Hz / 16-bit / 2 ch / 10 ms / payload type 97. Remove any other codec (opus, `pcm_s24le`, 96 kHz) from advertised capabilities |
+| Identity & pairing | Receiver identity per `ed25519-blake3-v1`; announce profile `v1-lite` with exactly `["audio_receiver"]`; pairing with `RECEIVER_BUTTON` (physical 120 s window), `token_refresh: false`, via canonical `/pair/start` → `/pair/status` → `/pair/confirm`; the receiver issues the pairing token (32 CSPRNG bytes, base64url, persisted only as SHA-256), `expires_in: 0` |
+| Endpoints | Serve exactly the canonical surface: `GET /api/v1/server/info`, `POST /api/v1/pair/start`, `GET /api/v1/pair/status`, `POST /api/v1/pair/confirm`, `POST/GET/PATCH/DELETE /api/v1/receiver-lite/session`, `POST /api/v1/receiver-lite/heartbeat`, plus optional `PUT /api/v1/receiver-lite/now-playing`, `GET /api/v1/receiver-lite/diagnostics`, `GET/POST /api/v1/receiver-lite/firmware`. Volume is `PATCH /receiver-lite/session`, not a separate endpoint; there is no `/receiver-lite/info`, `/receiver-lite/volume` or `/receiver-lite/config`. Presence via discovery (no announce endpoint) |
+| Session | One RTP/UDP session per receiver: `POST` returns `session_id`, `session_token` (RAM-only, once) and `effective` params with the chosen `stream_port` (49152..65535); RTP source IP is fixed to the TCP IP of the request; PT 97, exact negotiated SSRC (no first-packet-wins); 10 ms = 1920 payload bytes; sequence wrap tolerated |
+| Heartbeat | Every 10 seconds with strictly increasing `sequence`; renews a 30-second lease; repeated or older heartbeats are `409 CONFLICT` |
+| Simulator & firmware | Align the simulator and firmware images to the same receiver contract, validated against the bundle vectors |
 | Service name | `michi-stream-standard` / `michi-stream-hifi` (not `michi-stream`) | <!-- michi-policy:exclude -->
 | Roles | `["audio_receiver"]` |
 
@@ -81,7 +111,7 @@ The full 20 error codes: `INVALID_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FO
 | Player | Discovery port/group, `api_version`, service name, error handling, pairing DTOs | — | Medium |
 | Micro Server | Discovery signed announces, pairing limits, error envelope, identity store | Identity file migration (v1/v2→v3, Argon2id) is automatic in the crate | High |
 | Mobile | DTO field removal, `api_version` validation, error handling, trust fingerprint, base64url wire | — | Medium |
-| Stream | `api_version`, codecs/audio profiles, endpoints, heartbeat interval, pairing strategy | — | High |
+| Stream | `api_version`, codecs/audio profiles, canonical receiver surface (session/heartbeat, no volume/config endpoints), RTP session model, receiver-issued tokens | — | High |
 
 ## Reference material
 

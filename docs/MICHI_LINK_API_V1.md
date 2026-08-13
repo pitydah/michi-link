@@ -1,6 +1,6 @@
 # Michi Link API v1
 
-- **API Version:** `v1` (permanent — only changes with a deliberate breaking change)
+- **API Version:** `v1` (permanent — only changes with a deliberate breaking change); receivers use the constrained profile `v1-lite`
 - **Primary Transport:** HTTP/1.1 REST (HTTPS recommended) — all data operations
 - **Real-time Transport:** WebSocket at `/api/v1/events` — real-time event notifications only
 - **Discovery:** UDP multicast (`224.0.0.167:53318`) and/or mDNS (`_michi-link._tcp.local`)
@@ -26,7 +26,7 @@ The following field names are **official** and MUST be used by all implementatio
 | Sync Manifest | `cursor` | string | Next cursor for delta requests |
 | Track | `duration_ms` | int | Milliseconds. `duration_seconds` → legacy alias |
 | Volume | `volume` | int | 0–100 inclusive |
-| API Version | `api_version` | string | `"v1"`. Siempre la misma. El antiguo campo de versión de enlace fue retirado del contrato: no usarlo. |
+| API Version | `api_version` | string | Enum: `"v1"` (servidores completos) o `"v1-lite"` (receptores). Nunca un semver. El antiguo campo de versión de enlace fue retirado del contrato: no usarlo. |
 
 ---
 
@@ -101,16 +101,24 @@ Toda respuesta de error sigue la misma estructura:
 | `UNAUTHORIZED`             | Token ausente, inválido o expirado.    |
 | `FORBIDDEN`                | El token no tiene el permiso necesario.|
 | `NOT_FOUND`                | Recurso no encontrado.                 |
-| `CONFLICT`                 | Conflicto de estado.                   |
-| `PAIRING_REQUIRED`         | El dispositivo no está emparejado.     |
-| `PAIRING_IN_PROGRESS`      | Ya hay un pairing en curso.            |
-| `PAIRING_EXPIRED`          | El código de pairing expiró.           |
-| `TRACK_NOT_FOUND`          | Track no encontrado en la biblioteca.  |
-| `RANGE_NOT_SATISFIABLE`    | Rango de bytes solicitado no válido.   |
-| `NOT_IMPLEMENTED`          | Endpoint o funcionalidad no implementada. |
-| `RATE_LIMITED`             | Demasiadas solicitudes. Incluye header `Retry-After`. |
-| `IDEMPOTENCY_KEY_REUSE`   | El `Idempotency-Key` ya fue usado con otro método/ruta. |
+| `CONFLICT`                 | Conflicto de estado, replay o sesión duplicada. |
+| `RATE_LIMITED`             | Demasiadas solicitudes o intentos. Incluye header `Retry-After`. |
 | `INTERNAL_ERROR`           | Error interno del servidor.            |
+| `NOT_IMPLEMENTED`          | Endpoint o funcionalidad no implementada. |
+| `PAIRING_NOT_FOUND`        | Sesión de pairing inexistente.         |
+| `PAIRING_EXPIRED`          | La sesión de pairing expiró.           |
+| `PAIRING_ATTEMPTS_EXCEEDED`| Se superó el máximo de intentos.       |
+| `PAIRING_KEY_MISMATCH`     | La clave del cliente no coincide con la sesión. |
+| `PAIRING_ALREADY_CONSUMED` | La sesión de pairing ya fue consumida. |
+| `PAIRING_PIN_MISMATCH`     | El PIN no corresponde a la sesión.     |
+| `SIGNATURE_INVALID`        | Firma inválida.                        |
+| `REPLAY_DETECTED`          | Replay detectado.                      |
+| `IDENTITY_CORRUPTED`       | Identidad persistida corrupta (exige factory reset). |
+| `IDEMPOTENCY_KEY_REUSE`    | El `Idempotency-Key` ya fue usado con otro método/ruta. |
+| `TRACK_NOT_FOUND`          | Track no encontrado en la biblioteca.  |
+| `IMPORT_SESSION_EXPIRED`   | La sesión de import expiró.            |
+
+Los 20 códigos canónicos están definidos en `schemas/error.schema.json`. Los clientes solo ramifican por `code` y status HTTP; `message` es para humanos.
 
 **Ejemplos de errores:**
 
@@ -314,7 +322,7 @@ Endpoints públicos (sin autenticación). Obtiene la identidad, roles activos y 
 | `name` | string | Nombre legible del servidor (configurable por el usuario) |
 | `server_id` | string | UUID único del servidor |
 | `version` | string | Versión de la aplicación |
-| `api_version` | string | Versión del contrato API. Siempre `"v1"`. Nunca cambia sin un breaking change deliberado. |
+| `api_version` | string | Versión del contrato API: enum `"v1"` (servidores completos) o `"v1-lite"` (receptores). Nunca cambia sin un breaking change deliberado. |
 | `roles` | string[] | Roles activos del servidor (lista oficial en ARCHITECTURE.md) |
 | `features` | object | Indicadores booleanos de capacidades. |
 | `auth` | object | Información de autenticación (ver AUTH_PROFILES.md) |
@@ -405,10 +413,10 @@ Inicia el emparejamiento. El cuerpo lleva la identidad del cliente (base64url es
 
 ```json
 {
-  "device_name": "Michi Mobile",
-  "device_type": "mobile",
-  "roles": ["mobile_player", "remote_controller", "sync_client"],
-  "auth_strategy": "ED25519_CHALLENGE",
+  "device_name": "Michi Micro Server",
+  "device_type": "server",
+  "roles": ["music_server"],
+  "auth_strategy": "RECEIVER_BUTTON",
   "michi_id": "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc",
   "public_key": "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y",
   "challenge_nonce": "VFfZjzw8JeAM7-RFiTSrMA",
@@ -416,19 +424,21 @@ Inicia el emparejamiento. El cuerpo lleva la identidad del cliente (base64url es
 }
 ```
 
-**Respuesta `200 OK`:**
+El servidor valida la firma sobre los bytes decodificados de `challenge_nonce` y que `michi_id` corresponde a `public_key`; un fallo responde `400 INVALID_REQUEST` y no crea sesión.
+
+**Respuesta `201 Created`:**
 
 ```json
 {
-  "session_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-  "expires_at": "2026-08-05T10:05:00Z",
+  "session_id": "550e8400-e29b-41d4-a716-446655440001",
+  "expires_at": "2026-08-12T20:02:00Z",
   "attempts_remaining": 5,
   "server_michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
   "server_public_key": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ"
 }
 ```
 
-**Respuesta `404 Not Found`** si la sesión no existe o expiró, y **`429 Rate Limited`** si se superó un límite del registry (1024 globales, 8 por origen, 4 por identidad, 20 starts/min por origen):
+En receptores `RECEIVER_BUTTON`, el pairing solo se acepta dentro de la ventana física de 120 s; fuera de ella responde **`403 Forbidden`** (`FORBIDDEN`). **`429 Rate Limited`** si se supera un límite del registry (1024 globales, 8 por origen, 4 por identidad, 20 starts/min por origen):
 
 ```json
 {
@@ -450,8 +460,8 @@ Confirma el emparejamiento con el PIN obtenido en la pantalla del servidor.
 
 ```json
 {
-  "session_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-  "pin": "482391",
+  "session_id": "550e8400-e29b-41d4-a716-446655440001",
+  "pin": "042731",
   "michi_id": "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc",
   "public_key": "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y"
 }
@@ -461,15 +471,14 @@ Confirma el emparejamiento con el PIN obtenido en la pantalla del servidor.
 
 ```json
 {
-  "token": "tok_michi_opaco_7f3a...",
-  "refresh_token": "tok_michi_refresh_c2b9...",
-  "expires_in": 3600,
-  "device_id": "stable-device-id",
-  "server_id": "stable-server-id"
+  "token": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+  "expires_in": 0,
+  "device_id": "550e8400-e29b-41d4-a716-446655440002",
+  "server_id": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
-`token` es un **bearer token opaco** (no JWT); `refresh_token` es opcional (presente solo si el servidor soporta `/token/refresh`).
+`token` es un **bearer token opaco** (no JWT), generado por el servidor, devuelto una sola vez y persistido únicamente como digest. `refresh_token` es opcional (presente solo si el servidor soporta `/token/refresh`, ej. Micro Server). En receptores `expires_in: 0` significa "sin expiración automática; válido hasta revocación o factory reset". La sesión se consume tras éxito; una segunda confirmación responde `409 CONFLICT` (`PAIRING_ALREADY_CONSUMED`).
 
 **Respuesta `401 Unauthorized`** (PIN incorrecto):
 
@@ -907,7 +916,7 @@ Cuerpo: porción solicitada del archivo de audio.
 ```json
 {
   "error": {
-    "code": "INVALID_REQUEST",
+    "code": "RANGE_NOT_SATISFIABLE",
     "message": "Rango solicitado no válido.",
     "details": {}
   }
@@ -1574,33 +1583,56 @@ Elimina un elemento específico de la cola.
 
 ### Receptores
 
+Gestión server-side de receptores (consumida por Micro Server). El control efectivo del receptor (sesión, volumen, heartbeat) se hace a través de los endpoints [Receiver Lite (v1-lite)](#receiver-lite-v1-lite), no aquí.
+
 #### `GET /receivers`
 
-Lista los receptores (dispositivos de reproducción) disponibles en la red.
+Lista los receptores descubiertos y registrados en la red.
 
 **Respuesta `200 OK`:**
 
 ```json
 {
-  "data": [
+  "receivers": [
     {
-      "id": "uuid-del-receptor",
+      "device_id": "uuid-del-receptor",
       "name": "Cocina Speaker",
-      "device_type": "speaker",
-      "state": "idle",
-      "volume": 60,
-      "is_active": true,
-      "ip_address": "192.168.1.42",
-      "last_seen": "2026-06-29T11:59:00Z",
+      "device_type": "receiver",
+      "roles": ["audio_receiver"],
+      "permissions": ["receiver.status"],
+      "last_seen": "2026-08-12T11:59:00Z",
+      "created_at": "2026-08-12T10:00:00Z"
     }
-  ],
-  "total": 3
+  ]
 }
 ```
 
 ---
 
-#### `GET /receivers/{id}`
+#### `POST /receivers/discover`
+
+Dispara un descubrimiento de receptores en la red.
+
+**Parámetro de consulta:** `timeout` (int, 1–30, defecto 5) — duración del descubrimiento en segundos.
+
+**Respuesta `200 OK`:**
+
+```json
+{
+  "discovered": [
+    {
+      "device_id": "uuid-del-receptor",
+      "name": "Cocina Speaker",
+      "device_type": "receiver",
+      "roles": ["audio_receiver"]
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /receivers/{receiverId}`
 
 Obtiene los detalles de un receptor específico.
 
@@ -1608,94 +1640,25 @@ Obtiene los detalles de un receptor específico.
 
 ```json
 {
-  "id": "uuid-del-receptor",
+  "device_id": "uuid-del-receptor",
   "name": "Cocina Speaker",
-  "device_type": "speaker",
-  "state": "idle",
-  "volume": 60,
-  "is_active": true,
-  "ip_address": "192.168.1.42",
-  "port": 8600,
-  "firmware_version": "1.2.3",
-  "last_seen": "2026-06-29T11:59:00Z",
-  "audio": {
-    "codecs": ["pcm_s16le"],
-    "max_sample_rate": 192000,
-    "max_channels": 2
-  }
+  "device_type": "receiver",
+  "roles": ["audio_receiver"],
+  "permissions": ["receiver.status", "receiver.session", "receiver.volume", "receiver.now_playing"],
+  "last_seen": "2026-08-12T11:59:00Z",
+  "created_at": "2026-08-12T10:00:00Z"
 }
 ```
 
----
+**Respuesta `404 Not Found`** si el receptor no existe.
 
-#### `POST /receivers/{id}/session/start`
-
-Inicia una sesión de reproducción en un receptor específico.
-
-**Cuerpo de solicitud:**
-
-```json
-{
-  "queue_id": "uuid-de-la-cola",
-  "start_at_index": 0,
-  "volume": 70
-}
-```
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "success": true,
-  "session_id": "uuid-de-la-sesion",
-  "receiver_id": "uuid-del-receptor",
-  "state": "playing"
-}
-```
-
----
-
-#### `POST /receivers/{id}/session/stop`
-
-Detiene la sesión de reproducción en un receptor.
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "success": true,
-  "receiver_id": "uuid-del-receptor",
-  "previous_state": "playing"
-}
-```
-
----
-
-#### `POST /receivers/{id}/volume`
-
-Establece el volumen de un receptor.
-
-**Cuerpo de solicitud:**
-
-```json
-{
-  "volume": 75
-}
-```
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "success": true,
-  "receiver_id": "uuid-del-receptor",
-  "volume": 75
-}
-```
+> No existen `POST /receivers/{id}/session/start`, `POST /receivers/{id}/session/stop` ni `POST /receivers/{id}/volume`: fueron retirados. El ciclo de sesión del receptor se maneja exclusivamente con `POST/GET/PATCH/DELETE /receiver-lite/session`.
 
 ---
 
 ### Salas
+
+> El multiroom está fuera del alcance de esta convergencia: los receptores v1-lite no implementan salas ni sincronización de reloj. Estos endpoints quedan documentados como superficie server-side para trabajo futuro.
 
 #### `GET /rooms`
 
@@ -1905,179 +1868,241 @@ Conexión WebSocket para recibir eventos en tiempo real.
 
 ### Receiver Lite (v1-lite)
 
-Estos endpoints son implementados por los receptores ligeros (firmware nativo en speakers/amplificadores) y consumidos por el servidor. El receptor declara `api_version: "v1-lite"`, `service: "michi-stream-standard" | "michi-stream-hifi"`, `roles: ["audio_receiver"]` y `auth: { "required": true, "strategy": "RECEIVER_BUTTON", "token_refresh": false }`.
+Perfil canónico para receptores físicos (Michi Music Stream). Congelado por ADR-0001 y documentado en detalle en [RECEIVERS_V1_LITE.md](RECEIVERS_V1_LITE.md); el contrato ejecutable vive en el bundle `contracts/receiver-v1-lite/` (OpenAPI + schemas + vectores). El receptor declara `api_version: "v1-lite"`, `service: "michi-stream-standard" | "michi-stream-hifi"`, `roles: ["audio_receiver"]` y `auth: { "required": true, "strategy": "RECEIVER_BUTTON", "token_refresh": false }`.
 
-Un receptor v1-lite **no declara**: library, playlists, search, sync, storage, reproducción autónoma, transcoding, rooms ni token refresh. Codecs soportados: `pcm_s16le` (standard) y `pcm_s24le` (hi-fi).
+Un receptor v1-lite **no declara**: library, playlists, search, sync, storage, reproducción autónoma, transcoding, rooms ni token refresh.
 
-El emparejamiento del receptor usa el flujo canónico de pairing (`POST /pair/start`, `GET /pair/status`, `POST /pair/confirm`) con la estrategia `RECEIVER_BUTTON` (botón físico en el dispositivo). Las peticiones autenticadas usan el token de dispositivo obtenido en el confirm.
+#### Tabla de rutas
 
-#### `POST /receiver-lite/session`
+Todas las rutas empiezan en `/api/v1`. Cuerpos JSON en `snake_case`, UTF-8, `Content-Type: application/json`. Salvo `204`, todo error usa el schema canónico `Error`.
 
-Crea una sesión de reproducción ligera en el receptor.
+| Método | Ruta | Éxito | Auth | Feature |
+|--------|------|------:|------|---------|
+| `GET` | `/api/v1/server/info` | `200` | no | siempre |
+| `POST` | `/api/v1/pair/start` | `201` | no; ventana física abierta | siempre |
+| `GET` | `/api/v1/pair/status` | `200` | no; `session_id` query | siempre |
+| `POST` | `/api/v1/pair/confirm` | `200` | no; sesión de pairing | siempre |
+| `POST` | `/api/v1/receiver-lite/session` | `201` | Bearer | `session` |
+| `GET` | `/api/v1/receiver-lite/session` | `200` | Bearer | `session` |
+| `PATCH` | `/api/v1/receiver-lite/session` | `200` | Bearer + sesión | `session` |
+| `DELETE` | `/api/v1/receiver-lite/session` | `204` | Bearer + sesión | `session` |
+| `POST` | `/api/v1/receiver-lite/heartbeat` | `200` | Bearer + sesión | `heartbeat` |
+| `PUT` | `/api/v1/receiver-lite/now-playing` | `204` | Bearer + sesión | `now_playing` opcional |
+| `GET` | `/api/v1/receiver-lite/diagnostics` | `200` | Bearer | `diagnostics` opcional |
+| `GET` | `/api/v1/receiver-lite/firmware` | `200` | Bearer | `ota` opcional |
+| `POST` | `/api/v1/receiver-lite/firmware` | `202` | Bearer + permiso OTA | `ota` opcional |
 
-**Cuerpo de solicitud:**
+No existen `/receiver/info`, `/receiver/session/start`, `/receiver/session/stop`, `/receiver/pair/*`, `/receiver-lite/volume`, `/receiver-lite/info` ni `/receiver-lite/config`.
+
+#### `GET /server/info` (receptor)
+
+Respuesta exacta para Standard; Hi-Fi solo cambia `service` por `michi-stream-hifi` hasta que exista certificación adicional:
 
 ```json
 {
-  "device_id": "rec-std-001",
-  "track_id": "uuid-del-track",
-  "start_playing": true
+  "service": "michi-stream-standard",
+  "name": "Michi Stream Cocina",
+  "server_id": "550e8400-e29b-41d4-a716-446655440000",
+  "version": "0.3.0",
+  "api_version": "v1-lite",
+  "roles": ["audio_receiver"],
+  "identity_scheme": "ed25519-blake3-v1",
+  "michi_id": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+  "public_key": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+  "auth": { "required": true, "strategy": "RECEIVER_BUTTON", "token_refresh": false },
+  "features": { "session": true, "heartbeat": true, "volume": true, "now_playing": true, "diagnostics": true, "ota": true },
+  "audio": {
+    "transports": ["rtp_udp"], "codecs": ["pcm_s16le"], "sample_rates": [48000],
+    "bit_depths": [16], "channels": [2], "packet_ms": [10], "payload_types": [97],
+    "buffer_ms_min": 50, "buffer_ms_max": 500
+  }
 }
 ```
 
-Campos: `device_id` (obligatorio), `track_id`, `track_ids`, `playlist_id`, `start_playing` (default `true`), `sync_group`.
+- `server_id` es UUID v4 estable, generado una vez y persistido en NVS.
+- `michi_id` deriva de `public_key`; no es igual a `server_id`.
+- Los tres campos de identidad son obligatorios para `michi-stream-*`; `roles` contiene exactamente `audio_receiver`; `version` es la versión de firmware.
+- Una feature vale `true` solo si su handler está registrado y tiene prueba positiva.
+- `audio` declara capacidad reproducible, no la capacidad teórica del DAC.
+
+#### Pairing (`RECEIVER_BUTTON`)
+
+- Una **pulsación física** abre una ventana de 120 s. Reiniciar la cierra; abrir de nuevo reemplaza la ventana previa. Fuera de la ventana, `POST /pair/start` responde `403 FORBIDDEN`.
+- `POST /pair/start` valida el challenge Ed25519 (firma sobre los bytes crudos de `challenge_nonce`) y que `michi_id` corresponde a `public_key`; un fallo responde `400 INVALID_REQUEST` y no crea sesión. Crea un PIN de 6 dígitos aleatorio, lo muestra localmente y **no** lo devuelve por HTTP. Bajo el modelo de confianza LAN, el cliente envía el PIN únicamente en `POST /pair/confirm`.
+
+```json
+{
+  "device_name": "Michi Micro Server",
+  "device_type": "server",
+  "roles": ["music_server"],
+  "auth_strategy": "RECEIVER_BUTTON",
+  "michi_id": "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc",
+  "public_key": "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y",
+  "challenge_nonce": "VFfZjzw8JeAM7-RFiTSrMA",
+  "challenge_signature": "DTlMt9BYH_TnYgKAeGd8zTpza-w5b8BDm9AyIoAW2p0clD7JrzwN9cwPY5y48K14x_0z2TPq7-LTXdNTqmhr-w"
+}
+```
+
+- `GET /pair/status?session_id=<uuid>` responde `status` `pending` / `confirmed` / `expired` / `locked`; sesión inexistente: `404 NOT_FOUND`. Máximo cinco intentos fallidos de PIN; después `429 RATE_LIMITED` y la sesión queda consumida.
+- `POST /pair/confirm` verifica identidad/clave exactas de `/pair/start` y el PIN. El **token lo genera el receptor**: 32 bytes CSPRNG, base64url sin padding, devuelto una sola vez; el receptor persiste únicamente SHA-256 del token. `expires_in: 0` = sin expiración automática, válido hasta revocación o factory reset. La sesión se consume tras éxito; un segundo confirm responde `409 CONFLICT`.
+
+```json
+{
+  "token": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+  "expires_in": 0,
+  "device_id": "550e8400-e29b-41d4-a716-446655440002",
+  "server_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Permisos mínimos emitidos tras pairing: `receiver.status`, `receiver.session`, `receiver.volume`, `receiver.now_playing`. `receiver.ota` no se concede por defecto.
+
+#### Autenticación HTTP
+
+- Controlador: `Authorization: Bearer <pairing_token>`.
+- Mutaciones de una sesión activa añaden `X-Michi-Session: <session_token>`.
+- `session_token` es distinto del pairing token: 32 bytes aleatorios base64url sin padding, solo en RAM.
+- `GET /server/info` y pairing no usan Bearer. `GET /receiver-lite/session` requiere Bearer pero no `X-Michi-Session`. `PATCH`, `DELETE`, heartbeat y now-playing exigen ambos.
+- Nunca aceptar tokens en query string o cuerpo JSON. Comparar digests en tiempo constante.
+
+#### `POST /receiver-lite/session`
+
+Crea la única sesión de audio. Todos los campos son obligatorios; `additionalProperties: false`:
+
+```json
+{
+  "transport": "rtp_udp",
+  "codec": "pcm_s16le",
+  "sample_rate": 48000,
+  "bit_depth": 16,
+  "channels": 2,
+  "packet_ms": 10,
+  "buffer_ms": 120,
+  "payload_type": 97,
+  "ssrc": 305419896,
+  "volume": 70
+}
+```
+
+| Campo | Valor/rango admitido |
+|-------|----------------------|
+| `transport` | exactamente `rtp_udp` |
+| `codec` | exactamente `pcm_s16le` |
+| `sample_rate` | exactamente `48000` |
+| `bit_depth` | exactamente `16` |
+| `channels` | exactamente `2` |
+| `packet_ms` | exactamente `10` |
+| `buffer_ms` | entero `50..500` |
+| `payload_type` | exactamente `97` |
+| `ssrc` | entero sin signo `1..4294967295` |
+| `volume` | entero `0..100` |
+
+- No redondear ni corregir valores inválidos: `400 INVALID_REQUEST` con `details.field`.
+- Si ya hay sesión activa: `409 CONFLICT`.
+- El receptor elige un puerto UDP libre en `49152..65535`. La IP fuente RTP se fija a la IP TCP del request HTTP; no se acepta `source_ip` en JSON.
+- No iniciar audio hasta reservar socket, buffer y motor con éxito; ante fallo parcial, rollback completo a `idle`.
 
 **Respuesta `201 Created`:**
 
 ```json
 {
-  "session_id": "uuid-de-la-sesion",
-  "status": "active"
+  "session_id": "550e8400-e29b-41d4-a716-446655440003",
+  "session_token": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+  "lease_seconds": 30,
+  "effective": {
+    "transport": "rtp_udp", "codec": "pcm_s16le", "sample_rate": 48000,
+    "bit_depth": 16, "channels": 2, "packet_ms": 10, "buffer_ms": 120,
+    "payload_type": 97, "ssrc": 305419896, "stream_port": 55300, "volume": 70
+  }
 }
 ```
 
----
+**RTP aceptado:** RTP v2 sin CSRC/extension/padding; PT `97`; SSRC exactamente el negociado (sin "first packet wins"); IPv4 origen exactamente la inferida al crear la sesión; PCM little-endian interleaved L/R 16-bit 48 kHz; con 10 ms cada paquete lleva 480 frames, 960 samples, 1920 bytes de payload. Paquetes con fuente/PT/SSRC/tamaño incorrecto se rechazan y contabilizan. La secuencia puede envolver; pérdida y reordenamiento se detectan sin cerrar la sesión.
+
+#### `GET /receiver-lite/session`
+
+**Respuesta `200 OK`** si hay sesión (`state`: `starting`, `playing`, `paused` o `stopping`):
+
+```json
+{
+  "session_id": "550e8400-e29b-41d4-a716-446655440003",
+  "state": "playing",
+  "lease_remaining_ms": 24500,
+  "volume": 70,
+  "paused": false,
+  "stream_port": 55300,
+  "ssrc": 305419896,
+  "packets_received": 1250,
+  "packets_rejected": 0,
+  "packets_lost": 0,
+  "underruns": 0
+}
+```
+
+Nunca devolver `session_token`. Sin sesión: `404 NOT_FOUND`.
+
+#### `PATCH /receiver-lite/session`
+
+Solo se admiten `volume` `0..100` y `paused` booleano, con al menos una propiedad:
+
+```json
+{
+  "volume": 55,
+  "paused": true
+}
+```
+
+**Respuesta `200 OK`:** mismo cuerpo de estado de `GET` después de aplicar el cambio. No existe `/volume` separado.
 
 #### `DELETE /receiver-lite/session`
 
-Finaliza la sesión activa del receptor.
-
-**Respuesta `204 No Content`.**
-
----
+Sin cuerpo. Éxito idempotente para la sesión autenticada: `204`. Token de sesión incorrecto: `401 UNAUTHORIZED`. Sin sesión: `404 NOT_FOUND`. Cierre: dejar de aceptar RTP, silenciar, detener motor, liberar buffers/socket y borrar el token en RAM.
 
 #### `POST /receiver-lite/heartbeat`
 
-Mantiene viva la conexión del receptor con el servidor. Debe enviarse cada **10 segundos**.
-
-**Cuerpo de solicitud:**
+Cada 10 segundos:
 
 ```json
 {
-  "sessionId": "uuid-de-la-sesion",
-  "state": "playing",
-  "positionMs": 78000
+  "session_id": "550e8400-e29b-41d4-a716-446655440003",
+  "sequence": 7,
+  "sent_at_ms": 1786564800000
 }
 ```
 
-Campos: `sessionId` y `state` (obligatorios), `positionMs`, `bufferLevel`, `volume`, `latencyMs`, `timestamp`.
+- `sequence`: entero sin signo, estrictamente creciente dentro de la sesión. Repetido o anterior: `409 CONFLICT`, no renueva.
+- `sent_at_ms`: Unix epoch en milisegundos; informativo, no se usa para el timeout local.
+- Un heartbeat válido renueva el lease a 30 segundos.
 
 **Respuesta `200 OK`:**
 
 ```json
 {
-  "status": "ok",
-  "serverTime": "2026-06-29T12:00:00Z"
+  "session_id": "550e8400-e29b-41d4-a716-446655440003",
+  "status": "alive",
+  "lease_seconds": 30,
+  "receiver_uptime_ms": 918273
 }
 ```
 
----
+El watchdog usa reloj monotónico. Al vencer 30 s: el mismo cierre seguro que `DELETE`, incrementar `lease_expirations` y volver a `idle` (aunque siga llegando RTP).
 
-#### `PUT /receiver-lite/volume`
+#### Extensiones opcionales
 
-El servidor establece el volumen del receptor.
+`PUT /receiver-lite/now-playing`, `GET /receiver-lite/diagnostics` y `GET/POST /receiver-lite/firmware` son extensiones opcionales anunciadas por feature flags. Sus shapes no congelados se definen cuando cada extensión se certifique. `POST /receiver-lite/firmware` exige permiso `receiver.ota` (no otorgado por defecto).
 
-**Cuerpo de solicitud:**
+#### Mapa de errores del receptor
 
-```json
-{
-  "sessionId": "uuid-de-la-sesion",
-  "volume": 75,
-  "muted": false
-}
-```
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "volume": 75,
-  "muted": false
-}
-```
-
-Rango: 0–100 (entero).
-
----
-
-#### `GET /receiver-lite/firmware`
-
-Consulta si hay una actualización de firmware disponible.
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "currentVersion": "1.2.3",
-  "latestVersion": "1.3.0",
-  "updateAvailable": true,
-  "releaseDate": "2026-06-01T00:00:00Z",
-  "changelog": "Correcciones de seguridad y mejoras de rendimiento.",
-  "updateUrl": "http://192.168.1.100:8500/firmware/v1.3.0.bin",
-  "checksum": "sha256:a1b2c3d4...",
-  "lastChecked": "2026-06-29T10:00:00Z",
-  "lastUpdated": "2026-05-01T10:00:00Z"
-}
-```
-
----
-
-#### `POST /receiver-lite/firmware`
-
-Inicia la actualización de firmware.
-
-**Cuerpo de solicitud:**
-
-```json
-{
-  "url": "http://192.168.1.100:8500/firmware/v1.3.0.bin",
-  "checksum": "sha256:a1b2c3d4..."
-}
-```
-
-**Respuesta `202 Accepted`:**
-
-```json
-{
-  "status": "updating",
-  "startedAt": "2026-06-29T12:00:00Z"
-}
-```
-
----
-
-#### `GET /receiver-lite/config`
-
-Obtiene la configuración actual del receptor.
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "deviceName": "Cocina Speaker",
-  "audioOutput": "analog",
-  "sampleRate": 48000,
-  "bitDepth": 24,
-  "bufferSize": 2048,
-  "volumeControl": true,
-  "autoSync": false
-}
-```
-
----
-
-#### `PUT /receiver-lite/config`
-
-Actualiza la configuración del receptor.
-
-**Respuesta `200 OK`:**
-
-```json
-{
-  "status": "applied",
-  "requiresReboot": false
-}
-```
+| Condición | HTTP | `code` |
+|-----------|-----:|--------|
+| JSON/campo/valor inválido | `400` | `INVALID_REQUEST` |
+| Bearer o token de sesión ausente/inválido | `401` | `UNAUTHORIZED` |
+| Token válido sin permiso o ventana física cerrada | `403` | `FORBIDDEN` |
+| Sesión/recurso inexistente | `404` | `NOT_FOUND` |
+| Estado incompatible, replay o sesión duplicada | `409` | `CONFLICT` |
+| Exceso de intentos/requests | `429` | `RATE_LIMITED` |
+| Feature no implementada | `501` | `NOT_IMPLEMENTED` |
+| Error inesperado | `500` | `INTERNAL_ERROR` |
 
 ---
 
