@@ -18,6 +18,20 @@ Devices on the local network discover each other using two concurrent methods: *
 
 These constants are the single source of truth in `crates/michi-identity/src/discovery.rs` (`MULTICAST_GROUP`, `MULTICAST_PORT`, `ANNOUNCE_INTERVAL`, `OFFLINE_TIMEOUT`, `MAX_ANNOUNCE_BYTES`, `MDNS_SERVICE`, `TIMESTAMP_WINDOW_MS`).
 
+### Receiver v1-lite announce profile (frozen)
+
+Stream receivers (`michi-stream-standard`, `michi-stream-hifi`) follow a stricter announce profile, frozen by [ADR-0001](adr/ADR-0001-receiver-v1-lite.md):
+
+| Constant | Value |
+|----------|-------|
+| Datagram | A single compact JSON datagram, at most **1200 bytes** |
+| IP TTL | `1` |
+| Interval | At boot, on IP change, and every `30 s ± 3 s` |
+| Signed group | Mandatory for Stream: `michi_id`, `public_key`, `nonce`, `timestamp`, `signature` |
+| Canonicalization | Follows Michi Link's golden vectors; no invented field order or prehash |
+
+`device_id` is the same UUID as `server_id`; `host` is the current IPv4 and `port` the HTTP port.
+
 ## UDP Multicast Announce
 
 Every 30 seconds each device broadcasts a JSON announce over UDP to `224.0.0.167:53318`.
@@ -191,6 +205,8 @@ The TXT records are a **minimum set** for coarse filtering; capabilities must NO
 | `api_version` | `v1` |
 | `roles` | `desktop_player,library_master,sync_host` |
 | `auth_strategy` | `SERVER_CODE` |
+
+For stream receivers the mandatory TXT set is `device_id`, `service`, `api_version`, `roles`, `michi_id`: `michi_id` replaces `auth_strategy`, and `roles` is serialized as `audio_receiver` (plain string, not JSON). The retired `_michi-receiver._tcp` service type must be removed from implementations once the canonical receiver discovery test passes.
 
 Capabilities are **only** advertised through `GET /api/v1/server/info` (`features` object), never through TXT records. Signed identity material is only carried by UDP announces, not by mDNS TXT records.
 
