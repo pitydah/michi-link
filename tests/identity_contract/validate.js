@@ -46,6 +46,7 @@ function main() {
 
   const validateIdentity = register("michi-identity.schema.json");
   const validateAnnounce = register("discovery-announce.schema.json");
+  register("audio-capabilities.schema.json");
   const validateServerInfo = register("server-info.schema.json");
 
   const identityDoc = loadJSON(path.join(EXAMPLES_DIR, "identity-document.json"));
