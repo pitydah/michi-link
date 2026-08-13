@@ -71,11 +71,12 @@ The canonical contract is defined in `schemas/` (JSON Schema draft-07), `openapi
 | `openapi/` | OpenAPI 3.0 specification |
 | `schemas/` | JSON Schema (draft-07) for every entity |
 | `examples/` | Annotated JSON examples for every flow |
-| `tests/contract/` | Conformance tests validating examples against schemas (150 checks) |
+| `contracts/receiver-v1-lite/` | Versioned receiver conformance bundle: OpenAPI, schemas, examples, vectors, `VERSION`, `UPSTREAM_COMMIT` and an ordered SHA-256 `manifest.json`. Byte-for-byte reproducible; the single contractual input for downstream receivers |
+| `tests/contract/` | Conformance tests validating examples against schemas (248 checks) |
 | `tests/identity_contract/` | Identity contract tests — michi_id, signatures, announcements (22 checks) |
-| `tests/cross_layer/` | Cross-layer checks: schemas ↔ OpenAPI ↔ crate types (67 checks) |
+| `tests/cross_layer/` | Cross-layer checks: schemas ↔ OpenAPI ↔ crate types (84 checks) |
 | `crates/michi-identity/` | Reference implementation: identity, pairing, discovery, QR (Rust, 88 tests) |
-| `scripts/` | Repository tooling (contract policy scanner) |
+| `scripts/` | Repository tooling (contract policy scanner, deterministic bundle builder) |
 
 ---
 
@@ -98,13 +99,13 @@ The canonical contract is defined in `schemas/` (JSON Schema draft-07), `openapi
 The repository ships a contract test suite and a policy scanner. Run them before merging changes:
 
 ```bash
-# JSON contract conformance (examples vs schemas) — 150 checks
+# JSON contract conformance (examples vs schemas) — 248 checks
 cd tests/contract && npm test && cd ../..
 
 # Identity contract (michi_id, signatures, discovery announcements) — 22 checks
 cd tests/identity_contract && npm test && cd ../..
 
-# Cross-layer checks (schemas ↔ OpenAPI ↔ crate types) — 67 checks
+# Cross-layer checks (schemas ↔ OpenAPI ↔ crate types) — 84 checks
 cd tests/cross_layer && npm test && cd ../..
 
 # Reference implementation — 88 tests, clippy 0 warnings
@@ -115,13 +116,18 @@ npx --yes @redocly/cli@2 lint openapi/michi-link-v1.yaml --extends=minimal
 
 # Retired-token policy scan (must exit 0)
 python3 scripts/contract-policy.py
+
+# Receiver v1-lite bundle reproducibility (CI job: bundle-reproducibility)
+cd crates/michi-identity && cargo run -q --example generate_contract_vectors -- ../../tests/vectors/generated --receiver ../../tests/vectors/receiver-v1-lite && cd ../..
+python3 scripts/build-receiver-bundle.py
+git diff --exit-code -- contracts/receiver-v1-lite tests/vectors/generated tests/vectors/receiver-v1-lite
 ```
 
 ---
 
 ## State
 
-The contract is **defined and tested**: schemas, OpenAPI, examples, identity tests and the reference crate are in place. However, the ecosystem beta is **globally CLOSED** until the scenarios in [docs/BETA_GATE.md](docs/BETA_GATE.md) reach `NETWORK_E2E_PASS` evidence. Evidence levels are defined in [docs/TEST_LEVELS.md](docs/TEST_LEVELS.md) — no feature may be claimed as done without evidence.
+The contract is **defined and tested**: schemas, OpenAPI, examples, identity tests and the reference crate are in place. The receiver v1-lite profile is frozen (ADR-0001) and published in-tree as a versioned, byte-for-byte reproducible conformance bundle at `contracts/receiver-v1-lite/` (`1.0.0-alpha.1`). Downstream implementations vendor the bundle without modification and verify it against the ordered SHA-256 manifest; see [docs/DOWNSTREAM_MIGRATION.md](docs/DOWNSTREAM_MIGRATION.md). The ecosystem beta is **globally CLOSED** until the scenarios in [docs/BETA_GATE.md](docs/BETA_GATE.md) reach `NETWORK_E2E_PASS` evidence. Evidence levels are defined in [docs/TEST_LEVELS.md](docs/TEST_LEVELS.md) — no feature may be claimed as done without evidence, and no hardware is certified: receiver interoperability with physical hardware and the Stream simulator remains NOT_TESTED.
 
 ---
 

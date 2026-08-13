@@ -1,4 +1,4 @@
-# Beta Readiness Checklist — Michi Link API v1.0.0-alpha
+# Beta Readiness Checklist — Michi Link API v1.0.0-alpha.1
 
 ## Instrucciones
 
@@ -35,13 +35,14 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 1.1 | server-info.schema.json service enum tiene `michi-music-player` | UNIT_PASS | schemas/server-info.schema.json | `npx ajv validate -s schemas/server-info.schema.json -d examples/server-info-player.json` | 2026-07-15 | no |
 | 1.2 | server-info.schema.json features son booleanos | UNIT_PASS | schemas/server-info.schema.json | test contract negativo: features con objetos falla | 2026-07-15 | no |
 | 1.3 | server-info.schema.json auth.required es obligatorio | UNIT_PASS | schemas/server-info.schema.json | test contract negativo: falta auth.required | 2026-07-15 | no |
-| 1.4 | server-info.schema.json api_version validada estrictamente (enum v1/v1-lite; `additionalProperties: false` rechaza campos extra, incl. `michi_link_version` retirado) | UNIT_PASS | tests/contract/validate.js | test contract negativo: `api_version: "1.0.0"` rechazado; `michi_link_version` extra rechazado (150 checks) | 2026-08-05 | no | <!-- michi-policy:exclude -->
+| 1.4 | server-info.schema.json api_version validada estrictamente (enum v1/v1-lite; `additionalProperties: false` rechaza campos extra, incl. `michi_link_version` retirado) | UNIT_PASS | tests/contract/validate.js | test contract negativo: `api_version: "1.0.0"` rechazado; `michi_link_version` extra rechazado (248 checks) | 2026-08-13 | no | <!-- michi-policy:exclude -->
 | 1.5 | playback-control.schema.json requiere command | UNIT_PASS | schemas/playback-control.schema.json | test contract: command requerido, action rechazado | 2026-07-15 | no |
 | 1.6 | sync-delta.schema.json usa cursor (string) | UNIT_PASS | schemas/sync-delta.schema.json | npm test valida sync-delta.json | 2026-07-15 | no |
 | 1.7 | error.schema.json usa { error: { code, message, details } } | UNIT_PASS | schemas/error.schema.json | npm test valida error examples | 2026-07-15 | no |
-| 1.8 | Ejemplos validan contra schemas (tests/contract: 150 checks) | UNIT_PASS | tests/contract/validate.js | `cd tests/contract && npm test` | 2026-08-05 | no |
-| 1.9 | Wire base64url estricto (michi_id/public_key 43 chars, signature 86, sin padding ni `+`/`/`/`=`) | UNIT_PASS | tests/identity_contract/validate.js | `cd tests/identity_contract && npm test` (22 checks) | 2026-08-05 | no |
+| 1.8 | Ejemplos validan contra schemas (tests/contract: 248 checks) | UNIT_PASS | tests/contract/validate.js | `cd tests/contract && npm test` | 2026-08-13 | no |
+| 1.9 | Wire base64url estricto (michi_id/public_key 43 chars, signature 86, sin padding ni `+`/`/`/`=`) | UNIT_PASS | tests/identity_contract/validate.js | `cd tests/identity_contract && npm test` (22 checks) | 2026-08-13 | no |
 | 1.10 | OpenAPI spec actualizada | UNIT_PASS | openapi/michi-link-v1.yaml | — | 2026-07-15 | no |
+| 1.11 | Bundle receiver v1-lite reproducible (VERSION 1.0.0-alpha.1 + manifest SHA-256, regen sin diff) | BUNDLE_PASS | contracts/receiver-v1-lite/ + .github/workflows/contract.yml (job bundle-reproducibility) | `python3 scripts/build-receiver-bundle.py && git diff --exit-code -- contracts/receiver-v1-lite` | 2026-08-13 | no |
 
 ## 2. Autenticación
 
@@ -52,7 +53,7 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 2.3 | Player token_refresh=false | NOT_TESTED | — | GET /server/info → auth.token_refresh | — | **sí** |
 | 2.4 | Micro Server token_refresh=true | UNIT_PASS | crates/michi-api/src/routes/v1/pair.rs | test_v1_token_refresh | 2026-07-15 | **sí** |
 | 2.5 | Mobile detecta estrategia y actúa en consecuencia | NOT_TESTED | — | Mobile conecta a Player y Micro | — | **sí** |
-| 2.6 | Receiver expone auth.strategy=RECEIVER_BUTTON | NOT_TESTED | — | GET /receiver-lite/info en Stream | — | no |
+| 2.6 | Receiver expone auth.strategy=RECEIVER_BUTTON | NOT_TESTED | — | `GET /server/info` en Stream (`api_version: "v1-lite"`, `auth.strategy`) | — | no |
 
 ## 3. Pairing
 
@@ -199,14 +200,18 @@ Cada ítem debe estar en estado **PASS** antes de declarar la beta. Si algún í
 | 14.2 | Micro Server mantiene estado de reproducción en DB | UNIT_PASS | crates/michi-core/src/models.rs | PlaybackSessionDb con estado | 2026-07-15 | no |
 | 14.3 | Micro Server puede continuar reproducción tras reinicio | NOT_TESTED | — | — | — | no |
 
-## 15. Music Stream — Prototype Gate
+## 15. Music Stream — Receiver v1-lite Gate
+
+> Contrato congelado (ADR-0001) y publicado como bundle `contracts/receiver-v1-lite/` (`1.0.0-alpha.1`). Todos los ítems de esta sección dependen de la implementación en Michi Music Stream (simulador primero, firmware después) y están **NOT_TESTED**: no hay hardware certificado ni compatibilidad física certificada.
 
 | # | Ítem | Certification Level | Evidence | Test command | Last verified | Blocking |
 |---|------|--------|----------|-------------|---------------|----------|
-| 15.1 | Firmware Stream implementa /receiver-lite/info | NOT_TESTED | — | — | — | no |
-| 15.2 | Firmware Stream implementa pairing (POST /pair/start + /pair/confirm, device_type: receiver) | NOT_TESTED | — | — | — | no |
-| 15.3 | Firmware Stream implementa POST /receiver-lite/heartbeat | NOT_TESTED | — | — | — | no |
-| 15.4 | Firmware Stream implementa POST /receiver-lite/session | NOT_TESTED | — | — | — | no |
-| 15.5 | Firmware Stream recibe y reproduce URL de stream | NOT_TESTED | — | — | — | no |
-| 15.6 | Micro Server puede enviar sesión a Stream | NOT_TESTED | — | — | — | no |
-| 15.7 | Audio se escucha en hardware real | NOT_TESTED | — | — | — | no |
+| 15.1 | Stream implementa `GET /server/info` con el perfil exacto (`service`, identidad, `roles: ["audio_receiver"]`, `auth.strategy: RECEIVER_BUTTON`, `audio` reproducible) | NOT_TESTED | bundle vector `vectors/identity/server-info-standard.json` | MS-03: tests host del firmware | — | no |
+| 15.2 | Stream implementa pairing canónico (ventana física 120 s; `POST /pair/start` → `GET /pair/status` → `POST /pair/confirm`; token emitido por el receptor, `expires_in: 0`) | NOT_TESTED | bundle vectors `vectors/pairing/` | MS-06: tests host del firmware | — | no |
+| 15.3 | Stream implementa `POST /receiver-lite/session` (una sesión, RTP/UDP, PT 97, SSRC negociado, puerto 49152..65535, IP RTP = IP TCP del request) | NOT_TESTED | bundle vectors + `receiver-session-create.schema.json` | MS-07: tests host del firmware | — | no |
+| 15.4 | Stream implementa `GET/PATCH/DELETE /receiver-lite/session` (estado, volumen/pausa, cierre seguro idempotente) | NOT_TESTED | `receiver-session.schema.json`, `receiver-session-patch.schema.json` | MS-07: tests host del firmware | — | no |
+| 15.5 | Stream implementa `POST /receiver-lite/heartbeat` (secuencia estrictamente creciente, lease 30 s monotónico, replay 409) | NOT_TESTED | `receiver-heartbeat.schema.json` + `receiver-heartbeat-response.schema.json` | MS-08: tests host del firmware | — | no |
+| 15.6 | Micro Server puede crear sesión en Stream contra el contrato canónico | NOT_TESTED | — | MS-09: E2E Micro ↔ Stream Simulator | — | **sí** |
+| 15.7 | Audio se escucha en hardware real | NOT_TESTED | — | MS-11: matriz física de certificación | — | no |
+
+**Micro ↔ Stream Simulator: NOT_TESTED.** El pase `MOCK_PASS` (MS-09) y el pase en hardware (`DEVICE_E2E_PASS`, MS-11) son futuros; hoy no existe evidencia E2E ni de simulador ni física.

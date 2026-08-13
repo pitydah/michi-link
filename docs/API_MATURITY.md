@@ -212,15 +212,17 @@
 
 ---
 
-### 15. v1-lite (Receivers físicos)
+### 15. v1-lite (Receptores físicos)
+
+> Actualizado tras el cierre contractual (ML-01..ML-04): el perfil receiver v1-lite está congelado por ADR-0001 y publicado como bundle versionado `contracts/receiver-v1-lite/` (`1.0.0-alpha.1`, reproducible byte a byte). Esto es madurez **de contrato**, no de implementación.
 
 | Proyecto | Nivel | Notas |
 |----------|-------|-------|
-| Michi Link (contrato) | **alpha** | RECEIVERS_V1_LITE.md completo |
-| Michi Micro Server | **partial** | Consume, endpoints declarados |
-| Michi Music Stream | **prototype** | Sin firmware validado en hardware |
+| Michi Link (contrato) | **alpha (contrato congelado)** | Bundle versionado con OpenAPI, schemas, ejemplos y vectores; manifests SHA-256; job CI de reproducibilidad |
+| Michi Micro Server | **partial** | Consume, endpoints server-side declarados; sin cliente v1-lite certificado |
+| Michi Music Stream | **NOT_TESTED** | Sin simulador ni firmware validados contra el bundle; sin hardware certificado |
 
-**Beta blocker:** Micro Server ↔ Stream para poder avanzar a prototype real.
+**Beta blocker:** Micro Server ↔ Stream para poder avanzar a prototype real. Estado: **Micro ↔ Stream Simulator: NOT_TESTED**.
 
 ---
 
