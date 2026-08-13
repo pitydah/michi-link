@@ -105,7 +105,7 @@ Frozen in [docs/DISCOVERY.md](../DISCOVERY.md) together with the general discove
 - mDNS service `_michi-link._tcp.local`, port = real HTTP port, instance name = visible device name.
 - Mandatory mDNS TXT keys: `device_id`, `service`, `api_version`, `roles`, `michi_id`. `roles` is serialized as `audio_receiver` (plain string, not JSON).
 - Signed UDP multicast announce on `224.0.0.167:53318`, IP TTL `1`, a single compact JSON datagram of at most 1200 bytes, sent at boot, on IP change and every 30 s ± 3 s.
-- The signed identity group (`michi_id`, `public_key`, `nonce`, `timestamp`, `signature`) is mandatory for Stream. Canonicalization and signature follow Michi Link's golden vectors; no invented field order or prehash.
+- The signed identity group (`michi_id`, `public_key`, `nonce`, `timestamp_ms`, `signature`) is mandatory for Stream. Canonicalization and signature follow Michi Link's golden vectors; no invented field order or prehash.
 
 ## Pairing
 

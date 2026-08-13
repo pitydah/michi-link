@@ -27,7 +27,7 @@ Stream receivers (`michi-stream-standard`, `michi-stream-hifi`) follow a stricte
 | Datagram | A single compact JSON datagram, at most **1200 bytes** |
 | IP TTL | `1` |
 | Interval | At boot, on IP change, and every `30 s ± 3 s` |
-| Signed group | Mandatory for Stream: `michi_id`, `public_key`, `nonce`, `timestamp`, `signature` |
+| Signed group | Mandatory for Stream: `michi_id`, `public_key`, `nonce`, `timestamp_ms`, `signature` |
 | Canonicalization | Follows Michi Link's golden vectors; no invented field order or prehash |
 
 `device_id` is the same UUID as `server_id`; `host` is the current IPv4 and `port` the HTTP port.
