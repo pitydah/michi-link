@@ -6,10 +6,16 @@ const addFormats = require("ajv-formats");
 const ROOT = path.resolve(__dirname, "../..");
 const SCHEMAS_DIR = path.join(ROOT, "schemas");
 const VECTORS_DIR = path.join(ROOT, "tests", "vectors", "generated");
+const OPENAPI_PATH = path.join(ROOT, "openapi", "michi-link-v1.yaml");
 const SCHEMA_BASE = "https://michi.link/schemas/";
 const PASS = "\u001b[32m\u2713\u001b[0m";
 const FAIL = "\u001b[31m\u2717\u001b[0m";
 const REGEN_HINT = "regenerate vectors with: cargo run --example generate_contract_vectors";
+
+// Number of canonical flow-JSON examples embedded in openapi/michi-link-v1.yaml
+// by ML-03. Every one of them must validate against exactly one canonical
+// JSON Schema; adding or removing an example requires updating this constant.
+const EXPECTED_OPENAPI_EXAMPLES = 16;
 
 function loadJSON(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -287,6 +293,90 @@ function main() {
 
   // Note: vectors are static snapshots with frozen timestamps; no freshness
   // window is applied to them by design.
+
+  // 8. OpenAPI <-> schema convergence: every canonical example embedded in the
+  //    OpenAPI document as flow JSON must be valid JSON and must validate
+  //    against exactly one canonical schema. Examples are extracted with a
+  //    quote-aware brace scanner, so no YAML parser dependency is needed.
+  //    Schemas are registered by $id above, so an example that is rejected by
+  //    every schema (or accepted by several) fails the suite.
+  function extractFlowJsonExamples(text) {
+    const found = [];
+    const re = /example:\s*([\[{])/g;
+    let match;
+    while ((match = re.exec(text)) !== null) {
+      const open = match[1];
+      const close = open === "{" ? "}" : "]";
+      const start = match.index + match[0].length - 1;
+      let depth = 0;
+      let inString = false;
+      let escape = false;
+      let end = -1;
+      for (let i = start; i < text.length; i++) {
+        const ch = text[i];
+        if (inString) {
+          if (escape) escape = false;
+          else if (ch === "\\") escape = true;
+          else if (ch === '"') inString = false;
+          continue;
+        }
+        if (ch === '"') inString = true;
+        else if (ch === open) depth++;
+        else if (ch === close) {
+          depth--;
+          if (depth === 0) {
+            end = i;
+            break;
+          }
+        }
+      }
+      if (end === -1) {
+        found.push({ error: "unbalanced braces", offset: match.index });
+        continue;
+      }
+      const raw = text.slice(start, end + 1);
+      try {
+        found.push({ value: JSON.parse(raw), offset: match.index });
+      } catch (err) {
+        found.push({ error: err.message, offset: match.index, raw: raw.slice(0, 120) });
+      }
+    }
+    return found;
+  }
+
+  const schemaValidators = [];
+  for (const name of fs.readdirSync(SCHEMAS_DIR).filter((f) => f.endsWith(".schema.json")).sort()) {
+    const validator = ajv.getSchema(SCHEMA_BASE + name);
+    if (typeof validator === "function") {
+      schemaValidators.push({ name: name.replace(/\.schema\.json$/, ""), validate: validator });
+    }
+  }
+
+  const openapiText = fs.readFileSync(OPENAPI_PATH, "utf8");
+  const openapiExamples = extractFlowJsonExamples(openapiText);
+
+  check(
+    `openapi: found exactly ${EXPECTED_OPENAPI_EXAMPLES} canonical flow-JSON examples`,
+    openapiExamples.length === EXPECTED_OPENAPI_EXAMPLES,
+    null
+  );
+  if (openapiExamples.length !== EXPECTED_OPENAPI_EXAMPLES) {
+    console.log(`       found ${openapiExamples.length} (expected ${EXPECTED_OPENAPI_EXAMPLES})`);
+  }
+
+  openapiExamples.forEach((entry, index) => {
+    if (entry.error) {
+      check(`openapi example #${index + 1}: valid JSON (${entry.error})`, false, null);
+      return;
+    }
+    const accepting = schemaValidators.filter((s) => s.validate(entry.value)).map((s) => s.name);
+    const ok = accepting.length === 1;
+    check(
+      `openapi example #${index + 1}: matches exactly one schema (${accepting.length ? accepting.join(",") : "none"})`,
+      ok,
+      null
+    );
+  });
 
   const total = passed + failed;
   console.log(`\n${total} checks: ${passed} passed, ${failed} failed`);
