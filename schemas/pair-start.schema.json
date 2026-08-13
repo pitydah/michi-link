@@ -16,8 +16,8 @@
     },
     "device_type": {
       "type": "string",
-      "description": "Initiating device type",
-      "enum": ["mobile", "desktop", "receiver"],
+      "description": "Initiating device type. 'server' represents Michi Micro Server pairing a receiver.",
+      "enum": ["mobile", "desktop", "receiver", "server"],
       "examples": ["mobile"]
     },
     "roles": {

@@ -1,0 +1,10 @@
+{
+  "device_name": "Michi Micro Server",
+  "device_type": "server",
+  "roles": ["music_server"],
+  "auth_strategy": "RECEIVER_BUTTON",
+  "michi_id": "97ryPKOLZ-JgVKQFc2ZuuSk0alWzxagdNILuDW26jEc",
+  "public_key": "fDBBmExOH6h74KpGq2ckfDNN0Mzi7oMN4g_V2IKAR8Y",
+  "challenge_nonce": "VFfZjzw8JeAM7-RFiTSrMA",
+  "challenge_signature": "DTlMt9BYH_TnYgKAeGd8zTpza-w5b8BDm9AyIoAW2p0clD7JrzwN9cwPY5y48K14x_0z2TPq7-LTXdNTqmhr-w"
+}

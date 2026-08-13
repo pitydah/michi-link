@@ -1,0 +1,13 @@
+{
+  "session_id": "550e8400-e29b-41d4-a716-446655440003",
+  "state": "playing",
+  "lease_remaining_ms": 24500,
+  "volume": 70,
+  "paused": false,
+  "stream_port": 55300,
+  "ssrc": 305419896,
+  "packets_received": 1250,
+  "packets_rejected": 0,
+  "packets_lost": 0,
+  "underruns": 0
+}
