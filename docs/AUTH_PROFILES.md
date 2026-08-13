@@ -72,24 +72,25 @@ Usado por: **Michi Micro Server**
 
 ## RECEIVER_BUTTON
 
-Usado por: **Michi Music Stream** (Standard y Hi-Fi)
+Usado por: **Michi Music Stream** (Standard y Hi-Fi). Decisiones congeladas en [ADR-0001](adr/ADR-0001-receiver-v1-lite.md): el receptor es el servidor de pairing y Michi Link es la fuente normativa del contrato.
 
 ### Flujo
 
-1. El receptor (Stream) se enciende y busca servidores vía UDP/mDNS.
-2. El usuario presiona un botón físico en el receptor para iniciar pairing.
-3. El receptor envía `/pair/start` (device_type: `receiver`, auth_strategy: `RECEIVER_BUTTON`) al servidor descubierto.
-4. El servidor valida el challenge, abre la sesión y muestra el PIN de 6 dígitos en su UI.
-5. El usuario confirma el PIN en el servidor (aceptando el nuevo dispositivo) y el receptor completa `/pair/confirm`.
+1. Una pulsación física explícita en el receptor abre una **ventana de 120 segundos**. Reiniciar el dispositivo cierra la ventana; abrir de nuevo reemplaza la ventana previa y elimina las sesiones de pairing pendientes.
+2. El cliente controlador (Micro Server, `device_type: "server"`, `roles: ["music_server"]`, `auth_strategy: "RECEIVER_BUTTON"`) envía `/pair/start` con su identidad y el challenge Ed25519. Fuera de la ventana física, `/pair/start` responde `403 FORBIDDEN`.
+3. El receptor valida el challenge, comprueba que `michi_id` corresponde a `public_key` y crea la sesión. Genera un PIN criptográficamente aleatorio de seis dígitos, lo muestra localmente y **nunca lo devuelve por HTTP**.
+4. Bajo el modelo de red LAN de confianza, el cliente envía el PIN en `/pair/confirm`. Máximo cinco intentos fallidos por sesión; después, `429 RATE_LIMITED` y la sesión queda consumida.
+5. El receptor emite el token Bearer: 32 bytes de CSPRNG codificados en base64url sin padding, devuelto una sola vez. El receptor persiste únicamente el SHA-256 del token. `expires_in: 0` significa "sin expiración automática; válido hasta revocación o factory reset".
+6. La sesión se consume tras el éxito; una segunda confirmación responde `409 CONFLICT`.
 
 ### Características
 
-- **Sin refresh token:** El receptor usa un token interno fijo mientras esté emparejado.
+- **Sin refresh token:** `token_refresh: false`. El token lo emite el receptor y no expira solo.
 - **Sin UI compleja:** El receptor solo tiene botón físico y LEDs de estado.
-- **Heartbeat:** El receptor mantiene sesión activa vía heartbeat cada 10s.
-- **Seguridad:** Basada en proximidad física (botón).
+- **Heartbeat:** La sesión se mantiene activa vía heartbeat cada 10s con lease de 30 segundos.
+- **Seguridad:** Basada en proximidad física (botón) y en el modelo LAN de confianza.
 
-### Payload `auth` en `/receiver/info`
+### Payload `auth` en `/server/info`
 
 ```json
 {
