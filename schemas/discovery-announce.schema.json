@@ -115,6 +115,21 @@
       "then": {
         "required": ["michi_id", "public_key", "signature", "timestamp_ms", "nonce"]
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "service": {
+            "enum": ["michi-stream-standard", "michi-stream-hifi"]
+          }
+        },
+        "required": ["service"],
+        "type": "object"
+      },
+      "then": {
+        "description": "The signed identity group is mandatory for michi-stream-* announces.",
+        "required": ["michi_id", "public_key", "signature", "timestamp_ms", "nonce"]
+      }
     }
   ]
 }

@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/server-info.schema.json",
   "title": "ServerInfo",
-  "description": "Server identity and capabilities payload. api_version is 'v1' for full servers and 'v1-lite' for stream receivers. The identity group (michi_id, public_key, identity_scheme) is all-or-nothing.",
+  "description": "Server identity and capabilities payload, discriminated by service. api_version is 'v1' for full servers and 'v1-lite' for stream receivers (michi-stream-*). For michi-stream-* the identity group (identity_scheme, michi_id, public_key), server_id, the reproducible audio capabilities and the receiver role/auth/features are mandatory. The identity group is all-or-nothing for every service.",
   "type": "object",
   "required": [
     "service",
@@ -40,7 +40,7 @@
     },
     "server_id": {
       "type": "string",
-      "description": "Unique server UUID",
+      "description": "Unique server UUID. Stable UUID v4 generated once and persisted in NVS; mandatory for michi-stream-*.",
       "format": "uuid",
       "examples": [
         "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -48,7 +48,7 @@
     },
     "version": {
       "type": "string",
-      "description": "Application version (internal, not contract version). Semver.",
+      "description": "Application version (internal, not contract version). Semver. For receivers this is the firmware version.",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
       "examples": [
         "0.1.0"
@@ -115,7 +115,7 @@
     },
     "identity_scheme": {
       "type": "string",
-      "description": "Cryptographic identity scheme, all-or-nothing with michi_id and public_key",
+      "description": "Cryptographic identity scheme, all-or-nothing with michi_id and public_key. Mandatory for michi-stream-*.",
       "enum": [
         "ed25519-blake3-v1"
       ],
@@ -126,12 +126,12 @@
     "michi_id": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]{43}$",
-      "description": "Identity derived as base64url(BLAKE3(public_key)), exactly 43 chars, present when identity is initialized"
+      "description": "Identity derived as base64url(BLAKE3(public_key)), exactly 43 chars. Mandatory for michi-stream-*; never equal to server_id."
     },
     "public_key": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]{43}$",
-      "description": "Ed25519 public key in base64url, exactly 43 chars, present when identity is initialized"
+      "description": "Ed25519 public key in base64url, exactly 43 chars. Mandatory for michi-stream-*."
     },
     "auth": {
       "type": "object",
@@ -166,6 +166,10 @@
           "description": "Whether /token/refresh is supported"
         }
       }
+    },
+    "audio": {
+      "$ref": "audio-capabilities.schema.json",
+      "description": "Reproducible audio capabilities. Mandatory for michi-stream-*; rejected for other services."
     }
   },
   "allOf": [
@@ -214,207 +218,301 @@
           "identity_scheme"
         ]
       }
+    }
+  ],
+  "oneOf": [
+    {
+      "description": "Michi Music Stream Standard receiver (v1-lite).",
+      "properties": {
+        "service": {
+          "const": "michi-stream-standard"
+        },
+        "api_version": {
+          "enum": [
+            "v1-lite"
+          ]
+        },
+        "server_id": {
+          "$ref": "#/properties/server_id"
+        },
+        "identity_scheme": {
+          "$ref": "#/properties/identity_scheme"
+        },
+        "michi_id": {
+          "$ref": "#/properties/michi_id"
+        },
+        "public_key": {
+          "$ref": "#/properties/public_key"
+        },
+        "audio": {
+          "$ref": "#/properties/audio"
+        },
+        "roles": {
+          "type": "array",
+          "description": "Exactly one role: audio_receiver.",
+          "items": {
+            "const": "audio_receiver"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "strategy",
+            "token_refresh"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "strategy": {
+              "const": "RECEIVER_BUTTON"
+            },
+            "token_refresh": {
+              "const": false
+            }
+          }
+        },
+        "features": {
+          "type": "object",
+          "description": "Receiver feature flags. A flag is true only when its handler is registered and has a positive test.",
+          "additionalProperties": false,
+          "required": [
+            "session",
+            "heartbeat",
+            "volume",
+            "now_playing",
+            "diagnostics",
+            "ota"
+          ],
+          "properties": {
+            "session": {
+              "type": "boolean"
+            },
+            "heartbeat": {
+              "type": "boolean"
+            },
+            "volume": {
+              "type": "boolean"
+            },
+            "now_playing": {
+              "type": "boolean"
+            },
+            "diagnostics": {
+              "type": "boolean"
+            },
+            "ota": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "required": [
+        "server_id",
+        "identity_scheme",
+        "michi_id",
+        "public_key",
+        "audio"
+      ]
     },
     {
-      "if": {
-        "properties": {
-          "service": {
-            "const": "michi-music-player"
+      "description": "Michi Music Stream Hi-Fi receiver (v1-lite). Same certified audio as Standard until further certification exists.",
+      "properties": {
+        "service": {
+          "const": "michi-stream-hifi"
+        },
+        "api_version": {
+          "enum": [
+            "v1-lite"
+          ]
+        },
+        "server_id": {
+          "$ref": "#/properties/server_id"
+        },
+        "identity_scheme": {
+          "$ref": "#/properties/identity_scheme"
+        },
+        "michi_id": {
+          "$ref": "#/properties/michi_id"
+        },
+        "public_key": {
+          "$ref": "#/properties/public_key"
+        },
+        "audio": {
+          "$ref": "#/properties/audio"
+        },
+        "roles": {
+          "type": "array",
+          "description": "Exactly one role: audio_receiver.",
+          "items": {
+            "const": "audio_receiver"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "strategy",
+            "token_refresh"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "strategy": {
+              "const": "RECEIVER_BUTTON"
+            },
+            "token_refresh": {
+              "const": false
+            }
           }
         },
-        "type": "object"
+        "features": {
+          "type": "object",
+          "description": "Receiver feature flags. A flag is true only when its handler is registered and has a positive test.",
+          "additionalProperties": false,
+          "required": [
+            "session",
+            "heartbeat",
+            "volume",
+            "now_playing",
+            "diagnostics",
+            "ota"
+          ],
+          "properties": {
+            "session": {
+              "type": "boolean"
+            },
+            "heartbeat": {
+              "type": "boolean"
+            },
+            "volume": {
+              "type": "boolean"
+            },
+            "now_playing": {
+              "type": "boolean"
+            },
+            "diagnostics": {
+              "type": "boolean"
+            },
+            "ota": {
+              "type": "boolean"
+            }
+          }
+        }
       },
-      "then": {
-        "properties": {
-          "api_version": {
+      "required": [
+        "server_id",
+        "identity_scheme",
+        "michi_id",
+        "public_key",
+        "audio"
+      ]
+    },
+    {
+      "description": "Michi Music Player (full server, v1).",
+      "properties": {
+        "service": {
+          "const": "michi-music-player"
+        },
+        "api_version": {
+          "enum": [
+            "v1"
+          ]
+        },
+        "roles": {
+          "type": "array",
+          "items": {
             "enum": [
-              "v1"
+              "desktop_player",
+              "library_master",
+              "sync_host"
             ]
-          },
-          "roles": {
-            "items": {
-              "enum": [
-                "desktop_player",
-                "library_master",
-                "sync_host"
-              ]
-            },
-            "type": "array"
-          },
-          "auth": {
-            "properties": {
-              "strategy": {
-                "enum": [
-                  "PLAYER_PASSWORD",
-                  "ED25519_CHALLENGE"
-                ]
-              }
-            },
-            "type": "object"
           }
         },
-        "type": "object"
+        "auth": {
+          "type": "object",
+          "properties": {
+            "strategy": {
+              "enum": [
+                "PLAYER_PASSWORD",
+                "ED25519_CHALLENGE"
+              ]
+            }
+          }
+        },
+        "audio": {
+          "not": {}
+        }
       }
     },
     {
-      "if": {
-        "properties": {
-          "service": {
-            "const": "michi-micro-server"
-          }
+      "description": "Michi Micro Server (full server, v1).",
+      "properties": {
+        "service": {
+          "const": "michi-micro-server"
         },
-        "type": "object"
-      },
-      "then": {
-        "properties": {
-          "api_version": {
+        "api_version": {
+          "enum": [
+            "v1"
+          ]
+        },
+        "roles": {
+          "type": "array",
+          "items": {
             "enum": [
-              "v1"
+              "music_server",
+              "library_host",
+              "playback_host"
             ]
-          },
-          "roles": {
-            "items": {
-              "enum": [
-                "music_server",
-                "library_host",
-                "playback_host"
-              ]
-            },
-            "type": "array"
-          },
-          "auth": {
-            "properties": {
-              "strategy": {
-                "enum": [
-                  "SERVER_CODE",
-                  "ED25519_CHALLENGE"
-                ]
-              }
-            },
-            "type": "object"
           }
         },
-        "type": "object"
+        "auth": {
+          "type": "object",
+          "properties": {
+            "strategy": {
+              "enum": [
+                "SERVER_CODE",
+                "ED25519_CHALLENGE"
+              ]
+            }
+          }
+        },
+        "audio": {
+          "not": {}
+        }
       }
     },
     {
-      "if": {
-        "properties": {
-          "service": {
-            "const": "michi-mobile"
-          }
+      "description": "Michi Mobile (full server, v1).",
+      "properties": {
+        "service": {
+          "const": "michi-mobile"
         },
-        "type": "object"
-      },
-      "then": {
-        "properties": {
-          "api_version": {
+        "api_version": {
+          "enum": [
+            "v1"
+          ]
+        },
+        "roles": {
+          "type": "array",
+          "items": {
             "enum": [
-              "v1"
+              "mobile_player",
+              "remote_controller",
+              "sync_client"
             ]
-          },
-          "roles": {
-            "items": {
-              "enum": [
-                "mobile_player",
-                "remote_controller",
-                "sync_client"
-              ]
-            },
-            "type": "array"
           }
         },
-        "type": "object"
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "service": {
-            "const": "michi-stream-standard"
-          }
-        },
-        "type": "object"
-      },
-      "then": {
-        "properties": {
-          "api_version": {
-            "enum": [
-              "v1-lite"
-            ]
-          },
-          "roles": {
-            "items": {
-              "enum": [
-                "audio_receiver"
-              ]
-            },
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 1
-          },
-          "auth": {
-            "properties": {
-              "strategy": {
-                "enum": [
-                  "RECEIVER_BUTTON"
-                ]
-              },
-              "token_refresh": {
-                "enum": [
-                  false
-                ]
-              }
-            },
-            "type": "object"
-          }
-        },
-        "type": "object"
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "service": {
-            "const": "michi-stream-hifi"
-          }
-        },
-        "type": "object"
-      },
-      "then": {
-        "properties": {
-          "api_version": {
-            "enum": [
-              "v1-lite"
-            ]
-          },
-          "roles": {
-            "items": {
-              "enum": [
-                "audio_receiver"
-              ]
-            },
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 1
-          },
-          "auth": {
-            "properties": {
-              "strategy": {
-                "enum": [
-                  "RECEIVER_BUTTON"
-                ]
-              },
-              "token_refresh": {
-                "enum": [
-                  false
-                ]
-              }
-            },
-            "type": "object"
-          }
-        },
-        "type": "object"
+        "audio": {
+          "not": {}
+        }
       }
     }
   ]

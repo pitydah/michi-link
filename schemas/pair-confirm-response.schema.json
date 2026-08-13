@@ -21,8 +21,8 @@
     },
     "expires_in": {
       "type": "integer",
-      "description": "Token lifetime in seconds",
-      "minimum": 1,
+      "description": "Token lifetime in seconds. 0 means no automatic expiry: valid until revocation or factory reset (receiver-issued tokens).",
+      "minimum": 0,
       "examples": [3600]
     },
     "device_id": {

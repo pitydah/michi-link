@@ -6,6 +6,7 @@ const addFormats = require("ajv-formats");
 const ROOT = path.resolve(__dirname, "../..");
 const SCHEMAS_DIR = path.join(ROOT, "schemas");
 const EXAMPLES_DIR = path.join(ROOT, "examples");
+const RECEIVER_FIXTURES_DIR = path.join(__dirname, "fixtures", "receiver-v1-lite");
 const SCHEMA_BASE = "https://michi.link/schemas/";
 const PASS = "\u001b[32m\u2713\u001b[0m";
 const FAIL = "\u001b[31m\u2717\u001b[0m";
@@ -50,8 +51,6 @@ const EXAMPLE_MAP = {
   "queue.json": "queue",
   "queue-transfer-request.json": "queue-transfer",
   "queue-transfer-response.json": "queue-transfer-response",
-  "receiver-hifi-info.json": "receiver-info",
-  "receiver-standard-info.json": "receiver-info",
   "server-info-micro-server.json": "server-info",
   "server-info-mobile.json": "server-info",
   "server-info-player.json": "server-info",
@@ -61,6 +60,14 @@ const EXAMPLE_MAP = {
   "upload-result.json": "import-upload-result",
   "upload-result-unconfirmed.json": "import-upload-result",
 };
+
+// Example payloads retired together with the receiver-info schema (ML-02).
+// Their contract moved to tests/contract/fixtures/receiver-v1-lite/; the files
+// are removed when the OpenAPI layer syncs (ML-03).
+const RETIRED_EXAMPLE_FILES = new Set([
+  "receiver-standard-info.json",
+  "receiver-hifi-info.json",
+]);
 
 function schemaBaseFor(exampleName) {
   if (exampleName.startsWith("error-")) return "error";
@@ -119,6 +126,7 @@ function main() {
   // Validate every example against its mapped schema with real AJV.
   const orphaned = [];
   for (const name of exampleFiles()) {
+    if (RETIRED_EXAMPLE_FILES.has(name)) continue;
     const base = schemaBaseFor(name);
     if (!base) {
       orphaned.push(name);
@@ -178,29 +186,31 @@ function main() {
   const serverInfoStreamBase = {
     service: "michi-stream-standard",
     name: "Test Stream",
-    version: "0.1.0",
+    server_id: "550e8400-e29b-41d4-a716-446655440000",
+    version: "0.3.0",
     api_version: "v1-lite",
     roles: ["audio_receiver"],
-    features: { session: true, volume: true, heartbeat: true },
+    identity_scheme: "ed25519-blake3-v1",
+    michi_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+    public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
     auth: { required: true, strategy: "RECEIVER_BUTTON", token_refresh: false },
+    features: { session: true, heartbeat: true, volume: true, now_playing: true, diagnostics: true, ota: true },
+    audio: {
+      transports: ["rtp_udp"],
+      codecs: ["pcm_s16le"],
+      sample_rates: [48000],
+      bit_depths: [16],
+      channels: [2],
+      packet_ms: [10],
+      payload_types: [97],
+      buffer_ms_min: 50,
+      buffer_ms_max: 500,
+    },
   };
 
-  const receiverStandardBase = {
-    service: "michi-stream-standard",
-    name: "Test Receiver",
-    version: "0.1.0",
-    firmware: "0.1.0",
-    api_version: "v1-lite",
-    roles: ["audio_receiver"],
-    auth: { required: true, strategy: "RECEIVER_BUTTON", token_refresh: false },
-    audio: { codecs: ["pcm_s16le"], max_sample_rate: 96000, max_channels: 2 },
-    features: { session: true, volume: true, heartbeat: true },
-  };
-
-  const receiverHifiBase = {
-    ...receiverStandardBase,
+  const serverInfoHifiBase = {
+    ...serverInfoStreamBase,
     service: "michi-stream-hifi",
-    audio: { codecs: ["pcm_s16le", "pcm_s24le"], max_sample_rate: 192000, max_channels: 2 },
   };
 
   const announceBase = loadJSON(path.join(EXAMPLES_DIR, "michi-identity-announce-signed.json"));
@@ -283,6 +293,15 @@ function main() {
     ...pairConfirmResponseBase,
     expires_in: undefined,
   });
+  rejects("negative: pair-confirm-response rejects negative expires_in", "pair-confirm-response", {
+    ...pairConfirmResponseBase,
+    expires_in: -1,
+  });
+  {
+    const validate = V("pair-confirm-response");
+    const payload = { ...pairConfirmResponseBase, expires_in: 0 };
+    check("positive: pair-confirm-response accepts expires_in 0 (no auto-expiry)", validate(payload), validate);
+  }
 
   // --- Wire format negatives (base64url, no + / =, exact lengths) ---
   rejects("negative: michi-identity rejects 64-char hex michi_id", "michi-identity", {
@@ -319,6 +338,28 @@ function main() {
     ...serverInfoStreamBase,
     api_version: "v1",
   });
+  rejects("negative: server-info stream rejects missing identity field", "server-info", {
+    ...serverInfoStreamBase,
+    michi_id: undefined,
+  });
+  rejects("negative: server-info stream rejects missing audio", "server-info", {
+    ...serverInfoStreamBase,
+    audio: undefined,
+  });
+  rejects("negative: server-info stream rejects missing server_id", "server-info", {
+    ...serverInfoStreamBase,
+    server_id: undefined,
+  });
+  rejects("negative: server-info stream rejects extra role", "server-info", {
+    ...serverInfoStreamBase,
+    roles: ["audio_receiver", "music_server"],
+  });
+  rejects("negative: server-info stream rejects missing feature flag", "server-info", {
+    ...serverInfoStreamBase,
+    features: { ...serverInfoStreamBase.features, ota: undefined },
+  });
+  check("positive: server-info accepts michi-stream-standard", V("server-info")(serverInfoStreamBase), V("server-info"));
+  check("positive: server-info accepts michi-stream-hifi", V("server-info")(serverInfoHifiBase), V("server-info"));
   rejects("negative: server-info mobile rejects api_version v1-lite", "server-info", {
     ...serverInfoMobileBase,
     api_version: "v1-lite",
@@ -338,28 +379,6 @@ function main() {
   rejects("negative: server-info rejects unknown service \"michi-big-server\"", "server-info", {
     ...serverInfoMicroBase,
     service: "michi-big-server",
-  });
-
-  // --- receiver-info tier negatives ---
-  rejects("negative: receiver-info standard rejects pcm_s24le", "receiver-info", {
-    ...receiverStandardBase,
-    audio: { ...receiverStandardBase.audio, codecs: ["pcm_s24le"] },
-  });
-  rejects("negative: receiver-info hifi rejects codec \"opus\"", "receiver-info", {
-    ...receiverHifiBase,
-    audio: { ...receiverHifiBase.audio, codecs: ["opus"] },
-  });
-  rejects("negative: receiver-info hifi rejects missing pcm_s16le", "receiver-info", {
-    ...receiverHifiBase,
-    audio: { ...receiverHifiBase.audio, codecs: ["pcm_s24le"] },
-  });
-  rejects("negative: receiver-info rejects max_sample_rate 384000", "receiver-info", {
-    ...receiverStandardBase,
-    audio: { ...receiverStandardBase.audio, max_sample_rate: 384000 },
-  });
-  rejects("negative: receiver-info rejects max_channels 8", "receiver-info", {
-    ...receiverStandardBase,
-    audio: { ...receiverStandardBase.audio, max_channels: 8 },
   });
 
   // --- track path-field negatives ---
@@ -414,13 +433,15 @@ function main() {
     ...announceBase,
     timestamp_ms: undefined,
   });
-  rejects("negative: receiver-info rejects codec \"opus\" on standard receiver", "receiver-info", {
-    ...receiverStandardBase,
-    audio: { ...receiverStandardBase.audio, codecs: ["opus"] },
-  });
-  rejects("negative: receiver-info rejects api_version \"v1\"", "receiver-info", {
-    ...receiverStandardBase,
-    api_version: "v1",
+  rejects("negative: discovery-announce stream requires signed identity group", "discovery-announce", {
+    device_id: "550e8400-e29b-41d4-a716-446655440000",
+    name: "Michi Stream Cocina",
+    service: "michi-stream-standard",
+    roles: ["audio_receiver"],
+    api_version: "v1-lite",
+    host: "192.168.1.50",
+    port: 8500,
+    features: { session: true, heartbeat: true, volume: true },
   });
   rejects("negative: michi-identity rejects public_key with padding '='", "michi-identity", {
     ...identityBase,
@@ -458,6 +479,87 @@ function main() {
   rejects("negative: error rejects missing message", "error", {
     error: { code: "NOT_FOUND" },
   });
+
+  // --- Receiver v1-lite fixtures (ML-02) ---
+  // Positive fixtures must match their schema; negative fixtures must be
+  // rejected. Every fixture file must have a mapping; unmapped fixtures fail.
+  const FIXTURE_POSITIVE_MAP = {
+    "positive/server-info-standard.json": "server-info",
+    "positive/server-info-hifi.json": "server-info",
+    "positive/pair-start-server.json": "pair-start",
+    "positive/pair-status-pending.json": "pair-status",
+    "positive/pair-confirm-response-expires-in-0.json": "pair-confirm-response",
+    "positive/discovery-announce-stream-signed.json": "discovery-announce",
+    "positive/receiver-session-create.json": "receiver-session-create",
+    "positive/receiver-session-created.json": "receiver-session",
+    "positive/receiver-session-playing.json": "receiver-session",
+    "positive/receiver-session-patch.json": "receiver-session-patch",
+    "positive/receiver-heartbeat.json": "receiver-heartbeat",
+    "positive/receiver-heartbeat-response.json": "receiver-heartbeat-response",
+  };
+
+  const FIXTURE_NEGATIVE_MAP = {
+    "negative/audio-capabilities-codec-opus.json": "audio-capabilities",
+    "negative/audio-capabilities-codec-s24le.json": "audio-capabilities",
+    "negative/audio-capabilities-sample-rate-96k.json": "audio-capabilities",
+    "negative/audio-capabilities-payload-type-10.json": "audio-capabilities",
+    "negative/server-info-stream-extra-field.json": "server-info",
+    "negative/server-info-stream-extra-role.json": "server-info",
+    "negative/receiver-session-create-camelcase.json": "receiver-session-create",
+    "negative/receiver-session-create-buffer-49.json": "receiver-session-create",
+    "negative/receiver-session-create-buffer-501.json": "receiver-session-create",
+    "negative/receiver-session-create-ssrc-0.json": "receiver-session-create",
+    "negative/receiver-session-create-track-id.json": "receiver-session-create",
+    "negative/receiver-session-create-codec-opus.json": "receiver-session-create",
+    "negative/receiver-session-create-codec-s24le.json": "receiver-session-create",
+    "negative/receiver-session-create-sample-rate-96k.json": "receiver-session-create",
+    "negative/receiver-session-create-payload-type-10.json": "receiver-session-create",
+  };
+
+  function fixtureFiles(subdir) {
+    return fs
+      .readdirSync(path.join(RECEIVER_FIXTURES_DIR, subdir))
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => `${subdir}/${f}`)
+      .sort();
+  }
+
+  const onDiskFixtures = [
+    ...fixtureFiles("positive"),
+    ...fixtureFiles("negative"),
+  ];
+  const mappedFixtures = new Set([
+    ...Object.keys(FIXTURE_POSITIVE_MAP),
+    ...Object.keys(FIXTURE_NEGATIVE_MAP),
+  ]);
+  for (const rel of onDiskFixtures) {
+    check(`fixture ${rel} has a schema mapping`, mappedFixtures.has(rel), null);
+  }
+  for (const rel of mappedFixtures) {
+    check(`fixture ${rel} mapping has a file`, onDiskFixtures.includes(rel), null);
+  }
+
+  for (const rel of Object.keys(FIXTURE_POSITIVE_MAP)) {
+    const base = FIXTURE_POSITIVE_MAP[rel];
+    const validate = ajv.getSchema(SCHEMA_BASE + base + ".schema.json");
+    if (typeof validate !== "function") {
+      check(`fixture ${rel} -> ${base}.schema.json compiled`, false, null);
+      continue;
+    }
+    const data = loadJSON(path.join(RECEIVER_FIXTURES_DIR, rel));
+    check(`fixture ${rel} matches ${base}.schema.json`, validate(data), validate);
+  }
+
+  for (const rel of Object.keys(FIXTURE_NEGATIVE_MAP)) {
+    const base = FIXTURE_NEGATIVE_MAP[rel];
+    const validate = ajv.getSchema(SCHEMA_BASE + base + ".schema.json");
+    if (typeof validate !== "function") {
+      check(`fixture ${rel} -> ${base}.schema.json compiled`, false, null);
+      continue;
+    }
+    const data = loadJSON(path.join(RECEIVER_FIXTURES_DIR, rel));
+    check(`fixture ${rel} rejected by ${base}.schema.json`, !validate(data), validate(data) ? null : validate);
+  }
 
   // --- Schema <-> OpenAPI convergence (pairing DTOs) ---
   // Every required property of the canonical JSON Schemas must exist as a
