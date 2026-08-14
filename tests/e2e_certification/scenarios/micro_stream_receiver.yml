@@ -3,127 +3,480 @@ name: micro_stream_receiver
 server_type: michi-micro-server
 client_type: michi-music-stream-simulator
 
-# Flujo E2E contra el receiver simulator v1-lite real.
-# Micro Server actúa como controlador del Stream.
+# Flujo E2E canónico receiver v1-lite contra el SIMULADOR de Michi Music
+# Stream (contrato: contracts/receiver-v1-lite; harness: HARNESS.md).
+# Sin rutas legacy, sin datos hardcodeados: identidad, nonce, PIN,
+# session_id, tokens, SSRC y puerto UDP se generan en tiempo de ejecución.
+
+harness:
+  mode: auto            # embedded por defecto; external con --stream-host/--stream-port
 
 checks:
-  - name: stream_receiver_info
+  - name: discovery_signed_announce
+    type: discovery_verify
+
+  - name: server_info
     method: GET
-    path: /api/v1/receiver/info
+    path: /api/v1/server/info
+    server: stream
     expected_status: 200
+    validate_schema: server-info.schema.json
     expected_json:
       service: michi-stream-standard
       api_version: v1-lite
-      auth:
-        required: true
-        strategy: RECEIVER_BUTTON
-        token_refresh: false
+      identity_scheme: ed25519-blake3-v1
+      auth.strategy: RECEIVER_BUTTON
+      auth.token_refresh: false
+      features.session: true
+      features.heartbeat: true
+      features.volume: true
+    verify_michi_id:
+      michi_id: michi_id
+      public_key: public_key
 
-  - name: stream_pair_start
+  - name: pairing_window_open
+    type: pairing_window_open
+
+  - name: controller_identity
+    type: controller_identity
+
+  - name: random_ssrc
+    type: random_int
+    var: ssrc
+    min: 1
+    max: 4294967295
+
+  - name: pair_start
     method: POST
-    path: /api/v1/receiver/pair/start
+    path: /api/v1/pair/start
+    server: stream
     body:
-      initiator: michi_micro_server
-      initiator_id: micro_e2e
-    expected_status: 200
+      device_name: "Michi Micro Server E2E"
+      device_type: server
+      roles: ["music_server"]
+      auth_strategy: RECEIVER_BUTTON
+      michi_id: "{{ var_controller_michi_id }}"
+      public_key: "{{ var_controller_public_key }}"
+      challenge_nonce: "{{ var_controller_challenge_nonce }}"
+      challenge_signature: "{{ var_controller_challenge_signature }}"
+    expected_status: 201
+    validate_schema: pair-start-response.schema.json
     expected_json:
-      status: pairing_window_open
-      pairing_window_seconds: 300
+      attempts_remaining: 5
     extract:
-      stream_nonce: nonce
+      pairing_session_id: session_id
+    verify_michi_id:
+      michi_id: server_michi_id
+      public_key: server_public_key
 
-  - name: stream_pair_confirm
-    method: POST
-    path: /api/v1/receiver/pair/confirm
-    body:
-      nonce: "{{ var_stream_nonce }}"
-      initiator_id: micro_e2e
-      token: tok_e2e_micro
+  - name: pair_status_pending
+    method: GET
+    path: /api/v1/pair/status
+    server: stream
+    query:
+      session_id: "{{ var_pairing_session_id }}"
     expected_status: 200
+    validate_schema: pair-status.schema.json
     expected_json:
-      status: paired
-      controller_id: micro_e2e
-    extract:
-      stream_token: token
+      status: pending
 
-  - name: stream_session_start
+  - name: read_pairing_pin_local_display
+    type: read_local_pin
+    session_id: "{{ var_pairing_session_id }}"
+
+  - name: pair_confirm
     method: POST
-    path: /api/v1/receiver/session/start
-    auth:
-      type: bearer
-      token: "{{ var_stream_token }}"
+    path: /api/v1/pair/confirm
+    server: stream
     body:
-      session_id: sess_e2e_001
+      session_id: "{{ var_pairing_session_id }}"
+      pin: "{{ var_pairing_pin }}"
+      michi_id: "{{ var_controller_michi_id }}"
+      public_key: "{{ var_controller_public_key }}"
+    expected_status: 200
+    validate_schema: pair-confirm-response.schema.json
+    expected_json:
+      expires_in: 0
+    extract:
+      pairing_token: token
+
+  - name: pair_confirm_replay_rejected
+    method: POST
+    path: /api/v1/pair/confirm
+    server: stream
+    body:
+      session_id: "{{ var_pairing_session_id }}"
+      pin: "{{ var_pairing_pin }}"
+      michi_id: "{{ var_controller_michi_id }}"
+      public_key: "{{ var_controller_public_key }}"
+    expected_status: 409
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: PAIRING_ALREADY_CONSUMED
+
+  - name: pair_status_confirmed
+    method: GET
+    path: /api/v1/pair/status
+    server: stream
+    query:
+      session_id: "{{ var_pairing_session_id }}"
+    expected_status: 200
+    validate_schema: pair-status.schema.json
+    expected_json:
+      status: confirmed
+
+  - name: session_create
+    method: POST
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    body:
+      transport: rtp_udp
       codec: pcm_s16le
       sample_rate: 48000
       bit_depth: 16
       channels: 2
-      transport: udp
-      stream_port: 55300
-      buffer_ms: 250
+      packet_ms: 10
+      buffer_ms: 120
+      payload_type: 97
+      ssrc: "{{ var_ssrc }}"
       volume: 70
-    expected_status: 200
+    expected_status: 201
+    validate_schema: receiver-session.schema.json
     expected_json:
-      status: session_started
+      lease_seconds: 30
+    assert_eq:
+      effective.ssrc: "{{ var_ssrc }}"
+    assert_ranges:
+      effective.stream_port:
+        min: 49152
+        max: 65535
+    extract:
+      session_id: session_id
+      session_token: session_token
+      stream_port: effective.stream_port
+      negotiated_ssrc: effective.ssrc
 
-  - name: stream_heartbeat
+  - name: session_create_source_ip_rejected
     method: POST
-    path: /api/v1/receiver/heartbeat
-    auth:
-      type: bearer
-      token: "{{ var_stream_token }}"
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
     body:
-      session_id: sess_e2e_001
+      transport: rtp_udp
+      codec: pcm_s16le
+      sample_rate: 48000
+      bit_depth: 16
+      channels: 2
+      packet_ms: 10
+      buffer_ms: 120
+      payload_type: 97
+      ssrc: "{{ var_ssrc }}"
+      volume: 70
+      source_ip: "10.0.0.99"
+    expected_status: 400
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: INVALID_REQUEST
+      error.details.field: body
+
+  - name: session_create_wrong_payload_type_rejected
+    method: POST
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    body:
+      transport: rtp_udp
+      codec: pcm_s16le
+      sample_rate: 48000
+      bit_depth: 16
+      channels: 2
+      packet_ms: 10
+      buffer_ms: 120
+      payload_type: 96
+      ssrc: "{{ var_ssrc }}"
+      volume: 70
+    expected_status: 400
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: INVALID_REQUEST
+      error.details.field: payload_type
+
+  - name: session_create_zero_ssrc_rejected
+    method: POST
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    body:
+      transport: rtp_udp
+      codec: pcm_s16le
+      sample_rate: 48000
+      bit_depth: 16
+      channels: 2
+      packet_ms: 10
+      buffer_ms: 120
+      payload_type: 97
+      ssrc: 0
+      volume: 70
+    expected_status: 400
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: INVALID_REQUEST
+      error.details.field: ssrc
+
+  - name: rtp_100_packets
+    type: udp_rtp_send
+    packets: 100
+    payload_type: 97
+    payload_bytes: 1920
+    ssrc: "{{ var_negotiated_ssrc }}"
+    target_port: "{{ var_stream_port }}"
+
+  - name: rtp_guard_rejection_classes
+    type: rtp_guard_evidence
+
+  - name: heartbeat_tick
+    type: now_ms
+    var: heartbeat_sent_at_ms
+
+  - name: heartbeat_ok
+    method: POST
+    path: /api/v1/receiver-lite/heartbeat
+    server: stream
+    token: "{{ var_pairing_token }}"
+    headers:
+      X-Michi-Session: "{{ var_session_token }}"
+    body:
+      session_id: "{{ var_session_id }}"
+      sequence: 1
+      sent_at_ms: "{{ var_heartbeat_sent_at_ms }}"
     expected_status: 200
+    validate_schema: receiver-heartbeat-response.schema.json
+    expected_json:
+      status: alive
+      lease_seconds: 30
+
+  - name: heartbeat_replay_rejected
+    method: POST
+    path: /api/v1/receiver-lite/heartbeat
+    server: stream
+    token: "{{ var_pairing_token }}"
+    headers:
+      X-Michi-Session: "{{ var_session_token }}"
+    body:
+      session_id: "{{ var_session_id }}"
+      sequence: 1
+      sent_at_ms: "{{ var_heartbeat_sent_at_ms }}"
+    expected_status: 409
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: CONFLICT
+
+  - name: heartbeat_tick_2
+    type: now_ms
+    var: heartbeat_sent_at_ms_2
+
+  - name: heartbeat_seq2_ok
+    method: POST
+    path: /api/v1/receiver-lite/heartbeat
+    server: stream
+    token: "{{ var_pairing_token }}"
+    headers:
+      X-Michi-Session: "{{ var_session_token }}"
+    body:
+      session_id: "{{ var_session_id }}"
+      sequence: 2
+      sent_at_ms: "{{ var_heartbeat_sent_at_ms_2 }}"
+    expected_status: 200
+    validate_schema: receiver-heartbeat-response.schema.json
     expected_json:
       status: alive
 
-  - name: stream_volume
-    method: POST
-    path: /api/v1/receiver/volume
-    auth:
-      type: bearer
-      token: "{{ var_stream_token }}"
+  - name: patch_volume
+    method: PATCH
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    headers:
+      X-Michi-Session: "{{ var_session_token }}"
     body:
-      volume: 50
+      volume: 55
     expected_status: 200
+    validate_schema: receiver-session.schema.json
     expected_json:
-      status: volume_set
-      volume: 50
+      volume: 55
+      state: playing
+      paused: false
 
-  - name: stream_session_stop
-    method: POST
-    path: /api/v1/receiver/session/stop
-    auth:
-      type: bearer
-      token: "{{ var_stream_token }}"
+  - name: patch_pause
+    method: PATCH
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    headers:
+      X-Michi-Session: "{{ var_session_token }}"
     body:
-      session_id: sess_e2e_001
+      paused: true
     expected_status: 200
+    validate_schema: receiver-session.schema.json
     expected_json:
-      status: session_stopped
+      state: paused
+      paused: true
 
-  - name: stream_pair_reject_without_window
-    method: POST
-    path: /api/v1/receiver/pair/confirm
+  - name: patch_resume
+    method: PATCH
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    headers:
+      X-Michi-Session: "{{ var_session_token }}"
     body:
-      nonce: invalid_nonce
-      initiator_id: attacker
-      token: tok_evil
-    expected_status: 409
+      paused: false
+    expected_status: 200
+    validate_schema: receiver-session.schema.json
     expected_json:
-      error:
-        code: PAIRING_EXPIRED
+      state: playing
+      paused: false
 
-  - name: stream_auth_rejects_invalid
+  - name: session_get_state
+    method: GET
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    expected_status: 200
+    validate_schema: receiver-session.schema.json
+    expected_json:
+      volume: 55
+      state: playing
+      paused: false
+    assert_eq:
+      stream_port: "{{ var_stream_port }}"
+      ssrc: "{{ var_negotiated_ssrc }}"
+    not_expected_fields:
+      - session_token
+
+  - name: session_delete
+    method: DELETE
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    headers:
+      X-Michi-Session: "{{ var_session_token }}"
+    expected_status: 204
+    no_body: true
+
+  - name: session_get_after_delete
+    method: GET
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    expected_status: 404
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: NOT_FOUND
+
+  - name: session_create_after_delete
     method: POST
-    path: /api/v1/receiver/volume
-    auth:
-      type: bearer
-      token: tok_invalid
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    body:
+      transport: rtp_udp
+      codec: pcm_s16le
+      sample_rate: 48000
+      bit_depth: 16
+      channels: 2
+      packet_ms: 10
+      buffer_ms: 120
+      payload_type: 97
+      ssrc: "{{ var_ssrc }}"
+      volume: 70
+    expected_status: 201
+    validate_schema: receiver-session.schema.json
+    extract:
+      session2_token: session_token
+
+  - name: lease_expire
+    type: lease_expire
+    seconds: 31
+
+  - name: session_get_after_lease_expiry
+    method: GET
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    expected_status: 404
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: NOT_FOUND
+
+  - name: session_create_after_lease_expiry
+    method: POST
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    body:
+      transport: rtp_udp
+      codec: pcm_s16le
+      sample_rate: 48000
+      bit_depth: 16
+      channels: 2
+      packet_ms: 10
+      buffer_ms: 120
+      payload_type: 97
+      ssrc: "{{ var_ssrc }}"
+      volume: 70
+    expected_status: 201
+    validate_schema: receiver-session.schema.json
+    extract:
+      session3_token: session_token
+
+  - name: session_delete_cleanup
+    method: DELETE
+    path: /api/v1/receiver-lite/session
+    server: stream
+    token: "{{ var_pairing_token }}"
+    headers:
+      X-Michi-Session: "{{ var_session3_token }}"
+    expected_status: 204
+    no_body: true
+
+  # ── Rutas legacy retiradas → 404 canónico (verificación negativa) ──
+
+  - name: legacy_receiver_info_404
+    method: GET
+    path: /api/v1/receiver/info
+    server: stream
+    expected_status: 404
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: NOT_FOUND
+
+  - name: legacy_receiver_lite_volume_404
+    method: POST
+    path: /api/v1/receiver-lite/volume
+    server: stream
     body:
       volume: 50
-    expected_status: 401
+    expected_status: 404
+    validate_schema: error.schema.json
     expected_json:
-      error:
-        code: UNAUTHORIZED
+      error.code: NOT_FOUND
+
+  - name: legacy_receiver_lite_info_404
+    method: GET
+    path: /api/v1/receiver-lite/info
+    server: stream
+    expected_status: 404
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: NOT_FOUND
+
+  - name: legacy_receiver_lite_config_404
+    method: GET
+    path: /api/v1/receiver-lite/config
+    server: stream
+    expected_status: 404
+    validate_schema: error.schema.json
+    expected_json:
+      error.code: NOT_FOUND

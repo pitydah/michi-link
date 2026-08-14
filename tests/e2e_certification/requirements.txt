@@ -1,0 +1,13 @@
+# Michi Link E2E Certification runner dependencies
+#
+# Base runner (all scenarios):
+requests>=2.28
+PyYAML>=6.0
+#
+# Canonical receiver v1-lite scenario (micro_stream_receiver.yml, E2E-09):
+jsonschema>=4.18      # response validation against the vendored bundle
+referencing>=0.30     # shared $ref registry for the bundle schemas
+blake3>=0.4           # michi_id = base64url(BLAKE3(public_key))
+cryptography>=41.0    # Ed25519 identity, challenge + announce signatures
+flask>=3.0            # embedded simulator harness (receiver_sim.py imports flask)
+werkzeug>=3.0         # real TCP HTTP server for the embedded harness (ships with flask)
