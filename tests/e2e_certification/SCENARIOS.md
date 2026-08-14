@@ -139,7 +139,12 @@ python runner.py scenarios/micro_autonomous_playback.yml --server-host 192.168.1
 **ID:** E2E-09
 **File:** `micro_stream_receiver.yml`
 **Server:** Michi Music Stream simulator (canonical receiver v1-lite)
-**Client:** Michi Micro Server (controller)
+**Client:** Michi Link contract harness (canonical controller harness)
+
+> Scope note: this scenario certifies the canonical receiver SIMULATOR of
+> Michi Music Stream — it does not run a real Michi Micro Server, does not
+> exercise hardware, and does not assert hardware certification or
+> production readiness.
 
 ### Checks
 
