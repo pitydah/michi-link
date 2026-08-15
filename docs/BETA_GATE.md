@@ -61,11 +61,11 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 
 | Escenario | Mínimo requerido | Estado actual |
 |-----------|-----------------|---------------|
-| E2E-09: Micro ↔ Stream pairing + session | MOCK_PASS | NOT_TESTED |
+| E2E-09: Micro ↔ Stream pairing + session | MOCK_PASS | MOCK_PASS |
 
-**Evidencia:** Reporte en `tests/e2e_certification/reports/micro_stream_receiver_*.json`
+**Evidencia:** Reporte determinista `tests/e2e_certification/results/stream-interop-alpha1.json` — CI cruzado GitHub Actions run `31852348701` (verde), 37/37 checks contra el simulador oficial de Stream. SHAs mergeados: `michi-link=e70c9d2014bf12e10f263339731292dc6f93624e`, `michi-music-stream=09b50d2150268eeb2ff51a37b971d0e346cbf2a4`. Cubre discovery firmado, pairing canónico, sesión RTP, heartbeat/lease, volumen/pausa y cierre seguro.
 
-> **Micro ↔ Stream Simulator: NOT_TESTED.** No existe certificación física ni de simulador todavía: el contrato está publicado (bundle `contracts/receiver-v1-lite/`), pero el simulador y el firmware de Stream aún no han certificado el flujo contra él. No afirmar compatibilidad física certificada.
+> **Micro ↔ Stream Simulator: MOCK_PASS (simulador).** El flujo canónico está certificado contra el simulador oficial (run `31852348701`). La certificación **física** (hardware real de Stream) sigue **NOT_TESTED**: no afirmar compatibilidad física certificada ni production ready.
 
 ### 6. Micro Autonomous Playback
 
@@ -114,7 +114,7 @@ La **beta gate** es el conjunto de condiciones que deben cumplirse antes de decl
 | python3 scripts/contract-policy.py | CONTRACT_PASS | PASS (0 findings) |
 | bundle-reproducibility (CI) | BUNDLE_PASS | regenera `contracts/receiver-v1-lite/` byte a byte, sin diff |
 
-> Toda la evidencia E2E sigue vacía: `tests/e2e_certification/reports/` no contiene reportes. La beta permanece **CERRADA** — no hay LOCAL_E2E_PASS / NETWORK_E2E_PASS / DEVICE_E2E_PASS — hasta lograr `NETWORK_E2E_PASS`/`DEVICE_E2E_PASS` en Mobile↔Player y Mobile↔Micro, y al menos `LOCAL_E2E_PASS` en Player→Micro import y Micro autonomous playback.
+> Evidencia E2E vigente: el escenario canónico **Micro ↔ Stream Simulator (E2E-09) está MOCK_PASS** — reporte `tests/e2e_certification/results/stream-interop-alpha1.json` (run `31852348701`, 37/37, SHAs mergeados `e70c9d2014bf12e10f263339731292dc6f93624e` + `09b50d2150268eeb2ff51a37b971d0e346cbf2a4`). El resto de la evidencia E2E sigue vacía: `tests/e2e_certification/reports/` no contiene reportes locales. La beta permanece **CERRADA** — no hay LOCAL_E2E_PASS / NETWORK_E2E_PASS / DEVICE_E2E_PASS — hasta lograr `NETWORK_E2E_PASS`/`DEVICE_E2E_PASS` en Mobile↔Player y Mobile↔Micro, y al menos `LOCAL_E2E_PASS` en Player→Micro import y Micro autonomous playback.
 
 ## Resumen
 
@@ -126,7 +126,7 @@ Mobile ↔ Micro                NETWORK_E2E_PASS NOT_TESTED     ❌
 Player → Micro import         LOCAL_E2E_PASS   NOT_TESTED     ❌
 Continue on Server            LOCAL_E2E_PASS   NOT_TESTED     ❌
 Micro autonomous playback     LOCAL_E2E_PASS   NOT_TESTED     ❌
-Micro ↔ Stream Simulator      MOCK_PASS        NOT_TESTED     ❌
+Micro ↔ Stream Simulator      MOCK_PASS        MOCK_PASS      ✅
 Seguridad                     UNIT_PASS        CONTRACT_PASS  ✅
 Contrato                      UNIT_PASS        CONTRACT_PASS  ✅
 Reference implementation      RUST_REFERENCE_PASS  RUST_REFERENCE_PASS ✅
@@ -145,7 +145,7 @@ Beta gate overall:            ❌ CERRADA
 
 ## Postergados para v1.0.0-beta (no bloquean alpha)
 
-- Music Stream physical hardware (NOT_TESTED; el pase contra simulador está previsto en MS-09).
+- Music Stream physical hardware (NOT_TESTED; el pase contra el simulador quedó certificado MOCK_PASS en el run `31852348701` — MS-09).
 - WebSocket events (stub/partial, baja prioridad).
 - Rooms/Multiroom (planned).
 - Capability probing (future v1.1).
