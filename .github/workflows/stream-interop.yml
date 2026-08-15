@@ -1,0 +1,76 @@
+# Cross-repository CI: this workflow checks out Michi Music Stream pinned to
+# an EXACT commit SHA and runs the canonical E2E-09 scenario (runner in
+# external mode) against the canonical receiver SIMULATOR started by the
+# shared job script (tests/e2e_certification/ci/run_stream_interop.sh).
+#
+# The Stream hardening branch (fix/runtime-discovery-crossrepo-hardening) is
+# not pushed yet: dispatch this workflow with `stream_sha` set to the exact
+# commit to test once it is. Mutable checkouts are refused: the job FAILS
+# unless the checkout resolves to the exact expected SHA.
+#
+# Terminology guard: this workflow certifies the canonical receiver SIMULATOR
+# only. It never asserts DEVICE_E2E_PASS / NETWORK_E2E_PASS / "hardware
+# certified" / "production ready", and it never runs a real Michi Micro
+# Server.
+
+name: Stream Interop
+
+on:
+  workflow_dispatch:
+    inputs:
+      stream_ref:
+        description: "Michi Music Stream branch or ref under test"
+        required: false
+        default: "fix/runtime-discovery-crossrepo-hardening"
+      stream_sha:
+        description: "EXACT commit SHA the Stream checkout must resolve to (leave empty only when stream_default_branch_sha is set)"
+        required: false
+        default: ""
+      stream_default_branch_sha:
+        description: "Expected SHA of the Stream default branch tip (used when stream_sha is empty)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  stream-interoperability:
+    name: Cross-repo stream interoperability (canonical receiver simulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Michi Link
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install certification runner dependencies
+        run: pip install --disable-pip-version-check -r tests/e2e_certification/requirements.txt
+
+      - name: Run cross-repository stream interoperability job
+        id: interop
+        env:
+          STREAM_REPO_URL: https://github.com/pitydah/michi-music-stream.git
+          STREAM_REF: ${{ github.event.inputs.stream_ref }}
+          STREAM_SHA: ${{ github.event.inputs.stream_sha }}
+          STREAM_DEFAULT_BRANCH_SHA: ${{ github.event.inputs.stream_default_branch_sha }}
+          STREAM_CHECKOUT_DIR: ${{ github.workspace }}/.stream-checkout
+          ARTIFACT_DIR: ${{ github.workspace }}/tests/e2e_certification/ci-artifacts
+        run: bash tests/e2e_certification/ci/run_stream_interop.sh
+
+      - name: Upload certification artifacts (deterministic report + sanitized logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stream-interop-certification
+          path: |
+            tests/e2e_certification/ci-artifacts/
+            tests/e2e_certification/results/stream-interop-alpha1.json
+          if-no-files-found: warn

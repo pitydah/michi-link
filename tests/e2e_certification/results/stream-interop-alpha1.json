@@ -1,0 +1,16 @@
+{
+  "certification": "michi-link-alpha1",
+  "gate": {
+    "MOCK_PASS": true
+  },
+  "commits": {
+    "michi_link": {
+      "commit": "ed9f1763b88ace704e676710db392c1bb80ae466"
+    },
+    "michi_music_stream": {
+      "commit": "2a38ec730f56f9757605830745d0f3546453223f"
+    }
+  },
+  "environment": "canonical receiver simulator",
+  "device_e2e": false
+}

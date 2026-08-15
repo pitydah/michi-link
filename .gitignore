@@ -8,3 +8,9 @@
 
 # Rust: library crate lockfile (single crate, not a workspace)
 crates/michi-identity/Cargo.lock
+
+# Local E2E certification artifacts (never versioned; the canonical
+# deterministic report lives in tests/e2e_certification/results/)
+tests/e2e_certification/reports/
+tests/e2e_certification/ci-artifacts/
+.stream-checkout/

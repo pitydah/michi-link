@@ -1,10 +1,13 @@
 id: "E2E-09"
 name: micro_stream_receiver
-server_type: michi-micro-server
-client_type: michi-music-stream-simulator
+server_type: michi-music-stream-simulator
+client_type: michi-micro-server
 
 # Flujo E2E canónico receiver v1-lite contra el SIMULADOR de Michi Music
 # Stream (contrato: contracts/receiver-v1-lite; harness: HARNESS.md).
+# Sujeto bajo prueba: el simulador canónico (server_type). El lado cliente es
+# el harness controlador de Michi Link (rol michi-micro-server): esto NO
+# ejecuta ni certifica hardware real.
 # Sin rutas legacy, sin datos hardcodeados: identidad, nonce, PIN,
 # session_id, tokens, SSRC y puerto UDP se generan en tiempo de ejecución.
 
@@ -51,7 +54,7 @@ checks:
     path: /api/v1/pair/start
     server: stream
     body:
-      device_name: "Michi Micro Server E2E"
+      device_name: "Michi Link contract harness E2E"
       device_type: server
       roles: ["music_server"]
       auth_strategy: RECEIVER_BUTTON
