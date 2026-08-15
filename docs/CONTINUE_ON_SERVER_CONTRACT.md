@@ -89,21 +89,25 @@ Response incluye `tracks_imported` y `tracks_skipped` (duplicados).
 }
 ```
 
-### Paso 4: Sincronizar cola
+### Paso 4: Transferencia de cola atómica (Canónico v1)
 
-**Endpoint:** `POST /api/v1/queue/items`
+**Endpoint:** `POST /api/v1/queue/transfer`
 
-El Player envía los `track_ids` (IDs del servidor obtenidos del mapping en commit) en orden.
-
-### Paso 5: Posicionar cola
-
-**Endpoint:** `POST /api/v1/queue/jump`
+Reemplaza los pasos 4, 5 y 6 en una única operación atómica que transfiere los tracks mapeados, el índice actual y la posición de reproducción:
 
 ```json
 {
-  "index": 2
+  "track_ids": ["server_track_001", "server_track_002", "server_track_003"],
+  "current_index": 2,
+  "position_ms": 45000,
+  "source": "michi-music-mobile"
 }
 ```
+
+*Alternativa legacy paso a paso:*
+- `POST /api/v1/queue/items` (cargar tracks)
+- `POST /api/v1/queue/jump` (saltar a current_index)
+- `POST /api/v1/sync/state` (actualizar posición)
 
 ### Paso 6: Enviar estado
 
