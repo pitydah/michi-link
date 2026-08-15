@@ -27,10 +27,11 @@ Fuente de evidencia por endpoint: `docs/BETA_READINESS_CHECKLIST.md`. Los nivele
 | Valor | Significado |
 |-------|-------------|
 | **NOT_TESTED** | No probado end-to-end entre los proyectos involucrados. |
+| **MOCK_PASS** | Certificado contra el simulador oficial de Stream (reporte en `tests/e2e_certification/results/`). |
 | **NETWORK_E2E_PASS** | Certificado en LAN real (reporte en `tests/e2e_certification/reports/`). |
 | **DEVICE_E2E_PASS** | Certificado en hardware físico real. |
 
-> `tests/e2e_certification/reports/` está vacío: todos los flujos E2E están **NOT_TESTED**.
+> Micro ↔ Stream Simulator está **MOCK_PASS** contra el simulador oficial de Stream (CI cruzado run `31852348701`, 37/37 checks; SHAs mergeados `michi-link=e70c9d2014bf12e10f263339731292dc6f93624e`, `michi-music-stream=09b50d2150268eeb2ff51a37b971d0e346cbf2a4`; reporte en `tests/e2e_certification/results/stream-interop-alpha1.json`). El resto de los flujos E2E está **NOT_TESTED** (`tests/e2e_certification/reports/` vacío) y ningún hardware está certificado.
 
 ---
 
@@ -74,7 +75,7 @@ Fuente de evidencia por endpoint: `docs/BETA_READINESS_CHECKLIST.md`. Los nivele
 | 36 | `/queue/items/{id}` | DELETE | → 204 | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Media |
 | 37 | `/receivers` | GET | → `{ receivers: [DeviceInfo] }` | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | MS: lista de receptores descubiertos/registrados vía `GET /receivers` y `POST /receivers/discover`; sin integración real con Stream. | Baja |
 | 38 | `/receivers/{id}` | GET | → Receiver detail | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
-| 39 | `/receivers/discover` | POST | `?timeout` → `{ discovered: [DeviceInfo] }` | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | Discovery de receptores en la red (mDNS/UDP firmado). | Media |
+| 39 | `/receivers/discover` | POST | `?timeout` → `{ discovered: [DeviceInfo] }` | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | MOCK_PASS | no | Discovery de receptores en la red (mDNS/UDP firmado). Announce firmado del simulador verificado (check `discovery_signed_announce`, run `31852348701`). | Media |
 | 40 | `/receivers/{id}/session/start` | POST | **Retirado** — sin ruta activa en OpenAPI | not-applicable | not-applicable | not-applicable | not-applicable | not-applicable | no | Sustituido por `POST /receiver-lite/session` en el receptor. | — |
 | 41 | `/receivers/{id}/session/stop` + `/receivers/{id}/volume` | POST | **Retirados** — sin rutas activas en OpenAPI | not-applicable | not-applicable | not-applicable | not-applicable | not-applicable | no | Sustituidos por `PATCH/DELETE /receiver-lite/session`. | — |
 | 42 | `/rooms` | GET | → paginated list | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | Multiroom v1 | Baja |
@@ -84,12 +85,12 @@ Fuente de evidencia por endpoint: `docs/BETA_READINESS_CHECKLIST.md`. Los nivele
 | 46 | `/rooms/{id}` | DELETE | → 204 | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
 | 47 | `/rooms/{id}/play` | POST | `{ queue_id }` → multiroom session | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | | Baja |
 | 48 | `/events` | WS | WebSocket → eventos tiempo real | NOT_TESTED | NOT_TESTED | NOT_TESTED | not-applicable | NOT_TESTED | no | Player: stub (endpoint declarado, sin eventos reales). MS: broadcast básico de playback.state_changed. | Media |
-| 49 | `/receiver-lite/session` | POST | v1-lite → `{ transport, codec, sample_rate, bit_depth, channels, packet_ms, buffer_ms, payload_type, ssrc, volume }` → `201 { session_id, session_token, lease_seconds: 30, effective{…, stream_port} }` | not-applicable | **consume** | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — Micro ↔ Stream Simulator | MS crea la sesión RTP/UDP PCM (48 kHz/16-bit/2ch/10 ms/PT 97); el receptor elige puerto UDP 49152..65535 y fija la IP RTP a la IP TCP del request. | Alta |
-| 50 | `/pair/start` + `/pair/status` + `/pair/confirm` (receiver) | POST/GET | v1-lite → pairing `RECEIVER_BUTTON` con ventana física de 120 s; token emitido por el receptor (`expires_in: 0`), PIN solo local | not-applicable | **consume** | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — Micro ↔ Stream Simulator | El pairing de receivers usa los endpoints de pairing canónicos; `device_type: "server"`, `roles: ["music_server"]`. | Alta |
-| 51 | `/receiver-lite/session` | GET | v1-lite → estado `starting/playing/paused/stopping` + métricas de paquetes | not-applicable | **consume** | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — Micro ↔ Stream Simulator | Nunca devuelve `session_token`. | Alta |
-| 52 | `/receiver-lite/session` | PATCH | v1-lite → `{ volume, paused }` | not-applicable | **consume** | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — Micro ↔ Stream Simulator | Sustituye al endpoint `/volume` retirado. | Alta |
-| 53 | `/receiver-lite/heartbeat` | POST | v1-lite cada 10s → `{ session_id, sequence, sent_at_ms }` → renueva lease de 30 s | not-applicable | **consume** | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — Micro ↔ Stream Simulator | `sequence` estrictamente creciente; replay → 409. | Alta |
-| 54 | `/receiver-lite/session` | DELETE | v1-lite → cierre seguro, `204` | not-applicable | **consume** | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — Micro ↔ Stream Simulator | Libera RTP/socket/buffers y borra token en RAM. | Alta |
+| 49 | `/receiver-lite/session` | POST | v1-lite → `{ transport, codec, sample_rate, bit_depth, channels, packet_ms, buffer_ms, payload_type, ssrc, volume }` → `201 { session_id, session_token, lease_seconds: 30, effective{…, stream_port} }` | not-applicable | **consume** | not-applicable | MOCK_PASS | MOCK_PASS | **sí** — Micro ↔ Stream Simulator | MS crea la sesión RTP/UDP PCM (48 kHz/16-bit/2ch/10 ms/PT 97); el receptor elige puerto UDP 49152..65535 y fija la IP RTP a la IP TCP del request. | Alta |
+| 50 | `/pair/start` + `/pair/status` + `/pair/confirm` (receiver) | POST/GET | v1-lite → pairing `RECEIVER_BUTTON` con ventana física de 120 s; token emitido por el receptor (`expires_in: 0`), PIN solo local | not-applicable | **consume** | not-applicable | MOCK_PASS | MOCK_PASS | **sí** — Micro ↔ Stream Simulator | El pairing de receivers usa los endpoints de pairing canónicos; `device_type: "server"`, `roles: ["music_server"]`. | Alta |
+| 51 | `/receiver-lite/session` | GET | v1-lite → estado `starting/playing/paused/stopping` + métricas de paquetes | not-applicable | **consume** | not-applicable | MOCK_PASS | MOCK_PASS | **sí** — Micro ↔ Stream Simulator | Nunca devuelve `session_token`. | Alta |
+| 52 | `/receiver-lite/session` | PATCH | v1-lite → `{ volume, paused }` | not-applicable | **consume** | not-applicable | MOCK_PASS | MOCK_PASS | **sí** — Micro ↔ Stream Simulator | Sustituye al endpoint `/volume` retirado. | Alta |
+| 53 | `/receiver-lite/heartbeat` | POST | v1-lite cada 10s → `{ session_id, sequence, sent_at_ms }` → renueva lease de 30 s | not-applicable | **consume** | not-applicable | MOCK_PASS | MOCK_PASS | **sí** — Micro ↔ Stream Simulator | `sequence` estrictamente creciente; replay → 409. | Alta |
+| 54 | `/receiver-lite/session` | DELETE | v1-lite → cierre seguro, `204` | not-applicable | **consume** | not-applicable | MOCK_PASS | MOCK_PASS | **sí** — Micro ↔ Stream Simulator | Libera RTP/socket/buffers y borra token en RAM. | Alta |
 | 55 | `/receiver-lite/{now-playing, diagnostics, firmware}` | PUT/GET/POST | v1-lite → extensiones opcionales por feature flags (`now_playing`, `diagnostics`, `ota`) | not-applicable | **consume** | not-applicable | NOT_TESTED | NOT_TESTED | **sí** — Micro ↔ Stream Simulator | Shapes no congelados hasta certificación; OTA exige permiso `receiver.ota` (no otorgado por defecto). | Media |
 
 ---
@@ -128,4 +129,4 @@ Fuente de evidencia por endpoint: `docs/BETA_READINESS_CHECKLIST.md`. Los nivele
 
 ## Versión
 
-**v1.0.0-alpha.1** — Contrato oficial del ecosistema, con el perfil receiver v1-lite congelado (ADR-0001) y publicado como bundle versionado `contracts/receiver-v1-lite/` (`1.0.0-alpha.1`). Lista de beta blockers definida para coordinar la fase beta. La matriz usa niveles de evidencia reales; sin reportes E2E (`tests/e2e_certification/reports/` vacío) todo flujo E2E — incluido Micro ↔ Stream Simulator — es NOT_TESTED, y ningún hardware está certificado.
+**v1.0.0-alpha.1** — Contrato oficial del ecosistema, con el perfil receiver v1-lite congelado (ADR-0001) y publicado como bundle versionado `contracts/receiver-v1-lite/` (`1.0.0-alpha.1`). Lista de beta blockers definida para coordinar la fase beta. La matriz usa niveles de evidencia reales: Micro ↔ Stream Simulator está **MOCK_PASS** contra el simulador oficial (run `31852348701`, 37/37; SHAs `e70c9d2014bf12e10f263339731292dc6f93624e` + `09b50d2150268eeb2ff51a37b971d0e346cbf2a4`), el resto de los flujos E2E sigue **NOT_TESTED** (`tests/e2e_certification/reports/` vacío) y ningún hardware está certificado.

@@ -5,10 +5,10 @@
   },
   "commits": {
     "michi_link": {
-      "commit": "ed9f1763b88ace704e676710db392c1bb80ae466"
+      "commit": "e70c9d2014bf12e10f263339731292dc6f93624e"
     },
     "michi_music_stream": {
-      "commit": "2a38ec730f56f9757605830745d0f3546453223f"
+      "commit": "09b50d2150268eeb2ff51a37b971d0e346cbf2a4"
     }
   },
   "environment": "canonical receiver simulator",
