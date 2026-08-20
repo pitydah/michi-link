@@ -5,6 +5,13 @@ edition = "2021"
 description = "Decentralized identity and trust system for the Michi ecosystem using Ed25519 cryptography"
 license = "MIT"
 
+# Local patch: suppress upstream clippy lints not relevant to Micro Server.
+# This does not modify the upstream source code; it only configures lint
+# behavior for the vendored crate when compiled as a workspace dependency.
+[lints.clippy]
+uninlined_format_args = "allow"
+needless_doctest_main = "allow"
+
 [dependencies]
 ed25519-dalek = { version = "2", features = ["serde", "pkcs8", "pem", "rand_core"] }
 blake3 = "1"
