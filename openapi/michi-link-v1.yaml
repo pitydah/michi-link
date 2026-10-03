@@ -247,7 +247,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PairConfirmResponse"
-              example: {"token": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", "expires_in": 0, "device_id": "550e8400-e29b-41d4-a716-446655440002", "server_id": "550e8400-e29b-41d4-a716-446655440000"}
+              example: {"token": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", "refresh_token": "tok_michi_refresh_9c4e2a7f1d8b3e6a5c0f2d4b8a1e7c3f", "expires_in": 0, "device_id": "550e8400-e29b-41d4-a716-446655440002", "server_id": "550e8400-e29b-41d4-a716-446655440000"}
         "400":
           description: Invalid request body
           content:
