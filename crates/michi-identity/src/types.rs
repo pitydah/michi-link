@@ -484,6 +484,7 @@ pub struct DeviceAuthSessionResponse {
     pub token_type: String,
     pub expires_in: u64,
     pub server_michi_id: String,
+    pub server_membership: DeviceMembershipDto,
     pub server_signature: String,
 }
 

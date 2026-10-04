@@ -86,6 +86,12 @@ WIRE_BASE64_FIELDS = (
     "challenge_signature",
     "server_public_key",
     "server_michi_id",
+    "server_signature",
+    "client_signature",
+    "home_id",
+    "device_michi_id",
+    "device_public_key",
+    "revoked_device_michi_id",
 )
 
 # Matches a JSON property key at the start of a line (pretty-printed JSON).

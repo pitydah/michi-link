@@ -14,8 +14,8 @@ use thiserror::Error;
 
 use crate::identity::IdentityManager;
 use crate::types::{
-    decode_base64url_strict, encode_base64url, DeviceMembershipDto, HomeDeviceRevocationDto,
-    MichiId, Role,
+    decode_base64url_strict, encode_base64url, DeviceAuthSessionResponse, DeviceMembershipDto,
+    HomeDeviceRevocationDto, MichiId, Role,
 };
 
 /// Domain separation prefix for device authentication signatures.
@@ -390,6 +390,93 @@ pub fn verify_server_auth_confirm(
     Ok(vk.verify(&payload, &sig).is_ok())
 }
 
+/// Verifies a device revocation record against the trusted home root public key.
+pub fn verify_revocation(
+    revocation: &HomeDeviceRevocationDto,
+    home_root_public_key_b64: &str,
+    expected_home_id: &str,
+) -> Result<(), HomeAuthError> {
+    if revocation.version != 1 {
+        return Err(HomeAuthError::UnsupportedVersion(revocation.version));
+    }
+    if revocation.home_id != expected_home_id {
+        return Err(HomeAuthError::HomeIdMismatch {
+            expected: expected_home_id.to_string(),
+            got: revocation.home_id.clone(),
+        });
+    }
+
+    let root_bytes = decode_base64url_strict(home_root_public_key_b64)
+        .map_err(|_| HomeAuthError::InvalidPublicKey)?;
+    let root_arr: [u8; 32] = root_bytes
+        .try_into()
+        .map_err(|_| HomeAuthError::InvalidPublicKey)?;
+    let root_vk =
+        VerifyingKey::from_bytes(&root_arr).map_err(|_| HomeAuthError::InvalidPublicKey)?;
+
+    let sig_bytes = decode_base64url_strict(&revocation.signature)
+        .map_err(|_| HomeAuthError::InvalidSignatureEncoding)?;
+    let sig_arr: [u8; 64] = sig_bytes
+        .try_into()
+        .map_err(|_| HomeAuthError::InvalidSignatureEncoding)?;
+    let sig = ed25519_dalek::Signature::from_bytes(&sig_arr);
+
+    let canonical_bytes = canonical_revocation_bytes(
+        &revocation.home_id,
+        &revocation.revoked_device_michi_id,
+        &revocation.revoked_at,
+        &revocation.reason,
+    );
+
+    root_vk
+        .verify(&canonical_bytes, &sig)
+        .map_err(|_| HomeAuthError::InvalidSignature)
+}
+
+/// Verifies a server's authenticated session response in mutual authentication.
+///
+/// Cryptographically verifies:
+/// 1. `server_membership` is authentic and signed by the trusted home root key
+/// 2. `server_membership.device_michi_id` matches `server_michi_id`
+/// 3. Server device is not present in `revocations`
+/// 4. `server_signature` confirms the server holds the private key for `server_membership.device_public_key`
+///    over `michi-link-server-auth-v1 || home_id || server_michi_id || client_michi_id || challenge_id || session_token`
+pub fn verify_server_auth_session(
+    response: &DeviceAuthSessionResponse,
+    home_root_public_key_b64: &str,
+    expected_home_id: &str,
+    client_michi_id: &str,
+    challenge_id: &str,
+    revocations: &[HomeDeviceRevocationDto],
+) -> Result<(), HomeAuthError> {
+    if response.server_membership.device_michi_id != response.server_michi_id {
+        return Err(HomeAuthError::IdentityMismatch);
+    }
+
+    verify_membership(
+        &response.server_membership,
+        home_root_public_key_b64,
+        expected_home_id,
+        revocations,
+    )?;
+
+    let valid_sig = verify_server_auth_confirm(
+        &response.server_membership.device_public_key,
+        &response.server_signature,
+        expected_home_id,
+        &response.server_michi_id,
+        client_michi_id,
+        challenge_id,
+        &response.session_token,
+    )?;
+
+    if !valid_sig {
+        return Err(HomeAuthError::InvalidSignature);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -625,5 +712,125 @@ mod tests {
             "michi_ram_token_altered",
         )
         .unwrap());
+    }
+
+    #[test]
+    fn test_revocation_issue_and_verify_roundtrip() {
+        let root = HomeRootAuthority::generate();
+        let home_id = root.home_id();
+        let root_pk_b64 = root.public_key_base64url();
+
+        let device_sk = SigningKey::generate(&mut OsRng);
+        let device_vk = device_sk.verifying_key();
+        let device_michi_id = MichiId::from_public_key(&device_vk).to_base64url();
+
+        let rev = root.issue_revocation(
+            &home_id,
+            &device_michi_id,
+            "2026-10-04T13:00:00Z",
+            "device compromised",
+        );
+
+        assert!(verify_revocation(&rev, &root_pk_b64, &home_id).is_ok());
+
+        // Altered home_id fails
+        assert!(verify_revocation(&rev, &root_pk_b64, "vLzV3iL3x7eJ8qZ0a1b2c3d4e5f6g7h8i9j0k1l2m99").is_err());
+
+        // Altered signature fails
+        let mut corrupted_rev = rev.clone();
+        corrupted_rev.signature = encode_base64url(&[0u8; 64]);
+        assert!(verify_revocation(&corrupted_rev, &root_pk_b64, &home_id).is_err());
+    }
+
+    #[test]
+    fn test_server_auth_session_verification_full_flow() {
+        let root = HomeRootAuthority::generate();
+        let home_id = root.home_id();
+        let root_pk_b64 = root.public_key_base64url();
+
+        let server_sk = SigningKey::generate(&mut OsRng);
+        let server_vk = server_sk.verifying_key();
+        let server_pk_b64 = encode_base64url(&server_vk.to_bytes());
+        let server_michi_id = MichiId::from_public_key(&server_vk).to_base64url();
+
+        let client_sk = SigningKey::generate(&mut OsRng);
+        let client_vk = client_sk.verifying_key();
+        let client_michi_id = MichiId::from_public_key(&client_vk).to_base64url();
+
+        let server_membership = root.issue_membership(
+            &home_id,
+            &server_michi_id,
+            &server_pk_b64,
+            "server",
+            vec![Role::MusicServer],
+            "2026-10-04T12:00:00Z",
+            1,
+        );
+
+        let challenge_id = "550e8400-e29b-41d4-a716-446655440001";
+        let session_token = "tok_ram_session_abcdef1234567890";
+
+        let server_sig = sign_server_auth_confirm(
+            &server_sk,
+            &home_id,
+            &server_michi_id,
+            &client_michi_id,
+            challenge_id,
+            session_token,
+        );
+
+        let response = DeviceAuthSessionResponse {
+            session_token: session_token.to_string(),
+            token_type: "Bearer".to_string(),
+            expires_in: 3600,
+            server_michi_id: server_michi_id.clone(),
+            server_membership: server_membership.clone(),
+            server_signature: server_sig.clone(),
+        };
+
+        // Full mutual authentication verification succeeds
+        assert!(verify_server_auth_session(
+            &response,
+            &root_pk_b64,
+            &home_id,
+            &client_michi_id,
+            challenge_id,
+            &[]
+        )
+        .is_ok());
+
+        // Fails if server is revoked
+        let rev = root.issue_revocation(
+            &home_id,
+            &server_michi_id,
+            "2026-10-04T13:00:00Z",
+            "revoked server",
+        );
+        match verify_server_auth_session(
+            &response,
+            &root_pk_b64,
+            &home_id,
+            &client_michi_id,
+            challenge_id,
+            &[rev]
+        ) {
+            Err(HomeAuthError::DeviceRevoked) => (),
+            other => panic!("expected DeviceRevoked, got {:?}", other),
+        }
+
+        // Fails if server_michi_id in response does not match server_membership
+        let mut forged_response = response.clone();
+        forged_response.server_michi_id = "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays".to_string();
+        match verify_server_auth_session(
+            &forged_response,
+            &root_pk_b64,
+            &home_id,
+            &client_michi_id,
+            challenge_id,
+            &[]
+        ) {
+            Err(HomeAuthError::IdentityMismatch) => (),
+            other => panic!("expected IdentityMismatch, got {:?}", other),
+        }
     }
 }

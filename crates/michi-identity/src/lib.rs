@@ -46,9 +46,9 @@ pub use error::{ContractViolation, IdentityError};
 pub use home::{
     canonical_membership_bytes, canonical_revocation_bytes, device_auth_challenge_payload,
     server_auth_confirm_payload, sign_device_auth_challenge, sign_server_auth_confirm,
-    verify_device_auth_challenge, verify_membership, verify_server_auth_confirm, HomeAuthError,
-    HomeRootAuthority, DEVICE_AUTH_DOMAIN_V1, MEMBERSHIP_DOMAIN_V1, REVOCATION_DOMAIN_V1,
-    SERVER_AUTH_DOMAIN_V1,
+    verify_device_auth_challenge, verify_membership, verify_revocation, verify_server_auth_confirm,
+    verify_server_auth_session, HomeAuthError, HomeRootAuthority, DEVICE_AUTH_DOMAIN_V1,
+    MEMBERSHIP_DOMAIN_V1, REVOCATION_DOMAIN_V1, SERVER_AUTH_DOMAIN_V1,
 };
 pub use identity::IdentityManager;
 pub use pairing::PairingRegistry;

@@ -201,6 +201,7 @@ function main() {
     identity_scheme: "ed25519-blake3-v1",
     michi_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
     public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+    michi_home_id: "vLzV3iL3x7eJ8qZ0a1b2c3d4e5f6g7h8i9j0k1l2m3n",
     auth: { required: true, strategy: "HOME_MEMBERSHIP", token_refresh: false },
     features: { session: true, heartbeat: true, volume: true, now_playing: true, diagnostics: true, ota: true },
     audio: {
@@ -349,6 +350,10 @@ function main() {
   rejects("negative: server-info stream rejects missing identity field", "server-info", {
     ...serverInfoStreamBase,
     michi_id: undefined,
+  });
+  rejects("negative: server-info stream rejects missing michi_home_id", "server-info", {
+    ...serverInfoStreamBase,
+    michi_home_id: undefined,
   });
   rejects("negative: server-info stream rejects missing audio", "server-info", {
     ...serverInfoStreamBase,
@@ -517,6 +522,7 @@ function main() {
     "negative/audio-capabilities-payload-type-10.json": "audio-capabilities",
     "negative/server-info-stream-extra-field.json": "server-info",
     "negative/server-info-stream-extra-role.json": "server-info",
+    "negative/server-info-stream-missing-home-id.json": "server-info",
     "negative/receiver-session-create-camelcase.json": "receiver-session-create",
     "negative/receiver-session-create-buffer-49.json": "receiver-session-create",
     "negative/receiver-session-create-buffer-501.json": "receiver-session-create",

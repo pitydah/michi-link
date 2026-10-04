@@ -393,6 +393,7 @@ fn main() {
 fn emit_receiver_vectors(dir: &Path) {
     let receiver = DeterministicIdentity::from_seed(derive_seed("receiver"));
     let micro = DeterministicIdentity::from_seed(derive_seed("micro-server"));
+    let home = DeterministicIdentity::from_seed(derive_seed("home-root-authority"));
 
     // --- Identity: canonical server/info payloads (Standard and Hi-Fi) ---
     let server_info = |service: &str| {
@@ -406,6 +407,7 @@ fn emit_receiver_vectors(dir: &Path) {
             "identity_scheme": "ed25519-blake3-v1",
             "michi_id": receiver.michi_id.to_base64url(),
             "public_key": receiver.public_key,
+            "michi_home_id": home.michi_id.to_base64url(),
             "auth": {
                 "required": true,
                 "strategy": "HOME_MEMBERSHIP",
