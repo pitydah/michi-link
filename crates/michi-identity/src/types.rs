@@ -126,6 +126,8 @@ pub enum AuthStrategy {
     Ed25519Challenge,
     #[serde(rename = "RECEIVER_BUTTON")]
     ReceiverButton,
+    #[serde(rename = "HOME_MEMBERSHIP")]
+    HomeMembership,
     #[serde(rename = "LEGACY")]
     Legacy,
 }
@@ -422,6 +424,99 @@ pub struct PairConfirmResponse {
     pub device_id: String,
     /// Stable server id.
     pub server_id: String,
+}
+
+/// Canonical Michi Home DTO.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MichiHomeDto {
+    pub version: u32,
+    pub home_id: String,
+    pub home_name: String,
+    pub home_root_public_key: String,
+    pub created_at: String,
+}
+
+/// Cryptographic device membership certificate issued by Home Root Authority.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceMembershipDto {
+    pub version: u32,
+    pub home_id: String,
+    pub device_michi_id: String,
+    pub device_public_key: String,
+    pub device_type: String,
+    pub roles: Vec<Role>,
+    pub issued_at: String,
+    pub serial: u64,
+    pub signature: String,
+}
+
+/// POST /api/v1/auth/challenge request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceAuthChallengeRequest {
+    pub client_michi_id: String,
+    pub client_public_key: String,
+    pub home_id: String,
+}
+
+/// POST /api/v1/auth/challenge response.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceAuthChallengeResponse {
+    pub challenge_id: Uuid,
+    pub challenge_nonce: String,
+    pub server_michi_id: String,
+    pub server_public_key: String,
+    pub expires_in: u32,
+}
+
+/// POST /api/v1/auth/session request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceAuthSessionRequest {
+    pub challenge_id: Uuid,
+    pub client_michi_id: String,
+    pub membership: DeviceMembershipDto,
+    pub client_signature: String,
+}
+
+/// POST /api/v1/auth/session response.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeviceAuthSessionResponse {
+    pub session_token: String,
+    pub token_type: String,
+    pub expires_in: u64,
+    pub server_michi_id: String,
+    pub server_signature: String,
+}
+
+/// Roster entry of a device in a Michi Home.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HomeDeviceRosterEntry {
+    pub device_michi_id: String,
+    pub device_name: String,
+    pub device_type: String,
+    pub roles: Vec<Role>,
+    pub membership: DeviceMembershipDto,
+    pub status: String,
+    pub last_seen_at: String,
+}
+
+/// Canonical Home Device Roster DTO.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HomeDeviceRosterDto {
+    pub version: u32,
+    pub home_id: String,
+    pub devices: Vec<HomeDeviceRosterEntry>,
+    pub updated_at: String,
+}
+
+/// Canonical Home Device Revocation DTO.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HomeDeviceRevocationDto {
+    pub version: u32,
+    pub home_id: String,
+    pub revoked_device_michi_id: String,
+    pub revoked_at: String,
+    pub reason: String,
+    pub signature: String,
 }
 
 /// Identity document embedded in `server/info` (contract v1).

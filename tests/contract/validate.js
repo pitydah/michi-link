@@ -57,6 +57,14 @@ const EXAMPLE_MAP = {
   "sync-delta.json": "sync-delta",
   "sync-manifest.json": "sync-manifest",
   "tracks-bulk-request.json": "track-bulk",
+  "device-auth-challenge-request.json": "device-auth-challenge-request",
+  "device-auth-challenge-response.json": "device-auth-challenge-response",
+  "device-auth-session-request.json": "device-auth-session-request",
+  "device-auth-session-response.json": "device-auth-session-response",
+  "home-device-revocation.json": "home-device-revocation",
+  "home-device-roster.json": "home-device-roster",
+  "michi-home.json": "michi-home",
+  "michi-membership.json": "michi-membership",
   "upload-result.json": "import-upload-result",
   "upload-result-unconfirmed.json": "import-upload-result",
 };
@@ -193,7 +201,7 @@ function main() {
     identity_scheme: "ed25519-blake3-v1",
     michi_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
     public_key: "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
-    auth: { required: true, strategy: "RECEIVER_BUTTON", token_refresh: false },
+    auth: { required: true, strategy: "HOME_MEMBERSHIP", token_refresh: false },
     features: { session: true, heartbeat: true, volume: true, now_playing: true, diagnostics: true, ota: true },
     audio: {
       transports: ["rtp_udp"],
@@ -357,6 +365,10 @@ function main() {
   rejects("negative: server-info stream rejects missing feature flag", "server-info", {
     ...serverInfoStreamBase,
     features: { ...serverInfoStreamBase.features, ota: undefined },
+  });
+  rejects("negative: server-info stream rejects retired strategy RECEIVER_BUTTON", "server-info", {
+    ...serverInfoStreamBase,
+    auth: { ...serverInfoStreamBase.auth, strategy: "RECEIVER_BUTTON" },
   });
   check("positive: server-info accepts michi-stream-standard", V("server-info")(serverInfoStreamBase), V("server-info"));
   check("positive: server-info accepts michi-stream-hifi", V("server-info")(serverInfoHifiBase), V("server-info"));

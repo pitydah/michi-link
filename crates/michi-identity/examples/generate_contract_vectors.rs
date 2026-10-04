@@ -408,7 +408,7 @@ fn emit_receiver_vectors(dir: &Path) {
             "public_key": receiver.public_key,
             "auth": {
                 "required": true,
-                "strategy": "RECEIVER_BUTTON",
+                "strategy": "HOME_MEMBERSHIP",
                 "token_refresh": false
             },
             "features": {

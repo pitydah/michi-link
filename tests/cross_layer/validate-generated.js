@@ -15,7 +15,7 @@ const REGEN_HINT = "regenerate vectors with: cargo run --example generate_contra
 // Number of canonical flow-JSON examples embedded in openapi/michi-link-v1.yaml
 // by ML-03. Every one of them must validate against exactly one canonical
 // JSON Schema; adding or removing an example requires updating this constant.
-const EXPECTED_OPENAPI_EXAMPLES = 16;
+const EXPECTED_OPENAPI_EXAMPLES = 20;
 
 function loadJSON(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
