@@ -40,7 +40,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BUNDLE_DIR = REPO_ROOT / "contracts" / "receiver-v1-lite"
 SOURCE_VECTORS = REPO_ROOT / "tests" / "vectors" / "receiver-v1-lite"
-BUNDLE_VERSION = "1.0.0-alpha.3"
+BUNDLE_VERSION = "1.0.0-alpha.4"
 
 # Source subdirectory (under tests/vectors/receiver-v1-lite) -> bundle
 # subdirectory. Files are copied in sorted order.
