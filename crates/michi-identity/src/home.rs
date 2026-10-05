@@ -734,7 +734,12 @@ mod tests {
         assert!(verify_revocation(&rev, &root_pk_b64, &home_id).is_ok());
 
         // Altered home_id fails
-        assert!(verify_revocation(&rev, &root_pk_b64, "vLzV3iL3x7eJ8qZ0a1b2c3d4e5f6g7h8i9j0k1l2m99").is_err());
+        assert!(verify_revocation(
+            &rev,
+            &root_pk_b64,
+            "vLzV3iL3x7eJ8qZ0a1b2c3d4e5f6g7h8i9j0k1l2m99"
+        )
+        .is_err());
 
         // Altered signature fails
         let mut corrupted_rev = rev.clone();
@@ -812,7 +817,7 @@ mod tests {
             &home_id,
             &client_michi_id,
             challenge_id,
-            &[rev]
+            &[rev],
         ) {
             Err(HomeAuthError::DeviceRevoked) => (),
             other => panic!("expected DeviceRevoked, got {:?}", other),
@@ -827,7 +832,7 @@ mod tests {
             &home_id,
             &client_michi_id,
             challenge_id,
-            &[]
+            &[],
         ) {
             Err(HomeAuthError::IdentityMismatch) => (),
             other => panic!("expected IdentityMismatch, got {:?}", other),
