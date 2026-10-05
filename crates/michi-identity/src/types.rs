@@ -282,6 +282,12 @@ pub struct Announce {
     /// Nonce as base64url (>= 16 raw bytes).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,
+
+    // --- Home metadata (Trust V2) ---
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub michi_home_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub membership_fingerprint: Option<String>,
 }
 
 impl Announce {
@@ -327,6 +333,8 @@ pub struct AnnounceProfile {
     pub host: String,
     pub port: u16,
     pub features: BTreeMap<String, bool>,
+    pub michi_home_id: Option<String>,
+    pub membership_fingerprint: Option<String>,
 }
 
 /// Trust classification of a discovered peer.
@@ -666,6 +674,8 @@ mod tests {
             signature: None,
             timestamp_ms: None,
             nonce: None,
+            michi_home_id: None,
+            membership_fingerprint: None,
         };
         assert!(a.is_partially_signed());
         assert!(!a.is_signed());

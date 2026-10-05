@@ -152,6 +152,8 @@ fn signed_announce(
         signature: None,
         timestamp_ms: Some(timestamp_ms),
         nonce: Some(encode_base64url(&nonce)),
+        michi_home_id: profile.michi_home_id.clone(),
+        membership_fingerprint: profile.membership_fingerprint.clone(),
     };
     announce.signature = Some(identity.sign_announce(&announce));
     assert_announce_valid(&announce);
@@ -221,6 +223,8 @@ fn main() {
             ("remote_control".to_string(), true),
             ("events".to_string(), false),
         ]),
+        michi_home_id: None,
+        membership_fingerprint: None,
     };
     assert!(DiscoveryEngine::validate_profile(&player_profile).is_ok());
     write_json(
@@ -252,6 +256,8 @@ fn main() {
             ("import".to_string(), true),
             ("events".to_string(), false),
         ]),
+        michi_home_id: None,
+        membership_fingerprint: None,
     };
     assert!(DiscoveryEngine::validate_profile(&micro_profile).is_ok());
     write_json(
@@ -278,6 +284,8 @@ fn main() {
             ("volume".to_string(), true),
             ("heartbeat".to_string(), true),
         ]),
+        michi_home_id: None,
+        membership_fingerprint: None,
     };
     assert!(DiscoveryEngine::validate_profile(&stream_profile).is_ok());
     write_json(
@@ -459,6 +467,8 @@ fn emit_receiver_vectors(dir: &Path) {
             ("volume".to_string(), true),
             ("heartbeat".to_string(), true),
         ]),
+        michi_home_id: None,
+        membership_fingerprint: None,
     };
     assert!(DiscoveryEngine::validate_profile(&announce_profile).is_ok());
     let announce = signed_announce(

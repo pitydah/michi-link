@@ -53,6 +53,8 @@ fn main() {
         host: "192.168.1.10".into(),
         port: 8400,
         features,
+        michi_home_id: None,
+        membership_fingerprint: None,
     };
     let announce = alice_engine
         .build_signed_announce(&profile)
@@ -100,6 +102,8 @@ fn main() {
         signature: None,
         timestamp_ms: None,
         nonce: None,
+        michi_home_id: None,
+        membership_fingerprint: None,
     };
 
     let trust = bob_engine

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0-alpha.4",
+  "version": "1.0.0-alpha.5",
   "upstream_commit": "1603c9bb194ee47d564401c4b7b28aeba1ec53ec",
   "files": [
     {
@@ -8,7 +8,7 @@
     },
     {
       "path": "VERSION",
-      "sha256": "58502dc864dc2cb7ba63b76d6cd96c23f8155262b0ba808f95dc9e54f28f3e75"
+      "sha256": "4924621688fb73898590b40b786b606da259f4652c41c5b01aac494f9d113cb7"
     },
     {
       "path": "examples/negative/error-conflict.json",

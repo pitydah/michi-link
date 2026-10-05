@@ -314,6 +314,8 @@ impl DiscoveryEngine {
             signature: None,
             timestamp_ms: Some(now_ms),
             nonce: Some(crate::types::encode_base64url(&nonce)),
+            michi_home_id: profile.michi_home_id.clone(),
+            membership_fingerprint: profile.membership_fingerprint.clone(),
         };
         let canonical = Self::canonical_bytes(&announce);
         let (sig, _) = self.identity.sign_base64url(&canonical);
@@ -410,6 +412,12 @@ impl DiscoveryEngine {
             serde_json::to_value(&announce.features).unwrap_or(Value::Null),
         );
         map.insert("host".into(), Value::String(announce.host.clone()));
+        if let Some(mf) = &announce.membership_fingerprint {
+            map.insert("membership_fingerprint".into(), Value::String(mf.clone()));
+        }
+        if let Some(home_id) = &announce.michi_home_id {
+            map.insert("michi_home_id".into(), Value::String(home_id.clone()));
+        }
         if let Some(michi_id) = &announce.michi_id {
             map.insert("michi_id".into(), Value::String(michi_id.clone()));
         }
@@ -507,6 +515,8 @@ mod tests {
             host: "192.168.1.10".into(),
             port: 8400,
             features: features(),
+            michi_home_id: None,
+            membership_fingerprint: None,
         }
     }
 
@@ -520,6 +530,8 @@ mod tests {
             host: "192.168.1.20".into(),
             port: 8500,
             features: features(),
+            michi_home_id: None,
+            membership_fingerprint: None,
         }
     }
 
@@ -533,6 +545,8 @@ mod tests {
             host: "192.168.1.30".into(),
             port: 8400,
             features: features(),
+            michi_home_id: None,
+            membership_fingerprint: None,
         }
     }
 
@@ -560,6 +574,8 @@ mod tests {
                 f.insert("volume".to_string(), true);
                 f
             },
+            michi_home_id: None,
+            membership_fingerprint: None,
         }
     }
 
@@ -579,6 +595,8 @@ mod tests {
             signature: None,
             timestamp_ms: Some(ts_ms),
             nonce: Some(nonce.to_string()),
+            michi_home_id: None,
+            membership_fingerprint: None,
         };
         let canonical = DiscoveryEngine::canonical_bytes(&a);
         let (sig, _) = identity.sign_base64url(&canonical);
@@ -767,6 +785,24 @@ mod tests {
     }
 
     #[test]
+    fn test_canonical_bytes_with_home_metadata() {
+        let mgr = identity("alice");
+        let engine = DiscoveryEngine::new(mgr.clone());
+        let mut profile = player_profile();
+        profile.michi_home_id = Some("HOME123456789012345678901234567890123456789".into());
+        profile.membership_fingerprint = Some("FP123456789012345678901234567890123456789".into());
+        let a = engine.build_signed_announce(&profile).unwrap();
+        assert_eq!(a.michi_home_id, profile.michi_home_id);
+        assert_eq!(a.membership_fingerprint, profile.membership_fingerprint);
+        let bytes = DiscoveryEngine::canonical_bytes(&a);
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(json["michi_home_id"], "HOME123456789012345678901234567890123456789");
+        assert_eq!(json["membership_fingerprint"], "FP123456789012345678901234567890123456789");
+        let trust = engine.verify_announce(&a, None).unwrap();
+        assert!(matches!(trust, TrustLevel::Verified(_)));
+    }
+
+    #[test]
     fn test_valid_signature_verified() {
         let mgr = identity("alice");
         let engine = DiscoveryEngine::new(mgr.clone());
@@ -899,6 +935,8 @@ mod tests {
             signature: None,
             timestamp_ms: None,
             nonce: None,
+            michi_home_id: None,
+            membership_fingerprint: None,
         };
         let trust = engine.verify_announce(&a, None).unwrap();
         assert!(matches!(trust, TrustLevel::Untrusted(_)));
@@ -1019,6 +1057,8 @@ mod tests {
             signature: None,
             timestamp_ms: None,
             nonce: None,
+            michi_home_id: None,
+            membership_fingerprint: None,
         };
         let peer = DiscoveredPeer {
             announce: a,
