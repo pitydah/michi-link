@@ -796,8 +796,14 @@ mod tests {
         assert_eq!(a.membership_fingerprint, profile.membership_fingerprint);
         let bytes = DiscoveryEngine::canonical_bytes(&a);
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["michi_home_id"], "HOME123456789012345678901234567890123456789");
-        assert_eq!(json["membership_fingerprint"], "FP123456789012345678901234567890123456789");
+        assert_eq!(
+            json["michi_home_id"],
+            "HOME123456789012345678901234567890123456789"
+        );
+        assert_eq!(
+            json["membership_fingerprint"],
+            "FP123456789012345678901234567890123456789"
+        );
         let trust = engine.verify_announce(&a, None).unwrap();
         assert!(matches!(trust, TrustLevel::Verified(_)));
     }
