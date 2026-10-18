@@ -813,7 +813,12 @@ mod tests {
 
         // With single revocation, membership is rejected
         assert!(matches!(
-            verify_membership(&membership, &root_pk_b64, &home_id, &[rev1.clone()]),
+            verify_membership(
+                &membership,
+                &root_pk_b64,
+                &home_id,
+                std::slice::from_ref(&rev1)
+            ),
             Err(HomeAuthError::DeviceRevoked)
         ));
 
