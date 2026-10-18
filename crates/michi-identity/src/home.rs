@@ -748,6 +748,101 @@ mod tests {
     }
 
     #[test]
+    fn test_revocation_adversarial_invariants() {
+        let root = HomeRootAuthority::generate();
+        let home_id = root.home_id();
+        let root_pk_b64 = root.public_key_base64url();
+
+        let foreign_root = HomeRootAuthority::generate();
+        let foreign_root_pk_b64 = foreign_root.public_key_base64url();
+
+        let device_sk = SigningKey::generate(&mut OsRng);
+        let device_vk = device_sk.verifying_key();
+        let device_michi_id = MichiId::from_public_key(&device_vk).to_base64url();
+
+        let rev1 = root.issue_revocation(
+            &home_id,
+            &device_michi_id,
+            "2026-10-04T12:00:00Z",
+            "first revocation reason",
+        );
+
+        // 1. Valid signature and home_id succeeds
+        assert!(verify_revocation(&rev1, &root_pk_b64, &home_id).is_ok());
+
+        // 2. Foreign home authority signature rejected
+        assert!(matches!(
+            verify_revocation(&rev1, &foreign_root_pk_b64, &home_id),
+            Err(HomeAuthError::InvalidSignature)
+        ));
+
+        // 3. Foreign home_id rejected
+        assert!(matches!(
+            verify_revocation(&rev1, &root_pk_b64, &foreign_root.home_id()),
+            Err(HomeAuthError::HomeIdMismatch { .. })
+        ));
+
+        // 4. Altered payload (tampered timestamp or reason) breaks signature
+        let mut tampered_ts = rev1.clone();
+        tampered_ts.revoked_at = "2026-10-04T12:00:01Z".to_string();
+        assert!(matches!(
+            verify_revocation(&tampered_ts, &root_pk_b64, &home_id),
+            Err(HomeAuthError::InvalidSignature)
+        ));
+
+        let mut tampered_reason = rev1.clone();
+        tampered_reason.reason = "forged reason".to_string();
+        assert!(matches!(
+            verify_revocation(&tampered_reason, &root_pk_b64, &home_id),
+            Err(HomeAuthError::InvalidSignature)
+        ));
+
+        // 5. Monotonicity & membership rejection across duplicates and out-of-order deliveries
+        let membership = root.issue_membership(
+            &home_id,
+            &device_michi_id,
+            &encode_base64url(&device_vk.to_bytes()),
+            "Stream Speaker",
+            vec![Role::AudioReceiver],
+            "2026-10-04T12:00:00Z",
+            3600,
+        );
+
+        // Active device passes
+        assert!(verify_membership(&membership, &root_pk_b64, &home_id, &[]).is_ok());
+
+        // With single revocation, membership is rejected
+        assert!(matches!(
+            verify_membership(&membership, &root_pk_b64, &home_id, &[rev1.clone()]),
+            Err(HomeAuthError::DeviceRevoked)
+        ));
+
+        // Duplicate / replayed delivery does not clear or bypass revocation
+        let rev1_duplicate = rev1.clone();
+        assert!(matches!(
+            verify_membership(
+                &membership,
+                &root_pk_b64,
+                &home_id,
+                &[rev1.clone(), rev1_duplicate]
+            ),
+            Err(HomeAuthError::DeviceRevoked)
+        ));
+
+        // Later revocation also keeps device revoked monotonically
+        let rev2_later = root.issue_revocation(
+            &home_id,
+            &device_michi_id,
+            "2026-10-04T14:00:00Z",
+            "updated revocation record",
+        );
+        assert!(matches!(
+            verify_membership(&membership, &root_pk_b64, &home_id, &[rev2_later, rev1]),
+            Err(HomeAuthError::DeviceRevoked)
+        ));
+    }
+
+    #[test]
     fn test_server_auth_session_verification_full_flow() {
         let root = HomeRootAuthority::generate();
         let home_id = root.home_id();
