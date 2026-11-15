@@ -6571,7 +6571,6 @@ components:
           type: array
           items:
             type: string
-          example: ["content:read", "content:transfer"]
         expiresAt:
           type: integer
           example: 1731680000000
@@ -6699,7 +6698,6 @@ components:
           type: array
           items:
             type: string
-          example: ["content:read", "content:transfer"]
         manifestSha256:
           type: string
           example: 35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7
