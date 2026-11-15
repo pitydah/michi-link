@@ -1,10 +1,10 @@
 {
   "version": "1.0.0-alpha.5",
-  "upstream_commit": "045d9bdae8f6fec590e4e0cd1ae5c7c75b2ad8e5",
+  "upstream_commit": "07be6c961992470d792d737b5d8dfed2f85a37d1",
   "files": [
     {
       "path": "UPSTREAM_COMMIT",
-      "sha256": "f3192201d23a0b63671c09f6b511d5dceeda7aae53f0369a7985c8cad2108d43"
+      "sha256": "f1562d94e4a28b2241791148a3a8c575b88f8e788fc8ad1bccc2bb2aa96a1335"
     },
     {
       "path": "VERSION",
@@ -76,7 +76,7 @@
     },
     {
       "path": "openapi/michi-link-v1.yaml",
-      "sha256": "9e20d1732b22f72c7e2e06280452a9cd2fa0a7a80d76f6541efaac2343e0777a"
+      "sha256": "d35677366e3b3281dbcecaa771a5a867b35791e6ffb413ede3582edb98cfcc00"
     },
     {
       "path": "schemas/aircat-grant-request.schema.json",
