@@ -76,7 +76,7 @@
     },
     {
       "path": "openapi/michi-link-v1.yaml",
-      "sha256": "d35677366e3b3281dbcecaa771a5a867b35791e6ffb413ede3582edb98cfcc00"
+      "sha256": "55db5f7474fc6a68dc89f4f1ef145ed06cd1ee74370f72dad2aff0525d89b6b3"
     },
     {
       "path": "schemas/aircat-grant-request.schema.json",

@@ -20,7 +20,7 @@
     "transferId": "transfer-uuid-12345",
     "sourceDeviceId": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
     "totalTracks": 2,
-    "totalBytes": 20971520,
+    "totalBytes": 1572864,
     "items": [
       {
         "logicalTrackId": "logical-track-001",
@@ -29,21 +29,21 @@
         "artist": "Artist One",
         "album": "Album One",
         "format": "flac",
-        "size": 10485760,
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "size": 1048576,
+        "sha256": "042d84d3772b8cc9080a8f388c428c11d88f8566e5a38fda322fc8ea33492cfc"
       },
       {
         "logicalTrackId": "logical-track-002",
         "remoteTrackId": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
         "title": "Song Two",
-        "artist": "Artist One",
-        "album": "Album One",
+        "artist": "Artist Two",
+        "album": "Album Two",
         "format": "flac",
-        "size": 10485760,
-        "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+        "size": 524288,
+        "sha256": "4da375e72a048539cac37b0276ef59007bc58b2747ac6a724ace46d0d5f6d328"
       }
     ]
   },
-  "manifestSha256": "35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7",
-  "clientNonceBase64Url": "IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W"
+  "manifestSha256": "df2221e0e394146f646543f4c824f00c7c3b40e1950d7a42d9db57f84597b066",
+  "clientNonceBase64Url": "WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2"
 }

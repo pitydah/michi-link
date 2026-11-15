@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "homeId": "_vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ",
+  "authorityMichiId": "_vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ",
+  "transferId": "transfer-uuid-12345",
+  "sourceMichiId": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+  "destinationMichiId": "lhlxbEOUgOykbYw6mg4McXy75xBWBX5HOn8pVbixqbY",
+  "sourceLibraryId": "lib-source-default",
+  "destinationLibraryId": "lib-dest-mobile",
+  "selectionScope": "ALBUMS",
+  "scopes": [
+    "content:read",
+    "content:transfer"
+  ],
+  "manifestSha256": "df2221e0e394146f646543f4c824f00c7c3b40e1950d7a42d9db57f84597b066",
+  "issuedAtMillis": 1731679400000,
+  "expiresAtMillis": 1731680000000,
+  "nonceBase64Url": "WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2",
+  "signatureBase64Url": "ccQtsU8Nzu4zQAQ_WZf_oFCTd07QJJptMDckzbeay1FmgF1oJuAYM_TWgIAXVyOe3kApsJqIoJPQqLa5iIwKBA"
+}

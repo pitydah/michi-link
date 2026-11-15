@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "homeId": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
-  "authorityMichiId": "KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ",
+  "homeId": "_vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ",
+  "authorityMichiId": "_vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ",
   "transferId": "transfer-uuid-12345",
   "sourceMichiId": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
   "destinationMichiId": "lhlxbEOUgOykbYw6mg4McXy75xBWBX5HOn8pVbixqbY",
@@ -12,9 +12,9 @@
     "content:read",
     "content:transfer"
   ],
-  "manifestSha256": "35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7",
+  "manifestSha256": "df2221e0e394146f646543f4c824f00c7c3b40e1950d7a42d9db57f84597b066",
   "issuedAtMillis": 1731679400000,
   "expiresAtMillis": 1731680000000,
-  "nonceBase64Url": "IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W",
-  "signatureBase64Url": "-uA_huP-ihEN6MWq4QL2OK4tiPAk-FDmr_olMoLGDUUjWHHomPQTUSMkwI2yJIgT1JZXx5oCxhb6RIOzJ3eTCA"
+  "nonceBase64Url": "WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2",
+  "signatureBase64Url": "ccQtsU8Nzu4zQAQ_WZf_oFCTd07QJJptMDckzbeay1FmgF1oJuAYM_TWgIAXVyOe3kApsJqIoJPQqLa5iIwKBA"
 }

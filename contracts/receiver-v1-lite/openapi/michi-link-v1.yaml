@@ -6509,10 +6509,10 @@ components:
           example: flac
         size:
           type: integer
-          example: 10485760
+          example: 1048576
         checksum:
           type: string
-          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          example: 042d84d3772b8cc9080a8f388c428c11d88f8566e5a38fda322fc8ea33492cfc
 
     AirCatGrantRequest:
       type: object
@@ -6528,10 +6528,10 @@ components:
           $ref: "#/components/schemas/AirCatSelectionManifest"
         manifestSha256:
           type: string
-          example: 35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7
+          example: df2221e0e394146f646543f4c824f00c7c3b40e1950d7a42d9db57f84597b066
         clientNonceBase64Url:
           type: string
-          example: IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W
+          example: WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2
 
     AirCatIntent:
       type: object
@@ -6643,10 +6643,10 @@ components:
           example: flac
         size:
           type: integer
-          example: 10485760
+          example: 1048576
         sha256:
           type: string
-          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          example: 042d84d3772b8cc9080a8f388c428c11d88f8566e5a38fda322fc8ea33492cfc
 
     AirCatSignedGrant:
       type: object
@@ -6672,10 +6672,10 @@ components:
           example: 1
         homeId:
           type: string
-          example: KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ
+          example: _vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ
         authorityMichiId:
           type: string
-          example: KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ
+          example: _vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ
         transferId:
           type: string
           example: transfer-uuid-12345
@@ -6700,7 +6700,7 @@ components:
             type: string
         manifestSha256:
           type: string
-          example: 35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7
+          example: df2221e0e394146f646543f4c824f00c7c3b40e1950d7a42d9db57f84597b066
         issuedAtMillis:
           type: integer
           example: 1731679400000
@@ -6709,10 +6709,10 @@ components:
           example: 1731680000000
         nonceBase64Url:
           type: string
-          example: IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W
+          example: WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2
         signatureBase64Url:
           type: string
-          example: -uA_huP-ihEN6MWq4QL2OK4tiPAk-FDmr_olMoLGDUUjWHHomPQTUSMkwI2yJIgT1JZXx5oCxhb6RIOzJ3eTCA
+          example: ccQtsU8Nzu4zQAQ_WZf_oFCTd07QJJptMDckzbeay1FmgF1oJuAYM_TWgIAXVyOe3kApsJqIoJPQqLa5iIwKBA
 
 security:
   - BearerAuth: []

@@ -8,11 +8,46 @@
 use crate::types::{decode_base64url_strict, encode_base64url, MichiId};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use thiserror::Error;
+
+/// Deterministic Ed25519 signing key seed for test fixtures and golden vectors ONLY.
+/// Seed byte 0x42 repeated 32 times (decimal 66). NEVER use in production environments.
+pub const AIRCAT_GOLDEN_SEED: [u8; 32] = [0x42u8; 32];
 
 const MAX_FIELD_BYTES: usize = 4096;
 const MAX_LIFETIME_MS: i64 = 600_000;
 const ALLOWED_SCOPES: [&str; 2] = ["content:read", "content:transfer"];
+
+fn default_manifest_version() -> i32 {
+    1
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AirCatSelectionItem {
+    pub logical_track_id: String,
+    pub remote_track_id: String,
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub format: String,
+    pub size: i64,
+    pub sha256: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AirCatSelectionManifest {
+    #[serde(default = "default_manifest_version")]
+    pub manifest_version: i32,
+    pub transfer_id: String,
+    pub source_device_id: String,
+    pub total_tracks: i32,
+    pub total_bytes: i64,
+    pub items: Vec<AirCatSelectionItem>,
+}
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum AirCatGrantError {
@@ -123,6 +158,84 @@ fn write_field(out: &mut Vec<u8>, s: &str) -> Result<(), AirCatGrantError> {
     out.extend_from_slice(&(b.len() as u32).to_be_bytes());
     out.extend_from_slice(b);
     Ok(())
+}
+
+pub fn canonical_aircat_manifest_bytes_v1(
+    m: &AirCatSelectionManifest,
+) -> Result<Vec<u8>, AirCatGrantError> {
+    if m.manifest_version != 1
+        || m.items.is_empty()
+        || m.items.len() > 10_000
+        || m.total_tracks as usize != m.items.len()
+        || m.total_bytes <= 0
+        || m.transfer_id.is_empty()
+        || m.source_device_id.is_empty()
+    {
+        return Err(AirCatGrantError::InvalidFields);
+    }
+    let mut out = Vec::with_capacity(1024);
+    write_field(&mut out, "MICHI-AIRCAT-MANIFEST-V1")?;
+    out.extend_from_slice(&m.manifest_version.to_be_bytes());
+    write_field(&mut out, &m.transfer_id)?;
+    write_field(&mut out, &m.source_device_id)?;
+    out.extend_from_slice(&m.total_tracks.to_be_bytes());
+    out.extend_from_slice(&m.total_bytes.to_be_bytes());
+    out.extend_from_slice(&(m.items.len() as i32).to_be_bytes());
+    let mut ids = HashSet::new();
+    let mut total = 0i64;
+    for f in &m.items {
+        if f.size <= 0
+            || f.format.is_empty()
+            || f.remote_track_id.is_empty()
+            || f.logical_track_id.is_empty()
+            || !ids.insert(f.logical_track_id.as_str())
+            || f.sha256.len() != 64
+            || !f.sha256.bytes().all(|c| c.is_ascii_hexdigit())
+        {
+            return Err(AirCatGrantError::InvalidFields);
+        }
+        total = total
+            .checked_add(f.size)
+            .ok_or(AirCatGrantError::InvalidFields)?;
+        for field in [
+            &f.logical_track_id,
+            &f.remote_track_id,
+            &f.title,
+            &f.artist,
+            &f.album,
+            &f.format,
+        ] {
+            write_field(&mut out, field)?;
+        }
+        out.extend_from_slice(&f.size.to_be_bytes());
+        write_field(&mut out, &f.sha256.to_ascii_lowercase())?;
+    }
+    if total != m.total_bytes {
+        return Err(AirCatGrantError::InvalidFields);
+    }
+    Ok(out)
+}
+
+pub fn canonical_aircat_manifest_sha256(
+    m: &AirCatSelectionManifest,
+) -> Result<String, AirCatGrantError> {
+    let bytes = canonical_aircat_manifest_bytes_v1(m)?;
+    Ok(hex::encode(Sha256::digest(&bytes)))
+}
+
+/// Computes the mandatory normative response receipt:
+/// `X-Michi-AirCat-Authorized-Grant-SHA256 = lowercase_hex(sha256(ASCII(grant_header_raw)))`
+pub fn receipt_for_grant_header(grant_header_raw: &str) -> Result<String, AirCatGrantError> {
+    let trimmed = grant_header_raw.trim();
+    if trimmed.is_empty()
+        || trimmed.len() > 8192
+        || !trimmed
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+    {
+        return Err(AirCatGrantError::InvalidFields);
+    }
+    Ok(hex::encode(Sha256::digest(trimmed.as_bytes())))
 }
 
 fn valid_michi_id(id: &str) -> bool {
@@ -324,15 +437,65 @@ mod tests {
     #[test]
     fn test_aircat_v1_golden_vector_reproducible() {
         // Deterministic Ed25519 signing key seed (32 bytes)
-        let seed = [42u8; 32];
+        let seed = AIRCAT_GOLDEN_SEED;
+        assert_eq!(seed, [0x42u8; 32]);
+        assert_eq!(seed[0], 66); // 0x42 is decimal 66
+
         let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
         let root = HomeRootAuthority::from_signing_key(signing_key);
         let home_id = root.home_id();
+        let root_pk_b64 = root.public_key_base64url();
+
+        // Exact assertions against golden values
+        assert_eq!(root_pk_b64, "IVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI");
+        assert_eq!(home_id, "_vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ");
+        // Verify Home ID is NOT the public key (BLAKE3-derived)
+        assert_ne!(home_id, root_pk_b64);
+
+        // 1. Selection Manifest with 2 real tracks (positive sizes and non-empty SHA-256)
+        let manifest = AirCatSelectionManifest {
+            manifest_version: 1,
+            transfer_id: "transfer-uuid-12345".into(),
+            source_device_id: "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays".into(),
+            total_tracks: 2,
+            total_bytes: 1572864,
+            items: vec![
+                AirCatSelectionItem {
+                    logical_track_id: "logical-track-001".into(),
+                    remote_track_id: "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d".into(),
+                    title: "Song One".into(),
+                    artist: "Artist One".into(),
+                    album: "Album One".into(),
+                    format: "flac".into(),
+                    size: 1048576,
+                    sha256: "042d84d3772b8cc9080a8f388c428c11d88f8566e5a38fda322fc8ea33492cfc"
+                        .into(),
+                },
+                AirCatSelectionItem {
+                    logical_track_id: "logical-track-002".into(),
+                    remote_track_id: "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e".into(),
+                    title: "Song Two".into(),
+                    artist: "Artist Two".into(),
+                    album: "Album Two".into(),
+                    format: "flac".into(),
+                    size: 524288,
+                    sha256: "4da375e72a048539cac37b0276ef59007bc58b2747ac6a724ace46d0d5f6d328"
+                        .into(),
+                },
+            ],
+        };
+
+        let manifest_bytes = canonical_aircat_manifest_bytes_v1(&manifest).unwrap();
+        assert_eq!(manifest_bytes.len(), 486);
+        let manifest_hash = canonical_aircat_manifest_sha256(&manifest).unwrap();
+        assert_eq!(
+            manifest_hash,
+            "df2221e0e394146f646543f4c824f00c7c3b40e1950d7a42d9db57f84597b066"
+        );
 
         let source_id = "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays";
         let dest_id = "lhlxbEOUgOykbYw6mg4McXy75xBWBX5HOn8pVbixqbY";
-        let nonce = encode_base64url(&[0x11u8; 24]);
-        let manifest_hash = "35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7";
+        let nonce = "WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2".to_string();
         let issued_at = 1_731_679_400_000i64;
         let expires_at = 1_731_680_000_000i64;
 
@@ -347,7 +510,7 @@ mod tests {
             destination_library_id: "lib-dest-mobile".into(),
             selection_scope: "ALBUMS".into(),
             scopes: vec!["content:read".into(), "content:transfer".into()],
-            manifest_sha256: manifest_hash.into(),
+            manifest_sha256: manifest_hash.clone(),
             issued_at_millis: issued_at,
             expires_at_millis: expires_at,
             nonce_base64_url: nonce.clone(),
@@ -355,16 +518,33 @@ mod tests {
 
         // Canonical wire bytes test
         let canonical_bytes = canonical_aircat_grant_bytes_v1(&claims).unwrap();
-        assert!(!canonical_bytes.is_empty());
-        assert_eq!(&canonical_bytes[0..4], &(21u32).to_be_bytes());
-        assert_eq!(&canonical_bytes[4..25], b"MICHI-AIRCAT-GRANT-V1");
+        assert_eq!(canonical_bytes.len(), 451);
+        let canonical_hex = hex::encode(&canonical_bytes);
+        assert_eq!(
+            canonical_hex,
+            "000000154d494348492d4149524341542d4752414e542d5631000000010000002b5f766266704973484f5354454e6c4f51454e65424c3735514357726f4a576e39725458336c6969384149510000002b5f766266704973484f5354454e6c4f51454e65424c3735514357726f4a576e39725458336c696938414951000000137472616e736665722d757569642d31323334350000002b516c47516f7351737a4c5173653035374d436177333249414858762d49356b6c6d414173626976496179730000002b6c686c7862454f55674f796b625977366d67344d6358793735784257425835484f6e387056626978716259000000126c69622d736f757263652d64656661756c740000000f6c69622d646573742d6d6f62696c6500000006414c42554d53000000020000000c636f6e74656e743a7265616400000010636f6e74656e743a7472616e736665720000004064663232323165306533393431343666363436353433663463383234663030633763336234306531393530643761343264396462353766383435393762303636000001933022b04000000193302bd80000000020576e4266513268686247786c626d646c546d3975593256664d54497a4e445532"
+        );
 
         // Issue grant using HomeRootAuthority
         let grant = root.issue_aircat_grant_v1(&claims, issued_at).unwrap();
         assert_eq!(grant.version, 1);
         assert_eq!(grant.home_id, home_id);
+        assert_eq!(grant.authority_michi_id, home_id);
         assert_eq!(grant.nonce_base64_url, nonce);
-        assert_eq!(grant.signature_base64_url.len(), 86);
+        assert_eq!(
+            grant.signature_base64_url,
+            "ccQtsU8Nzu4zQAQ_WZf_oFCTd07QJJptMDckzbeay1FmgF1oJuAYM_TWgIAXVyOe3kApsJqIoJPQqLa5iIwKBA"
+        );
+
+        // Header and receipt test
+        let grant_json = serde_json::to_string(&grant).unwrap();
+        let grant_header = encode_base64url(grant_json.as_bytes());
+        let receipt = receipt_for_grant_header(&grant_header).unwrap();
+        assert_eq!(receipt.len(), 64);
+        assert_eq!(
+            receipt,
+            hex::encode(sha2::Sha256::digest(grant_header.as_bytes()))
+        );
 
         // Positive verification
         let root_pk_bytes = decode_base64url_strict(&root.public_key_base64url()).unwrap();
@@ -436,6 +616,25 @@ mod tests {
                 false
             ),
             Err(AirCatGrantError::InvalidSignature)
+        );
+
+        // 7. Extra scopes
+        let mut tampered_scopes = claims.clone();
+        tampered_scopes.scopes.push("admin:all".to_string());
+        assert!(canonical_aircat_grant_bytes_v1(&tampered_scopes).is_ok());
+        assert_eq!(
+            validate_aircat_claims_v1(&tampered_scopes, issued_at + 1000),
+            Err(AirCatGrantError::InvalidFields)
+        );
+
+        // 8. Invalid receipt input (contains spaces or illegal characters)
+        assert_eq!(
+            receipt_for_grant_header("invalid header with spaces"),
+            Err(AirCatGrantError::InvalidFields)
+        );
+        assert_eq!(
+            receipt_for_grant_header(""),
+            Err(AirCatGrantError::InvalidFields)
         );
     }
 }
