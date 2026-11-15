@@ -31,6 +31,7 @@
 //! }
 //! ```
 
+pub mod aircat;
 pub mod discovery;
 pub mod error;
 pub mod home;
@@ -40,6 +41,11 @@ pub mod qr;
 pub mod types;
 
 use std::sync::Arc;
+
+pub use aircat::{
+    canonical_aircat_grant_bytes_v1, validate_aircat_claims_v1, verify_aircat_grant_v1,
+    AirCatGrantClaims, AirCatGrantError, AirCatSignedGrantV1,
+};
 
 pub use discovery::DiscoveryEngine;
 pub use error::{ContractViolation, IdentityError};

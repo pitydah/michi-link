@@ -81,6 +81,28 @@ impl HomeRootAuthority {
         MichiId::from_public_key(&self.verifying_key).to_base64url()
     }
 
+    /// Issue an AirCat v1 grant through the existing Home key. The caller must
+    /// authenticate the requesting member and validate the authorized original
+    /// file selection BEFORE requesting issuance. No root secret is exported.
+    pub fn issue_aircat_grant_v1(
+        &self,
+        claims: &crate::aircat::AirCatGrantClaims,
+        now_ms: i64,
+    ) -> Result<crate::aircat::AirCatSignedGrantV1, crate::aircat::AirCatGrantError> {
+        use crate::aircat::{
+            canonical_aircat_grant_bytes_v1, validate_aircat_claims_v1, AirCatGrantError,
+        };
+        validate_aircat_claims_v1(claims, now_ms)?;
+        let root = self.home_id();
+        if claims.home_id != root || claims.authority_michi_id != root {
+            return Err(AirCatGrantError::WrongHome);
+        }
+        let mut signed = crate::aircat::AirCatSignedGrantV1::from(claims.clone());
+        let bytes = canonical_aircat_grant_bytes_v1(claims)?;
+        signed.signature_base64_url = encode_base64url(&self.signing_key.sign(&bytes).to_bytes());
+        Ok(signed)
+    }
+
     /// Issues a signed membership certificate for a device in this home.
     #[allow(clippy::too_many_arguments)]
     pub fn issue_membership(
