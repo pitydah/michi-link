@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/aircat-manifest.schema.json",
+  "title": "AirCatManifestV1",
+  "description": "Original track catalog manifest returned by GET /api/v1/aircat/manifest",
+  "type": "object",
+  "required": [
+    "schema",
+    "version",
+    "device_id",
+    "total_tracks",
+    "total_size",
+    "tracks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "michi.aircat.manifest.v1",
+      "description": "Fixed schema identifier for AirCat catalog manifest v1"
+    },
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Manifest format version (always 1)"
+    },
+    "device_id": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Canonical 43-character base64url Michi ID of producer"
+    },
+    "total_tracks": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000,
+      "description": "Exact number of tracks in this catalog (0 for empty catalog)"
+    },
+    "total_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Exact sum of track sizes in bytes (0 for empty catalog)"
+    },
+    "tracks": {
+      "type": "array",
+      "maxItems": 10000,
+      "description": "List of original track assets available for AirCat transfer",
+      "items": {
+        "type": "object",
+        "required": [
+          "track_id",
+          "title",
+          "artist",
+          "album",
+          "format",
+          "size",
+          "checksum"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "track_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Catalog track identifier or server UUID"
+          },
+          "logical_track_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional client-side destination logical track identifier"
+          },
+          "remote_track_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional server original asset UUID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Track title"
+          },
+          "artist": {
+            "type": "string",
+            "description": "Artist name"
+          },
+          "album": {
+            "type": "string",
+            "description": "Album name"
+          },
+          "format": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Original audio container format (e.g. flac, mp3, aac, alac, wav)"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Exact size of original audio file in bytes"
+          },
+          "checksum": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Exact lowercase SHA-256 hex digest of the original uncompressed/raw file bytes"
+          }
+        }
+      }
+    }
+  }
+}

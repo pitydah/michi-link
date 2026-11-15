@@ -320,4 +320,122 @@ mod tests {
             Err(AirCatGrantError::WrongHome)
         );
     }
+
+    #[test]
+    fn test_aircat_v1_golden_vector_reproducible() {
+        // Deterministic Ed25519 signing key seed (32 bytes)
+        let seed = [42u8; 32];
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
+        let root = HomeRootAuthority::from_signing_key(signing_key);
+        let home_id = root.home_id();
+
+        let source_id = "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays";
+        let dest_id = "lhlxbEOUgOykbYw6mg4McXy75xBWBX5HOn8pVbixqbY";
+        let nonce = encode_base64url(&[0x11u8; 24]);
+        let manifest_hash = "35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7";
+        let issued_at = 1_731_679_400_000i64;
+        let expires_at = 1_731_680_000_000i64;
+
+        let claims = AirCatGrantClaims {
+            version: 1,
+            home_id: home_id.clone(),
+            authority_michi_id: home_id.clone(),
+            transfer_id: "transfer-uuid-12345".into(),
+            source_michi_id: source_id.into(),
+            destination_michi_id: dest_id.into(),
+            source_library_id: "lib-source-default".into(),
+            destination_library_id: "lib-dest-mobile".into(),
+            selection_scope: "ALBUMS".into(),
+            scopes: vec!["content:read".into(), "content:transfer".into()],
+            manifest_sha256: manifest_hash.into(),
+            issued_at_millis: issued_at,
+            expires_at_millis: expires_at,
+            nonce_base64_url: nonce.clone(),
+        };
+
+        // Canonical wire bytes test
+        let canonical_bytes = canonical_aircat_grant_bytes_v1(&claims).unwrap();
+        assert!(!canonical_bytes.is_empty());
+        assert_eq!(&canonical_bytes[0..4], &(21u32).to_be_bytes());
+        assert_eq!(&canonical_bytes[4..25], b"MICHI-AIRCAT-GRANT-V1");
+
+        // Issue grant using HomeRootAuthority
+        let grant = root.issue_aircat_grant_v1(&claims, issued_at).unwrap();
+        assert_eq!(grant.version, 1);
+        assert_eq!(grant.home_id, home_id);
+        assert_eq!(grant.nonce_base64_url, nonce);
+        assert_eq!(grant.signature_base64_url.len(), 86);
+
+        // Positive verification
+        let root_pk_bytes = decode_base64url_strict(&root.public_key_base64url()).unwrap();
+        let verifying_key = VerifyingKey::from_bytes(&root_pk_bytes.try_into().unwrap()).unwrap();
+        let verified =
+            verify_aircat_grant_v1(&grant, &verifying_key, dest_id, issued_at + 1000, false)
+                .unwrap();
+        assert_eq!(verified, claims);
+
+        // Negative adversarial test cases:
+        // 1. Wrong audience
+        assert_eq!(
+            verify_aircat_grant_v1(
+                &grant,
+                &verifying_key,
+                "wrong-audience-43-chars-base64url-00000000",
+                issued_at + 1000,
+                false
+            ),
+            Err(AirCatGrantError::WrongAudience)
+        );
+
+        // 2. Revoked member
+        assert_eq!(
+            verify_aircat_grant_v1(&grant, &verifying_key, dest_id, issued_at + 1000, true),
+            Err(AirCatGrantError::Revoked)
+        );
+
+        // 3. Foreign root / wrong home
+        let foreign_root = HomeRootAuthority::generate();
+        let foreign_pk_bytes =
+            decode_base64url_strict(&foreign_root.public_key_base64url()).unwrap();
+        let foreign_verifying_key =
+            VerifyingKey::from_bytes(&foreign_pk_bytes.try_into().unwrap()).unwrap();
+        assert_eq!(
+            verify_aircat_grant_v1(
+                &grant,
+                &foreign_verifying_key,
+                dest_id,
+                issued_at + 1000,
+                false
+            ),
+            Err(AirCatGrantError::WrongHome)
+        );
+
+        // 4. Expired grant
+        assert_eq!(
+            verify_aircat_grant_v1(&grant, &verifying_key, dest_id, expires_at + 1, false),
+            Err(AirCatGrantError::Expired)
+        );
+
+        // 5. Tampered manifest hash
+        let mut tampered = grant.clone();
+        tampered.manifest_sha256 = "0".repeat(64);
+        assert_eq!(
+            verify_aircat_grant_v1(&tampered, &verifying_key, dest_id, issued_at + 1000, false),
+            Err(AirCatGrantError::InvalidSignature)
+        );
+
+        // 6. Tampered nonce
+        let mut tampered_nonce = grant.clone();
+        tampered_nonce.nonce_base64_url = encode_base64url(&[0x99u8; 24]);
+        assert_eq!(
+            verify_aircat_grant_v1(
+                &tampered_nonce,
+                &verifying_key,
+                dest_id,
+                issued_at + 1000,
+                false
+            ),
+            Err(AirCatGrantError::InvalidSignature)
+        );
+    }
 }

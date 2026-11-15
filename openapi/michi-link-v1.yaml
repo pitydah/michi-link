@@ -68,6 +68,8 @@ tags:
     description: Receiver device management and session control.
   - name: ReceiverLite
     description: Lightweight receiver protocol (v1-lite) endpoints.
+  - name: AirCat
+    description: Original-file transfers, catalog manifests, and HomeRootAuthority grants.
 
 paths:
   # ============================================================================
@@ -2969,6 +2971,170 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "500":
           $ref: "#/components/responses/InternalError"
+
+  # ============================================================================
+  # AIRCAT
+  # ============================================================================
+  /aircat/manifest:
+    get:
+      tags:
+        - AirCat
+      summary: Get AirCat original track catalog manifest
+      description: |
+        Returns the original track assets available in the server catalog for
+        direct AirCat transfer. Requires an active Home-authenticated session.
+      operationId: getAirCatManifest
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: AirCat catalog manifest v1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AirCatManifest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          description: Producer authority not available
+
+  /aircat/authorize:
+    post:
+      tags:
+        - AirCat
+      summary: Request signed AirCat transfer grant
+      description: |
+        Validates client transfer intent and manifest against original server files,
+        verifies client Home membership and nonce freshness, and issues a signed
+        Ed25519 AirCat grant from the persistent HomeRootAuthority.
+      operationId: authorizeAirCatTransfer
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AirCatGrantRequest"
+      responses:
+        "200":
+          description: Signed AirCat grant v1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AirCatSignedGrant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Conflict (nonce reused or manifest altered)
+        "429":
+          description: Rate limited
+        "503":
+          description: Producer authority unavailable
+
+  /aircat/download/{remoteId}:
+    get:
+      tags:
+        - AirCat
+      summary: Download original file bytes with grant verification
+      description: |
+        Streams immutable raw original file bytes without transcoding. Requires
+        an active Home member session and a valid X-Michi-AirCat-Grant header.
+        Supports byte ranges and strong ETags. Returns receipt header
+        X-Michi-AirCat-Authorized-Grant-SHA256.
+      operationId: downloadAirCatAsset
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: remoteId
+          in: path
+          required: true
+          description: Server original asset UUID
+          schema:
+            type: string
+        - name: X-Michi-AirCat-Grant
+          in: header
+          required: true
+          description: Base64url-encoded JSON string of the signed AirCat grant
+          schema:
+            type: string
+        - name: Range
+          in: header
+          required: false
+          description: Standard HTTP byte range header (e.g. bytes=0-)
+          schema:
+            type: string
+        - name: If-Range
+          in: header
+          required: false
+          description: Strong ETag validator for conditional resumption
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Full original file bytes
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Strong quoted revision ETag (sha256-<hash>-<size>)
+            Accept-Ranges:
+              schema:
+                type: string
+                example: bytes
+            X-Michi-AirCat-Authorized-Grant-SHA256:
+              schema:
+                type: string
+              description: Lowercase hex SHA-256 of the literal X-Michi-AirCat-Grant header
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: Partial content range
+          headers:
+            Content-Range:
+              schema:
+                type: string
+                example: bytes 0-1048575/10485760
+            ETag:
+              schema:
+                type: string
+            Accept-Ranges:
+              schema:
+                type: string
+                example: bytes
+            X-Michi-AirCat-Authorized-Grant-SHA256:
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: File revision changed during transfer
+        "416":
+          description: Requested range not satisfiable
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          description: Service unavailable
 
   # ============================================================================
   # ROOMS
@@ -6274,6 +6440,281 @@ components:
       required:
         - current_version
         - update_available
+
+    # --------------------------------------------------------------------------
+    # AIRCAT
+    # --------------------------------------------------------------------------
+    AirCatManifest:
+      type: object
+      description: Original track catalog manifest returned by GET /aircat/manifest
+      required:
+        - schema
+        - version
+        - device_id
+        - total_tracks
+        - total_size
+        - tracks
+      properties:
+        schema:
+          type: string
+          example: michi.aircat.manifest.v1
+        version:
+          type: integer
+          example: 1
+        device_id:
+          type: string
+          example: QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays
+        total_tracks:
+          type: integer
+          example: 1
+        total_size:
+          type: integer
+          example: 10485760
+        tracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/AirCatCatalogTrack"
+
+    AirCatCatalogTrack:
+      type: object
+      required:
+        - track_id
+        - title
+        - artist
+        - album
+        - format
+        - size
+        - checksum
+      properties:
+        track_id:
+          type: string
+          example: track-001
+        logical_track_id:
+          type: string
+          example: logical-track-001
+        remote_track_id:
+          type: string
+          example: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+        title:
+          type: string
+          example: Song Title
+        artist:
+          type: string
+          example: Artist Name
+        album:
+          type: string
+          example: Album Name
+        format:
+          type: string
+          example: flac
+        size:
+          type: integer
+          example: 10485760
+        checksum:
+          type: string
+          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+    AirCatGrantRequest:
+      type: object
+      required:
+        - intent
+        - manifest
+        - manifestSha256
+        - clientNonceBase64Url
+      properties:
+        intent:
+          $ref: "#/components/schemas/AirCatIntent"
+        manifest:
+          $ref: "#/components/schemas/AirCatSelectionManifest"
+        manifestSha256:
+          type: string
+          example: 35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7
+        clientNonceBase64Url:
+          type: string
+          example: IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W
+
+    AirCatIntent:
+      type: object
+      required:
+        - transferId
+        - sourceMichiId
+        - destinationMichiId
+        - sourceLibraryId
+        - destinationLibraryId
+        - selectionScope
+        - manifestVersion
+        - requiredScopes
+        - expiresAt
+      properties:
+        transferId:
+          type: string
+          example: transfer-uuid-12345
+        sourceMichiId:
+          type: string
+          example: QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays
+        destinationMichiId:
+          type: string
+          example: lhlxbEOUgOykbYw6mg4McXy75xBWBX5HOn8pVbixqbY
+        sourceLibraryId:
+          type: string
+          example: lib-source-default
+        destinationLibraryId:
+          type: string
+          example: lib-dest-mobile
+        selectionScope:
+          type: string
+          example: ALBUMS
+        manifestVersion:
+          type: integer
+          example: 1
+        requiredScopes:
+          type: array
+          items:
+            type: string
+          example: ["content:read", "content:transfer"]
+        expiresAt:
+          type: integer
+          example: 1731680000000
+        signedGrant:
+          type: object
+          nullable: true
+        authorizationNonceBase64Url:
+          type: string
+          example: ""
+
+    AirCatSelectionManifest:
+      type: object
+      required:
+        - manifestVersion
+        - transferId
+        - sourceDeviceId
+        - totalTracks
+        - totalBytes
+        - items
+      properties:
+        manifestVersion:
+          type: integer
+          example: 1
+        transferId:
+          type: string
+          example: transfer-uuid-12345
+        sourceDeviceId:
+          type: string
+          example: QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays
+        totalTracks:
+          type: integer
+          example: 1
+        totalBytes:
+          type: integer
+          example: 10485760
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AirCatSelectionItem"
+
+    AirCatSelectionItem:
+      type: object
+      required:
+        - logicalTrackId
+        - remoteTrackId
+        - title
+        - artist
+        - album
+        - format
+        - size
+        - sha256
+      properties:
+        logicalTrackId:
+          type: string
+          example: logical-track-001
+        remoteTrackId:
+          type: string
+          example: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+        title:
+          type: string
+          example: Song Title
+        artist:
+          type: string
+          example: Artist Name
+        album:
+          type: string
+          example: Album Name
+        format:
+          type: string
+          example: flac
+        size:
+          type: integer
+          example: 10485760
+        sha256:
+          type: string
+          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+
+    AirCatSignedGrant:
+      type: object
+      required:
+        - version
+        - homeId
+        - authorityMichiId
+        - transferId
+        - sourceMichiId
+        - destinationMichiId
+        - sourceLibraryId
+        - destinationLibraryId
+        - selectionScope
+        - scopes
+        - manifestSha256
+        - issuedAtMillis
+        - expiresAtMillis
+        - nonceBase64Url
+        - signatureBase64Url
+      properties:
+        version:
+          type: integer
+          example: 1
+        homeId:
+          type: string
+          example: KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ
+        authorityMichiId:
+          type: string
+          example: KJN5aOu4gWhA0clmvmwqprYcwYI013vDNPx1jf90CpQ
+        transferId:
+          type: string
+          example: transfer-uuid-12345
+        sourceMichiId:
+          type: string
+          example: QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays
+        destinationMichiId:
+          type: string
+          example: lhlxbEOUgOykbYw6mg4McXy75xBWBX5HOn8pVbixqbY
+        sourceLibraryId:
+          type: string
+          example: lib-source-default
+        destinationLibraryId:
+          type: string
+          example: lib-dest-mobile
+        selectionScope:
+          type: string
+          example: ALBUMS
+        scopes:
+          type: array
+          items:
+            type: string
+          example: ["content:read", "content:transfer"]
+        manifestSha256:
+          type: string
+          example: 35a8427fef1c46924b17ad142d7da6c230e84b8d8cf9f280a5fcfd43b2f5b6f7
+        issuedAtMillis:
+          type: integer
+          example: 1731679400000
+        expiresAtMillis:
+          type: integer
+          example: 1731680000000
+        nonceBase64Url:
+          type: string
+          example: IgYedKwBmRm-r6bvLRATL4UjdXUNyb9W
+        signatureBase64Url:
+          type: string
+          example: -uA_huP-ihEN6MWq4QL2OK4tiPAk-FDmr_olMoLGDUUjWHHomPQTUSMkwI2yJIgT1JZXx5oCxhb6RIOzJ3eTCA
 
 security:
   - BearerAuth: []

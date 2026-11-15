@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/aircat-signed-grant.schema.json",
+  "title": "AirCatSignedGrantV1",
+  "description": "Signed grant returned by POST /api/v1/aircat/authorize and sent in X-Michi-AirCat-Grant header",
+  "type": "object",
+  "required": [
+    "version",
+    "homeId",
+    "authorityMichiId",
+    "transferId",
+    "sourceMichiId",
+    "destinationMichiId",
+    "sourceLibraryId",
+    "destinationLibraryId",
+    "selectionScope",
+    "scopes",
+    "manifestSha256",
+    "issuedAtMillis",
+    "expiresAtMillis",
+    "nonceBase64Url",
+    "signatureBase64Url"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Grant version (always 1)"
+    },
+    "homeId": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Canonical 43-character base64url Home ID"
+    },
+    "authorityMichiId": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Canonical 43-character base64url Home Root Authority Michi ID"
+    },
+    "transferId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique transfer UUID"
+    },
+    "sourceMichiId": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Canonical 43-character base64url Michi ID of producer/server"
+    },
+    "destinationMichiId": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Canonical 43-character base64url Michi ID of consumer/client"
+    },
+    "sourceLibraryId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Source library identifier"
+    },
+    "destinationLibraryId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Destination library identifier"
+    },
+    "selectionScope": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Selection scope (e.g. ALBUMS, TRACKS, PLAYLISTS)"
+    },
+    "scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Authorized scopes, canonically [\"content:read\", \"content:transfer\"]"
+    },
+    "manifestSha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Exact lowercase SHA-256 hex digest of the authorized canonical manifest"
+    },
+    "issuedAtMillis": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Issuance epoch timestamp in milliseconds"
+    },
+    "expiresAtMillis": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Expiration epoch timestamp in milliseconds (maximum 600s lifetime)"
+    },
+    "nonceBase64Url": {
+      "type": "string",
+      "minLength": 22,
+      "maxLength": 88,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Echo of client challenge nonce (base64url without padding)"
+    },
+    "signatureBase64Url": {
+      "type": "string",
+      "minLength": 86,
+      "maxLength": 86,
+      "pattern": "^[A-Za-z0-9_-]{86}$",
+      "description": "Ed25519 signature of HomeRootAuthority over canonical MICHI-AIRCAT-GRANT-V1 bytes (86 chars base64url)"
+    }
+  }
+}

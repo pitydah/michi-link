@@ -76,7 +76,19 @@
     },
     {
       "path": "openapi/michi-link-v1.yaml",
-      "sha256": "165f04983b1cfbbcaacb59500c9c317bb5e7161ea119831269580c21f80b7dd7"
+      "sha256": "9e20d1732b22f72c7e2e06280452a9cd2fa0a7a80d76f6541efaac2343e0777a"
+    },
+    {
+      "path": "schemas/aircat-grant-request.schema.json",
+      "sha256": "d3fcfdbe97c15837519f1094de8f669698ad4a45f0cd9909085091efab17bab9"
+    },
+    {
+      "path": "schemas/aircat-manifest.schema.json",
+      "sha256": "bba0a2cc375777ae44b41a5b573554ec5c2eb9f6e043fa7a4d78b0b9d9a466f8"
+    },
+    {
+      "path": "schemas/aircat-signed-grant.schema.json",
+      "sha256": "494049ec0d778ffac49b4ac7a30a27fa3069d1cdbece306d365150e2309e269e"
     },
     {
       "path": "schemas/album.schema.json",

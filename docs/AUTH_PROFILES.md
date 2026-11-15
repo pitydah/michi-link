@@ -1,8 +1,45 @@
 # Auth Profiles — Michi Link API v1.0.0-alpha
 
-Michi Link define cinco estrategias de autenticación (auth profiles): `PLAYER_PASSWORD`, `SERVER_CODE`, `ED25519_CHALLENGE`, `RECEIVER_BUTTON` y `LEGACY`. Cada proyecto elige la estrategia según su hardware, UX y modelo de seguridad.
+Michi Link define las estrategias de autenticación (auth profiles) del ecosistema: `HOME_MEMBERSHIP` (estrategia primaria de primera clase para Michi Home y receptores modernos), `PLAYER_PASSWORD`, `SERVER_CODE`, `ED25519_CHALLENGE`, `RECEIVER_BUTTON` (LEGACY_ONLY para hardware antiguo) y `LEGACY`. Cada proyecto elige la estrategia según su hardware, UX y modelo de seguridad.
 
 **Regla fundamental:** Todo servidor DEBE incluir `auth.required: true` en `/server/info`. Si un servidor no entrega `auth`, debe tratarse como incompatible con v1.0.0-alpha.
+
+---
+
+## HOME_MEMBERSHIP (Primary Ecosystem Standard)
+
+Usado por: **Michi Music Stream**, **Michi Micro Server**, **Michi Music Mobile** y dispositivos del ecosistema Michi Home Trust V2.
+
+### Identidad y Root Authority
+- **Michi ID**: `michi_id = base64url(BLAKE3(public_key_ed25519))` (exactamente 43 caracteres, sin relleno/padding).
+- **Home ID**: `home_id = base64url(BLAKE3(home_root_public_key))` (exactamente 43 caracteres, sin relleno/padding).
+- La pertenencia a Home se acredita mediante un `DeviceMembershipDto` firmado por la `HomeRootAuthority` persistente.
+- Los receptores que no exponen `/api/v1/authority/*` anuncian ausencia de la capability `authority_v1`.
+
+### Flujo de Autenticación
+1. **Desafío (`POST /api/v1/auth/challenge`)**:
+   El cliente envía `{ "client_michi_id": "<43 chars>" }`.
+   El servidor valida que el dispositivo pertenezca al Home, no esté revocado y devuelve `{ "challenge_nonce": "<32 bytes base64url>", "expires_at_ms": ... }`.
+2. **Sesión (`POST /api/v1/auth/session`)**:
+   El cliente envía:
+   - `client_michi_id`: 43 caracteres base64url.
+   - `client_membership`: certificado de membresía firmado por `HomeRootAuthority`.
+   - `signature`: firma Ed25519 sobre el dominio `MICHI-DEVICE-AUTH-SESSION-V1` + `challenge_nonce`.
+   El servidor verifica criptográficamente la membresía y la firma de posesión, comprueba que el dispositivo no esté revocado en `home_revocations`, y emite un `session_token` con lease temporal renovable.
+3. **Revocaciones Distribuidas**:
+   Cualquier dispositivo revocado en el Home es rechazado de inmediato (403 FORBIDDEN). La revocación es irreversible dentro de la autoridad Home vigente.
+
+### Payload `auth` en `/server/info`
+
+```json
+{
+  "auth": {
+    "required": true,
+    "strategy": "HOME_MEMBERSHIP",
+    "token_refresh": false
+  }
+}
+```
 
 ---
 
@@ -70,9 +107,11 @@ Usado por: **Michi Micro Server**
 
 ---
 
-## RECEIVER_BUTTON
+## RECEIVER_BUTTON (LEGACY_ONLY)
 
-Usado por: **Michi Music Stream** (Standard y Hi-Fi). Decisiones congeladas en [ADR-0001](adr/ADR-0001-receiver-v1-lite.md): el receptor es el servidor de pairing y Michi Link es la fuente normativa del contrato.
+> **LEGACY_ONLY**: Esta estrategia está deprecada y se conserva exclusivamente para compatibilidad histórica con firmware antiguo sin aprovisionamiento Home. El firmware actual de Michi Music Stream utiliza exclusivamente `HOME_MEMBERSHIP` vía `/api/v1/auth/challenge` y `/api/v1/auth/session`. El botón físico en hardware actual se reserva únicamente para factory reset o recuperación de provisión Wi-Fi, NUNCA como condición de pairing o identidad en tiempo de ejecución.
+
+Usado por: **Michi Music Stream legado**. Decisiones históricas congeladas en [ADR-0001](adr/ADR-0001-receiver-v1-lite.md).
 
 ### Flujo
 
@@ -169,10 +208,11 @@ Usado como transición por clientes que aún implementan `action`/`value`.
 
 | Proyecto | Estrategia | token_refresh | Código en pantalla | Botón físico |
 |----------|-----------|---------------|-------------------|--------------|
+| Michi Music Stream (receptor actual) | HOME_MEMBERSHIP | No | No | No (solo reset) |
+| Michi Micro Server | HOME_MEMBERSHIP / SERVER_CODE | Sí | Sí (web/console) | No |
+| Michi Music Mobile | HOME_MEMBERSHIP / SERVER_CODE | Según rol | Según rol | No |
 | Michi Music Player | PLAYER_PASSWORD | No | No (contraseña en UI) | No |
-| Michi Micro Server | SERVER_CODE | Sí | Sí (web/console) | No |
-| Michi Music Mobile | SERVER_CODE (como servidor); como cliente detecta la estrategia del servidor | Según rol | Según rol | No |
-| Michi Music Stream (receptor) | RECEIVER_BUTTON | No | No | Sí |
+| Hardware legado (firmware previo) | RECEIVER_BUTTON (LEGACY_ONLY) | No | No | Sí |
 
 ---
 

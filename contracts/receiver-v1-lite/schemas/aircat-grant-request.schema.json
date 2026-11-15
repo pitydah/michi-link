@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/aircat-grant-request.schema.json",
+  "title": "AirCatGrantRequest",
+  "description": "Request body for POST /api/v1/aircat/authorize",
+  "type": "object",
+  "required": [
+    "intent",
+    "manifest",
+    "manifestSha256",
+    "clientNonceBase64Url"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "intent": {
+      "type": "object",
+      "required": [
+        "transferId",
+        "sourceMichiId",
+        "destinationMichiId",
+        "sourceLibraryId",
+        "destinationLibraryId",
+        "selectionScope",
+        "manifestVersion",
+        "requiredScopes",
+        "expiresAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "transferId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique client-generated transfer UUID"
+        },
+        "sourceMichiId": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 43,
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "description": "Canonical 43-character base64url Michi ID of producer/server"
+        },
+        "destinationMichiId": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 43,
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "description": "Canonical 43-character base64url Michi ID of consumer/client"
+        },
+        "sourceLibraryId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source library identifier"
+        },
+        "destinationLibraryId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Destination library identifier"
+        },
+        "selectionScope": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Selection scope (e.g. ALBUMS, TRACKS, PLAYLISTS)"
+        },
+        "manifestVersion": {
+          "type": "integer",
+          "const": 1,
+          "description": "Manifest format version (always 1)"
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Scopes required for this transfer (e.g. content:read, content:transfer)"
+        },
+        "expiresAt": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Client requested expiration timestamp in epoch milliseconds"
+        },
+        "signedGrant": {
+          "type": ["object", "null"],
+          "description": "Reserved for grant renewal; null for initial authorization"
+        },
+        "authorizationNonceBase64Url": {
+          "type": "string",
+          "description": "Reserved authorization nonce string"
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "manifestVersion",
+        "transferId",
+        "sourceDeviceId",
+        "totalTracks",
+        "totalBytes",
+        "items"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "manifestVersion": {
+          "type": "integer",
+          "const": 1,
+          "description": "Manifest format version (always 1)"
+        },
+        "transferId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Transfer UUID matching intent.transferId"
+        },
+        "sourceDeviceId": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 43,
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "description": "Producer device Michi ID matching intent.sourceMichiId"
+        },
+        "totalTracks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Exact number of selected items"
+        },
+        "totalBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Exact sum of selected item bytes"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "required": [
+              "logicalTrackId",
+              "remoteTrackId",
+              "title",
+              "artist",
+              "album",
+              "format",
+              "size",
+              "sha256"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "logicalTrackId": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Client logical track ID"
+              },
+              "remoteTrackId": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Producer remote original asset UUID"
+              },
+              "title": { "type": "string" },
+              "artist": { "type": "string" },
+              "album": { "type": "string" },
+              "format": { "type": "string", "minLength": 1 },
+              "size": { "type": "integer", "minimum": 1 },
+              "sha256": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64,
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Exact lowercase SHA-256 hex digest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "manifestSha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Canonical SHA-256 hex digest computed over MICHI-AIRCAT-MANIFEST-V1 binary envelope"
+    },
+    "clientNonceBase64Url": {
+      "type": "string",
+      "minLength": 22,
+      "maxLength": 88,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Random 16-64 byte client challenge encoded as base64url without padding"
+    }
+  }
+}
