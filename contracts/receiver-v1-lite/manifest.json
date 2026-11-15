@@ -1,10 +1,10 @@
 {
   "version": "1.0.0-alpha.5",
-  "upstream_commit": "1603c9bb194ee47d564401c4b7b28aeba1ec53ec",
+  "upstream_commit": "045d9bdae8f6fec590e4e0cd1ae5c7c75b2ad8e5",
   "files": [
     {
       "path": "UPSTREAM_COMMIT",
-      "sha256": "de4d74530495859a75fd5f125c32393d2c3c4fe28cf59d21c9625c4f8f8657c8"
+      "sha256": "f3192201d23a0b63671c09f6b511d5dceeda7aae53f0369a7985c8cad2108d43"
     },
     {
       "path": "VERSION",
