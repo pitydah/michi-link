@@ -2989,6 +2989,16 @@ paths:
       responses:
         "200":
           description: AirCat catalog manifest v1
+          headers:
+            X-Michi-AirCat-Protocol:
+              schema:
+                type: string
+                example: michi.aircat.original.v1
+              description: Fixed protocol marker header
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
           content:
             application/json:
               schema:
@@ -3023,6 +3033,16 @@ paths:
       responses:
         "200":
           description: Signed AirCat grant v1
+          headers:
+            X-Michi-AirCat-Protocol:
+              schema:
+                type: string
+                example: michi.aircat.original.v1
+              description: Fixed protocol marker header
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
           content:
             application/json:
               schema:
@@ -3082,6 +3102,11 @@ paths:
         "200":
           description: Full original file bytes
           headers:
+            X-Michi-AirCat-Protocol:
+              schema:
+                type: string
+                example: michi.aircat.original.v1
+              description: Fixed protocol marker header
             ETag:
               schema:
                 type: string
@@ -3102,6 +3127,11 @@ paths:
         "206":
           description: Partial content range
           headers:
+            X-Michi-AirCat-Protocol:
+              schema:
+                type: string
+                example: michi.aircat.original.v1
+              description: Fixed protocol marker header
             Content-Range:
               schema:
                 type: string
