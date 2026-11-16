@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/aircat-enrollment-qr.schema.json",
+  "title": "AirCatEnrollmentQrV1",
+  "description": "Administrative AirCat Home enrollment QR payload returned by GET /api/v1/aircat/enrollment-qr",
+  "type": "object",
+  "required": [
+    "type",
+    "homeId",
+    "authorityMichiId",
+    "authorityPublicKeyBase64Url",
+    "sourceMichiId",
+    "pinnedBaseUrl",
+    "tlsSpkiSha256",
+    "nonceBase64Url",
+    "issuedAtMillis",
+    "expiresAtMillis"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "michi.aircat.home.enrollment.v1",
+      "description": "Fixed enrollment QR payload type"
+    },
+    "homeId": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Canonical 43-char base64url BLAKE3 digest of Home Root public key"
+    },
+    "authorityMichiId": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Canonical 43-char base64url Home Root authority Michi ID (equal to homeId)"
+    },
+    "authorityPublicKeyBase64Url": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Raw 32-byte Ed25519 Home Root verifying key in base64url without padding"
+    },
+    "sourceMichiId": {
+      "type": "string",
+      "minLength": 43,
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Canonical 43-char base64url Michi ID of the producer server"
+    },
+    "pinnedBaseUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Pinned HTTPS origin URL of the producer (cleartext HTTP forbidden)"
+    },
+    "tlsSpkiSha256": {
+      "type": "string",
+      "pattern": "^sha256/[A-Za-z0-9+/=]{43,44}$",
+      "description": "RFC 7469 SubjectPublicKeyInfo SHA-256 pin of the producer TLS certificate"
+    },
+    "nonceBase64Url": {
+      "type": "string",
+      "minLength": 22,
+      "maxLength": 86,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Cryptographic enrollment challenge nonce in base64url without padding"
+    },
+    "issuedAtMillis": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "UTC epoch milliseconds when the QR payload was issued"
+    },
+    "expiresAtMillis": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "UTC epoch milliseconds when the QR payload expires"
+    }
+  }
+}

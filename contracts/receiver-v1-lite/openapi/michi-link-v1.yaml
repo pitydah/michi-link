@@ -3115,6 +3115,11 @@ paths:
               schema:
                 type: string
                 example: bytes
+            Cache-Control:
+              schema:
+                type: string
+                example: no-transform
+              description: Forbids intermediate transcoding or compression
             X-Michi-AirCat-Authorized-Grant-SHA256:
               schema:
                 type: string
@@ -3143,6 +3148,11 @@ paths:
               schema:
                 type: string
                 example: bytes
+            Cache-Control:
+              schema:
+                type: string
+                example: no-transform
+              description: Forbids intermediate transcoding or compression
             X-Michi-AirCat-Authorized-Grant-SHA256:
               schema:
                 type: string
@@ -3165,6 +3175,43 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           description: Service unavailable
+
+  /aircat/enrollment-qr:
+    get:
+      tags:
+        - AirCat
+      summary: Generate AirCat Home enrollment QR payload
+      description: |
+        Generates an authenticated administrative enrollment QR payload containing
+        the Home Root public key, derived Home ID, pinned HTTPS origin URL, and
+        RFC 7469 TLS SPKI SHA-256 pin.
+      operationId: getAirCatEnrollmentQr
+      responses:
+        "200":
+          description: AirCat enrollment QR payload v1
+          headers:
+            X-Michi-AirCat-Protocol:
+              schema:
+                type: string
+                example: michi.aircat.original.v1
+              description: Fixed protocol marker header
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+              description: Prevents caching of enrollment payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AirCatEnrollmentQr"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          description: TLS or Home authority unavailable
 
   # ============================================================================
   # ROOMS
@@ -6743,6 +6790,51 @@ components:
         signatureBase64Url:
           type: string
           example: ccQtsU8Nzu4zQAQ_WZf_oFCTd07QJJptMDckzbeay1FmgF1oJuAYM_TWgIAXVyOe3kApsJqIoJPQqLa5iIwKBA
+
+    AirCatEnrollmentQr:
+      type: object
+      required:
+        - type
+        - homeId
+        - authorityMichiId
+        - authorityPublicKeyBase64Url
+        - sourceMichiId
+        - pinnedBaseUrl
+        - tlsSpkiSha256
+        - nonceBase64Url
+        - issuedAtMillis
+        - expiresAtMillis
+      properties:
+        type:
+          type: string
+          example: michi.aircat.home.enrollment.v1
+        homeId:
+          type: string
+          example: _vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ
+        authorityMichiId:
+          type: string
+          example: _vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ
+        authorityPublicKeyBase64Url:
+          type: string
+          example: IVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI
+        sourceMichiId:
+          type: string
+          example: QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays
+        pinnedBaseUrl:
+          type: string
+          example: https://192.168.1.50:9443
+        tlsSpkiSha256:
+          type: string
+          example: sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+        nonceBase64Url:
+          type: string
+          example: WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2
+        issuedAtMillis:
+          type: integer
+          example: 1731679400000
+        expiresAtMillis:
+          type: integer
+          example: 1731680000000
 
 security:
   - BearerAuth: []
