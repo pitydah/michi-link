@@ -26,6 +26,7 @@ function exampleFiles() {
 // Exact mapping: example file name -> schema base name (without .schema.json).
 // Every example MUST have a mapping; any unmapped example fails the suite.
 const EXAMPLE_MAP = {
+  "aircat-enrollment-qr.json": "aircat-enrollment-qr",
   "aircat-grant-request.json": "aircat-grant-request",
   "aircat-manifest.json": "aircat-manifest",
   "aircat-signed-grant.json": "aircat-signed-grant",

@@ -1,0 +1,12 @@
+{
+  "type": "michi.aircat.home.enrollment.v1",
+  "homeId": "_vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ",
+  "authorityMichiId": "_vbfpIsHOSTENlOQENeBL75QCWroJWn9rTX3lii8AIQ",
+  "authorityPublicKeyBase64Url": "IVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+  "sourceMichiId": "QlGQosQszLQse057MCaw32IAHXv-I5klmAAsbivIays",
+  "pinnedBaseUrl": "https://192.168.1.50:9443",
+  "tlsSpkiSha256": "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "nonceBase64Url": "WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2",
+  "issuedAtMillis": 1731679400000,
+  "expiresAtMillis": 1731680000000
+}
