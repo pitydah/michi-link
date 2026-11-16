@@ -225,3 +225,24 @@ Usado como transición por clientes que aún implementan `action`/`value`.
    - `RECEIVER_BUTTON`: No aplica (Mobile no se empareja directamente con un receptor).
 3. Si `auth.token_refresh` es `false`, Mobile no intentará refrescar el token.
 4. Si `auth.token_refresh` es `true`, Mobile usará `/token/refresh` antes de que expire.
+
+---
+
+## AIRCAT_STRICT (Original Audio Transfer Transport Profile)
+
+Perfil obligatorio de transporte para la transferencia de archivos originales AirCat v1 (`michi.aircat.original.v1`) entre `Michi Micro Server` (productor) y `Michi Music Mobile` (consumidor).
+
+### Requisitos de Transporte (LINK-06 / LINK-15 / LINK-16)
+
+1. **HTTPS Obligatorio**: Todas las rutas `/api/v1/aircat/*` (`/manifest`, `/authorize`, `/download/{remoteTrackId}`, `/enrollment-qr`) deben cursarse sobre HTTPS con validación de hostname/CA y **pin SPKI RFC 7469** (`sha256/<BASE64_STANDARD>` con padding `=`) derivado del certificado TLS X.509 real del servidor.
+2. **Prohibición de Downgrade y Redirecciones**:
+   - Prohibido el fallback silencioso a HTTP cleartext.
+   - Prohibido `trustAll`, `HostnameVerifier { true }` o aceptar certificados/pins provenientes de anuncios mDNS/UDP no autenticados.
+   - Prohibido seguir redirecciones HTTP (`3xx`) en clientes AirCat.
+3. **Ciclo de Vida del Pin SPKI y Migración de URL/IP (LINK-21)**:
+   - El pin `tlsSpkiSha256` y la URL origen `pinnedBaseUrl` se establecen únicamente mediante enrolamiento administrativo explícito (`michi.aircat.home.enrollment.v1` vía QR autenticado).
+   - Un cambio de IP DHCP o hostname en anuncios Discovery/mDNS **no autoriza** migrar silenciosamente `pinnedBaseUrl` ni sustituir el pin SPKI; requiere reenrolamiento explícito confirmado.
+4. **Cabeceras Wire Obligatorias (`michi.aircat.original.v1`)**:
+   - Todas las respuestas exitosas (`200`, `206`, `416` aplicable): `X-Michi-AirCat-Protocol: michi.aircat.original.v1` (valor único, sin duplicados).
+   - Respuestas JSON (`/manifest`, `/authorize`, `/enrollment-qr`): `Content-Type: application/json` y `Cache-Control: no-store`.
+   - Descargas binarias (`/download/{remoteTrackId}`): `Content-Type: application/octet-stream`, `Cache-Control: no-transform`, `Accept-Ranges: bytes`, `ETag: "sha256-<hex>-<size>"` fuerte, `X-Michi-AirCat-Authorized-Grant-SHA256: <hex>`, y rechazo de compresión (`Accept-Encoding: identity`).
