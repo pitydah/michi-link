@@ -54,3 +54,38 @@ Todos los errores AirCat devuelven el envelope canónico `{"error": {"code": "..
 | **michi-music-stream** | Receptor físico ESP32-S3 | `HOME_MEMBERSHIP` (`v1-lite`) | `aircat_original=false` (excluido por diseño) | Botón reservado exclusivamente a factory reset |
 | **michi-music-mobile** | Consumidor AirCat | `HOME_MEMBERSHIP` / `AIRCAT_STRICT` | Consumidor en `Michi Devices` | Sin fallback cleartext |
 | **michi-music-player** | Reproductor escritorio | `PLAYER_PASSWORD` | No aplica | Contraseña local |
+
+---
+
+## 7. Canonización Binaria Normativa (`LINK-03` / `LINK-17`)
+
+AirCat v1 **no** firma serializaciones JSON RFC 8785 implícitas ni órdenes de claves variables; firma bytes binarios deterministas definidos en `crates/michi-identity/src/aircat.rs`:
+
+- **Domain separators**: `"MICHI-AIRCAT-MANIFEST-V1"` y `"MICHI-AIRCAT-GRANT-V1"`.
+- **Codificación de enteros**: `i32` (`4` bytes) y `i64` (`8` bytes) en orden **big-endian**.
+- **Codificación de cadenas UTF-8** (`write_field`): prefijo `u32` big-endian con la longitud en bytes (máximo `4096` bytes por campo) seguido por los bytes UTF-8 sin padding.
+- **Orden estricto del manifiesto** (`MICHI-AIRCAT-MANIFEST-V1`):
+  `domain -> manifestVersion (i32=1) -> transferId -> sourceDeviceId -> totalTracks (i32) -> totalBytes (i64) -> itemCount (i32)` seguido por cada track único en orden exacto de la selección:
+  `logicalTrackId -> remoteTrackId -> title -> artist -> album -> format -> size (i64) -> sha256_lowercase`.
+- **Orden estricto del grant** (`MICHI-AIRCAT-GRANT-V1`):
+  `domain -> version (i32=1) -> homeId -> authorityMichiId -> transferId -> sourceMichiId -> destinationMichiId -> sourceLibraryId -> destinationLibraryId -> selectionScope -> scopeCount (i32=2) -> "content:read" -> "content:transfer" -> manifestSha256 -> issuedAtMillis (i64) -> expiresAtMillis (i64) -> nonceBase64Url`.
+- **Golden vectors canónicos** (`tests/vectors/aircat/aircat-golden-v1.*` y `fixtures/aircat/`):
+  - Grant canónico binario: `451` bytes (`signatureBase64Url = "ccQtsU8Nzu4zQAQ_WZf_oFCTd07QJJptMDckzbeay1FmgF1oJuAYM_TWgIAXVyOe3kApsJqIoJPQqLa5iIwKBA"`).
+  - Manifiesto canónico de prueba: `df2221e0e394146f646543f4c824f00c7c3b40e1950d7a42d9db57f84597b066`.
+  - Recibo HTTP: `hex(sha256(ASCII(grant_header_raw))) = a9b0ac283d6da5511cc935fab32d1e739f868b2aaf82568e8f8f08a701c6b300`.
+- **Tolerancia cero**: cualquier campo adicional no firmado, Scope distinto de `["content:read", "content:transfer"]` o discrepancia de orden invalida la firma Ed25519 antes de leer bytes de audio.
+
+---
+
+## 8. Contratos Complementarios del Ecosistema (Sección `10.6`)
+
+| Flujo | Fuente de autoridad | Invariante de interoperabilidad y no interferencia |
+|---|---|---|
+| `Michi Control` | Autoridad de sesión de audio del propietario activo | El handoff de reproducción entre `michi-music-player`, `michi-music-mobile` y `michi-micro-server` no muta `homeId`, membresía ni posesión de grants AirCat. |
+| `NowPlaying` | `AudioEngine` / `Media3` o `PlaybackEngine` de `michi-micro-server` | Refleja estado de reproducción en tiempo real sin interferir con el plano de descarga original ni simular progreso de copia AirCat. |
+| `RTP Multiroom` | Sesión de salas en `michi-micro-server` y `michi-music-stream` (`receiver-v1-lite`) | Audio PCM S16LE 48 kHz/2ch PT97 en bloques 10 ms (`1920` bytes) con SSRC fijo; las transferencias AirCat usan semáforos y buffers de 64 KiB fuera del hilo RTP. |
+| `Scent / Whisker` | Anuncios UDP multicast / mDNS firmados (`_michi-link._tcp.local`) | Proveen únicamente presencia provisional (`±90 s`); nunca elevan confianza ni autorizan cambio silencioso de URL TLS pinneada. |
+| `Library metadata` | Biblioteca original en productor + Room local tras importación | Mantiene `remoteTrackId != logicalTrackId` cuando aplique; metadatos, carátulas o etiquetas no sustituyen ni alteran el SHA-256 del archivo binario original. |
+| `Kitty AI` (futuro) | Motor on-demand local en `michi-music-mobile` | Puede diagnosticar transferencias usando recibos y códigos saneados; prohibido leer secretos Home, tokens Bearer o iniciar discovery autónomo. |
+| `Devices USB / MTP` | Almacenamiento conectado + Storage Access Framework (SAF) | Separado por feature-gate independiente respecto a AirCat LAN (`michi.aircat.original.v1`); no asume soporte USB accessory activo sobre transporte HTTP. |
+
