@@ -32,6 +32,7 @@
 //! ```
 
 pub mod aircat;
+pub mod capabilities;
 pub mod discovery;
 pub mod error;
 pub mod home;
@@ -46,15 +47,24 @@ pub use aircat::{
     canonical_aircat_grant_bytes_v1, validate_aircat_claims_v1, verify_aircat_grant_v1,
     AirCatGrantClaims, AirCatGrantError, AirCatSignedGrantV1,
 };
+pub use capabilities::{
+    is_aircat_original_v1_ready, CanonicalServerCapabilities, AIRCAT_REQUIRED_CAPABILITIES,
+    CANONICAL_SERVER_CAPABILITIES, CAP_AIRCAT_AUTHORIZE_V1, CAP_AIRCAT_MANIFEST_V1,
+    CAP_AIRCAT_ORIGINAL_DOWNLOAD_V1, CAP_AIRCAT_ORIGINAL_V1, CAP_ARTWORK, CAP_DOWNLOAD, CAP_EVENTS,
+    CAP_HOME_TLS_SPKI_PINNED, CAP_LIBRARY, CAP_MULTIROOM, CAP_PLAYBACK, CAP_PLAYLISTS, CAP_QUEUE,
+    CAP_RECEIVERS, CAP_SEARCH, CAP_STREAMING, CAP_SYNC, CAP_SYNC_MANIFEST, IDENTITY_SCHEME_V1,
+};
 
 pub use discovery::DiscoveryEngine;
 pub use error::{ContractViolation, IdentityError};
 pub use home::{
     canonical_membership_bytes, canonical_revocation_bytes, device_auth_challenge_payload,
-    server_auth_confirm_payload, sign_device_auth_challenge, sign_server_auth_confirm,
-    verify_device_auth_challenge, verify_membership, verify_revocation, verify_server_auth_confirm,
+    home_enrollment_pop_payload, server_auth_confirm_payload, sign_device_auth_challenge,
+    sign_home_enrollment_pop, sign_server_auth_confirm, verify_device_auth_challenge,
+    verify_home_enrollment_pop, verify_membership, verify_revocation, verify_server_auth_confirm,
     verify_server_auth_session, HomeAuthError, HomeRootAuthority, DEVICE_AUTH_DOMAIN_V1,
-    MEMBERSHIP_DOMAIN_V1, REVOCATION_DOMAIN_V1, SERVER_AUTH_DOMAIN_V1,
+    HOME_ENROLLMENT_POP_DOMAIN_V1, MEMBERSHIP_DOMAIN_V1, REVOCATION_DOMAIN_V1,
+    SERVER_AUTH_DOMAIN_V1,
 };
 pub use identity::IdentityManager;
 pub use pairing::PairingRegistry;
@@ -63,7 +73,10 @@ pub use types::{
     decode_base64url_strict, encode_base64url, Announce, AnnounceProfile, ApiVersion, AuthStrategy,
     DeviceAuthChallengeRequest, DeviceAuthChallengeResponse, DeviceAuthSessionRequest,
     DeviceAuthSessionResponse, DeviceMembershipDto, HomeDeviceRevocationDto, HomeDeviceRosterDto,
-    HomeDeviceRosterEntry, IdentityDocument, MichiHomeDto, MichiId, PairConfirmRequest,
+    HomeDeviceRosterEntry, HomeEnrollmentApproveRequest, HomeEnrollmentApproveResponse,
+    HomeEnrollmentChallengeRequest, HomeEnrollmentChallengeResponse, HomeEnrollmentPendingEntry,
+    HomeEnrollmentRequest, HomeEnrollmentRequestResponse, HomeEnrollmentStatus,
+    HomeEnrollmentStatusResponse, IdentityDocument, MichiHomeDto, MichiId, PairConfirmRequest,
     PairConfirmResponse, PairStartRequest, PairStartResponse, PairingQr, PairingSession, Role,
     Service, TrustLevel,
 };

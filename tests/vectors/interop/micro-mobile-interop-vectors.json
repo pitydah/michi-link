@@ -1,0 +1,136 @@
+{
+  "aircat_grant_v1": {
+    "canonical_payload_base64url": "AAAAFU1JQ0hJLUFJUkNBVC1HUkFOVC1WMQAAAAEAAAArU25pSGZFb0pKdnhkWExLQ3UwWEJISVNKc2dMLUdKRDZER1dUNWhrcm4zVQAAACtTbmlIZkVvSkp2eGRYTEtDdTBYQkhJU0pzZ0wtR0pENkRHV1Q1aGtybjNVAAAAJDU1MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDMzMwAAACtOS04wcHh6a1dtVE85RzNxNFVXRHEwb1hWUGpqVTV0RTgwYklFNFJJVWNNAAAAK3J6MmdudzhMUmNaUE1sbjdPSEFrbm9FTDVEZzhURnlKN3V0ZkZLSnlQbEUAAAARbGliLW1pY3JvLWRlZmF1bHQAAAASbGliLW1vYmlsZS1kZWZhdWx0AAAABkFMQlVNUwAAAAIAAAAMY29udGVudDpyZWFkAAAAEGNvbnRlbnQ6dHJhbnNmZXIAAABAYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYQAAAZqW1gYAAAABmpbfLcAAAAAgV25CZlEyaGhiR3hsYm1kbFRtOXVZMlZmTVRJek5EVTI",
+    "signed_grant": {
+      "authorityMichiId": "SniHfEoJJvxdXLKCu0XBHISJsgL-GJD6DGWT5hkrn3U",
+      "destinationLibraryId": "lib-mobile-default",
+      "destinationMichiId": "rz2gnw8LRcZPMln7OHAknoEL5Dg8TFyJ7utfFKJyPlE",
+      "expiresAtMillis": 1763467800000,
+      "homeId": "SniHfEoJJvxdXLKCu0XBHISJsgL-GJD6DGWT5hkrn3U",
+      "issuedAtMillis": 1763467200000,
+      "manifestSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "nonceBase64Url": "WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2",
+      "scopes": [
+        "content:read",
+        "content:transfer"
+      ],
+      "selectionScope": "ALBUMS",
+      "signatureBase64Url": "QzArcIu04GtNBi0-sesSCeQKpxfiUCsugWqC1w2BOIvvs9s5JCfV7K5N56p6xvAO65Ezfa8-YBe8S8LTnG9KCA",
+      "sourceLibraryId": "lib-micro-default",
+      "sourceMichiId": "NKN0pxzkWmTO9G3q4UWDq0oXVPjjU5tE80bIE4RIUcM",
+      "transferId": "550e8400-e29b-41d4-a716-446655440333",
+      "version": 1
+    }
+  },
+  "capabilities": {
+    "aircat_required": [
+      "aircat_original_v1",
+      "home_tls_spki_pinned",
+      "aircat_manifest_v1",
+      "aircat_authorize_v1",
+      "aircat_original_download_v1"
+    ],
+    "features_with_tls": {
+      "aircat_authorize_v1": true,
+      "aircat_manifest_v1": true,
+      "aircat_original_download_v1": true,
+      "aircat_original_v1": true,
+      "artwork": true,
+      "download": true,
+      "events": true,
+      "home_tls_spki_pinned": true,
+      "library": true,
+      "multiroom": true,
+      "playback": true,
+      "playlists": true,
+      "queue": true,
+      "receivers": true,
+      "search": true,
+      "streaming": true,
+      "sync": true,
+      "sync_manifest": true
+    },
+    "features_without_tls": {
+      "aircat_authorize_v1": false,
+      "aircat_manifest_v1": false,
+      "aircat_original_download_v1": false,
+      "aircat_original_v1": false,
+      "artwork": true,
+      "download": true,
+      "events": true,
+      "home_tls_spki_pinned": false,
+      "library": true,
+      "multiroom": true,
+      "playback": true,
+      "playlists": true,
+      "queue": true,
+      "receivers": true,
+      "search": true,
+      "streaming": true,
+      "sync": true,
+      "sync_manifest": true
+    }
+  },
+  "home_enrollment_pop": {
+    "canonical_payload_utf8": "michi-link-home-enrollment-pop-v1SniHfEoJJvxdXLKCu0XBHISJsgL-GJD6DGWT5hkrn3UNKN0pxzkWmTO9G3q4UWDq0oXVPjjU5tE80bIE4RIUcMrz2gnw8LRcZPMln7OHAknoEL5Dg8TFyJ7utfFKJyPlEF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4550e8400-e29b-41d4-a716-446655440099VFfZjzw8JeAM7-RFiTSrMA",
+    "challenge_id": "550e8400-e29b-41d4-a716-446655440099",
+    "challenge_nonce": "VFfZjzw8JeAM7-RFiTSrMA",
+    "client_signature": "aPjc7KhYzS5WiexMph2QLGAtZkGEmZDw62i1Xip203XgSYlZpaFcsHxkZ_5iBp25yatLRlQ4T0ptaguS925FDQ"
+  },
+  "home_mutual_auth": {
+    "challenge_id": "550e8400-e29b-41d4-a716-446655440111",
+    "challenge_nonce": "WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2",
+    "client_payload_utf8": "michi-link-device-auth-v1SniHfEoJJvxdXLKCu0XBHISJsgL-GJD6DGWT5hkrn3UNKN0pxzkWmTO9G3q4UWDq0oXVPjjU5tE80bIE4RIUcMrz2gnw8LRcZPMln7OHAknoEL5Dg8TFyJ7utfFKJyPlE550e8400-e29b-41d4-a716-446655440111WnBfQ2hhbGxlbmdlTm9uY2VfMTIzNDU2",
+    "client_signature": "BJtkvwhY-jRK_uM1wKGOSWZuG7ocJ9eukBdrkHYS5vSlTWCQEkG_1qNvv9Ni8dq03mWQmcrlukbmONrQ7oUjAg",
+    "server_confirm_payload_utf8": "michi-link-server-auth-v1SniHfEoJJvxdXLKCu0XBHISJsgL-GJD6DGWT5hkrn3UNKN0pxzkWmTO9G3q4UWDq0oXVPjjU5tE80bIE4RIUcMrz2gnw8LRcZPMln7OHAknoEL5Dg8TFyJ7utfFKJyPlE550e8400-e29b-41d4-a716-446655440111michi_home_deterministic_golden_token_v1",
+    "server_signature": "9dc8fk0sVb3TdZdqElA72asiPDhAW8tDcz7HbnlnLtxoV4-K_SUvEp6GCca5yotTK7TewjYeP_0FBb9W2wLjAw",
+    "session_token": "michi_home_deterministic_golden_token_v1"
+  },
+  "home_root": {
+    "home_id": "SniHfEoJJvxdXLKCu0XBHISJsgL-GJD6DGWT5hkrn3U",
+    "public_key": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+    "seed_hex": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "identity_scheme": "ed25519-blake3-v1",
+  "mobile_client": {
+    "membership": {
+      "device_michi_id": "rz2gnw8LRcZPMln7OHAknoEL5Dg8TFyJ7utfFKJyPlE",
+      "device_public_key": "F8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4",
+      "device_type": "mobile",
+      "home_id": "SniHfEoJJvxdXLKCu0XBHISJsgL-GJD6DGWT5hkrn3U",
+      "issued_at": "2026-11-18T12:00:00Z",
+      "roles": [
+        "mobile_player",
+        "remote_controller",
+        "sync_client"
+      ],
+      "serial": 2,
+      "signature": "pKaiBn7O5Cxm3cgWE-d7q8a0kFFXqMF2oax4yffpXH-LoM45H4Rpp4QLEokCe8HhIqdFFZNGCfFGJAEgDfSGDw",
+      "version": 1
+    },
+    "michi_id": "rz2gnw8LRcZPMln7OHAknoEL5Dg8TFyJ7utfFKJyPlE",
+    "public_key": "F8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4",
+    "seed_hex": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "schema": "michi.interop.golden_vectors.r1",
+  "server": {
+    "membership": {
+      "device_michi_id": "NKN0pxzkWmTO9G3q4UWDq0oXVPjjU5tE80bIE4RIUcM",
+      "device_public_key": "oJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA",
+      "device_type": "server",
+      "home_id": "SniHfEoJJvxdXLKCu0XBHISJsgL-GJD6DGWT5hkrn3U",
+      "issued_at": "2026-11-18T12:00:00Z",
+      "roles": [
+        "music_server",
+        "library_host",
+        "playback_host"
+      ],
+      "serial": 1,
+      "signature": "UIMvNv9CSFkAtskUZzhkmvbziWulUYULzskcDecTG4QFPzvY9OQi5uyDEw3Mp0ohIOwopbIIL90d8LyTe9BMBQ",
+      "version": 1
+    },
+    "michi_id": "NKN0pxzkWmTO9G3q4UWDq0oXVPjjU5tE80bIE4RIUcM",
+    "public_key": "oJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA",
+    "seed_hex": "2222222222222222222222222222222222222222222222222222222222222222"
+  }
+}

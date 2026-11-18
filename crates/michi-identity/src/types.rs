@@ -528,6 +528,115 @@ pub struct HomeDeviceRevocationDto {
     pub signature: String,
 }
 
+/// Request to obtain a short-lived Ed25519 proof-of-possession challenge before
+/// submitting an authorized Home membership enrollment request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HomeEnrollmentChallengeRequest {
+    pub purpose: String,
+    pub home_id: String,
+    pub client_michi_id: String,
+    pub client_public_key: String,
+}
+
+/// Server challenge returned by `POST /api/v1/home/enrollment/challenge`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HomeEnrollmentChallengeResponse {
+    pub challenge_id: Uuid,
+    pub challenge_nonce: String,
+    pub home_id: String,
+    pub server_michi_id: String,
+    pub server_public_key: String,
+    pub expires_in: u64,
+}
+
+/// Client enrollment request signed with Ed25519 proof-of-possession.
+/// Submitting this request NEVER grants Home membership automatically; an
+/// authenticated Home administrator MUST explicitly approve it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HomeEnrollmentRequest {
+    pub home_id: String,
+    pub challenge_id: Uuid,
+    pub client_michi_id: String,
+    pub client_public_key: String,
+    pub device_name: String,
+    pub device_type: String,
+    pub requested_roles: Vec<Role>,
+    pub client_signature: String,
+}
+
+/// Lifecycle state of an authorized Home membership enrollment request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HomeEnrollmentStatus {
+    Pending,
+    Approved,
+    Rejected,
+    Expired,
+}
+
+/// Response returned when a PoP-verified enrollment request enters the admin
+/// approval queue (`202 Accepted`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HomeEnrollmentRequestResponse {
+    pub request_id: Uuid,
+    pub status: HomeEnrollmentStatus,
+    pub home_id: String,
+    pub client_michi_id: String,
+    pub expires_at: String,
+    pub claim_token: String,
+}
+
+/// Admin-visible pending Home enrollment entry returned by
+/// `GET /api/v1/home/enrollment/pending`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HomeEnrollmentPendingEntry {
+    pub request_id: Uuid,
+    pub home_id: String,
+    pub client_michi_id: String,
+    pub client_public_key: String,
+    pub device_name: String,
+    pub device_type: String,
+    pub requested_roles: Vec<Role>,
+    pub created_at: String,
+    pub expires_at: String,
+}
+
+/// Optional payload supplied by an administrator approving an enrollment request.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HomeEnrollmentApproveRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub roles: Option<Vec<Role>>,
+}
+
+/// Response returned to an administrator upon approving a pending enrollment.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HomeEnrollmentApproveResponse {
+    pub request_id: Uuid,
+    pub status: HomeEnrollmentStatus,
+    pub membership: DeviceMembershipDto,
+}
+
+/// Status response polled by the enrolling client with its `X-Michi-Enrollment-Claim`
+/// token. `membership` is populated ONLY after explicit admin approval.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HomeEnrollmentStatusResponse {
+    pub request_id: Uuid,
+    pub status: HomeEnrollmentStatus,
+    pub home_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub home_root_public_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub membership: Option<DeviceMembershipDto>,
+}
+
 /// Identity document embedded in `server/info` (contract v1).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IdentityDocument {

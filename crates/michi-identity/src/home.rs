@@ -26,6 +26,8 @@ pub const SERVER_AUTH_DOMAIN_V1: &[u8] = b"michi-link-server-auth-v1";
 pub const MEMBERSHIP_DOMAIN_V1: &[u8] = b"michi-link-membership-v1";
 /// Domain separation prefix for device revocations.
 pub const REVOCATION_DOMAIN_V1: &[u8] = b"michi-link-revocation-v1";
+/// Domain separation prefix for Home enrollment Ed25519 proof-of-possession.
+pub const HOME_ENROLLMENT_POP_DOMAIN_V1: &[u8] = b"michi-link-home-enrollment-pop-v1";
 
 #[derive(Debug, Error)]
 pub enum HomeAuthError {
@@ -499,6 +501,93 @@ pub fn verify_server_auth_session(
     Ok(())
 }
 
+/// Constructs canonical bytes for Ed25519 proof-of-possession during Home
+/// membership enrollment bootstrap:
+/// `"michi-link-home-enrollment-pop-v1" || home_id || server_michi_id || client_michi_id || client_public_key || challenge_id || challenge_nonce`
+pub fn home_enrollment_pop_payload(
+    home_id: &str,
+    server_michi_id: &str,
+    client_michi_id: &str,
+    client_public_key: &str,
+    challenge_id: &str,
+    challenge_nonce: &str,
+) -> Vec<u8> {
+    let mut buf = Vec::new();
+    buf.extend_from_slice(HOME_ENROLLMENT_POP_DOMAIN_V1);
+    buf.extend_from_slice(home_id.as_bytes());
+    buf.extend_from_slice(server_michi_id.as_bytes());
+    buf.extend_from_slice(client_michi_id.as_bytes());
+    buf.extend_from_slice(client_public_key.as_bytes());
+    buf.extend_from_slice(challenge_id.as_bytes());
+    buf.extend_from_slice(challenge_nonce.as_bytes());
+    buf
+}
+
+/// Signs a Home enrollment proof-of-possession challenge with the client's
+/// Ed25519 signing key.
+pub fn sign_home_enrollment_pop(
+    signing_key: &SigningKey,
+    home_id: &str,
+    server_michi_id: &str,
+    client_michi_id: &str,
+    client_public_key: &str,
+    challenge_id: &str,
+    challenge_nonce: &str,
+) -> String {
+    let payload = home_enrollment_pop_payload(
+        home_id,
+        server_michi_id,
+        client_michi_id,
+        client_public_key,
+        challenge_id,
+        challenge_nonce,
+    );
+    encode_base64url(&signing_key.sign(&payload).to_bytes())
+}
+
+/// Verifies a client's Ed25519 proof-of-possession signature for Home
+/// membership enrollment.
+#[allow(clippy::too_many_arguments)]
+pub fn verify_home_enrollment_pop(
+    client_public_key_b64: &str,
+    signature_b64: &str,
+    home_id: &str,
+    server_michi_id: &str,
+    client_michi_id: &str,
+    challenge_id: &str,
+    challenge_nonce: &str,
+) -> Result<bool, HomeAuthError> {
+    let derived = IdentityManager::derive_michi_id(client_public_key_b64)
+        .map_err(|_| HomeAuthError::InvalidPublicKey)?;
+    if derived.to_base64url() != client_michi_id {
+        return Err(HomeAuthError::IdentityMismatch);
+    }
+
+    let pk_bytes = decode_base64url_strict(client_public_key_b64)
+        .map_err(|_| HomeAuthError::InvalidPublicKey)?;
+    let pk_arr: [u8; 32] = pk_bytes
+        .try_into()
+        .map_err(|_| HomeAuthError::InvalidPublicKey)?;
+    let vk = VerifyingKey::from_bytes(&pk_arr).map_err(|_| HomeAuthError::InvalidPublicKey)?;
+
+    let sig_bytes = decode_base64url_strict(signature_b64)
+        .map_err(|_| HomeAuthError::InvalidSignatureEncoding)?;
+    let sig_arr: [u8; 64] = sig_bytes
+        .try_into()
+        .map_err(|_| HomeAuthError::InvalidSignatureEncoding)?;
+    let sig = ed25519_dalek::Signature::from_bytes(&sig_arr);
+
+    let payload = home_enrollment_pop_payload(
+        home_id,
+        server_michi_id,
+        client_michi_id,
+        client_public_key_b64,
+        challenge_id,
+        challenge_nonce,
+    );
+    Ok(vk.verify(&payload, &sig).is_ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -955,6 +1044,80 @@ mod tests {
             &client_michi_id,
             challenge_id,
             &[],
+        ) {
+            Err(HomeAuthError::IdentityMismatch) => (),
+            other => panic!("expected IdentityMismatch, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_home_enrollment_pop_roundtrip_and_tamper() {
+        let root = HomeRootAuthority::generate();
+        let home_id = root.home_id();
+        let server_sk = SigningKey::generate(&mut OsRng);
+        let server_michi_id = MichiId::from_public_key(&server_sk.verifying_key()).to_base64url();
+
+        let client_sk = SigningKey::generate(&mut OsRng);
+        let client_vk = client_sk.verifying_key();
+        let client_michi_id = MichiId::from_public_key(&client_vk).to_base64url();
+        let client_pk = encode_base64url(&client_vk.to_bytes());
+        let challenge_id = "550e8400-e29b-41d4-a716-446655440099";
+        let challenge_nonce = "VFfZjzw8JeAM7-RFiTSrMA";
+
+        let sig = sign_home_enrollment_pop(
+            &client_sk,
+            &home_id,
+            &server_michi_id,
+            &client_michi_id,
+            &client_pk,
+            challenge_id,
+            challenge_nonce,
+        );
+
+        assert!(verify_home_enrollment_pop(
+            &client_pk,
+            &sig,
+            &home_id,
+            &server_michi_id,
+            &client_michi_id,
+            challenge_id,
+            challenge_nonce,
+        )
+        .unwrap());
+
+        // Different nonce must fail verification
+        assert!(!verify_home_enrollment_pop(
+            &client_pk,
+            &sig,
+            &home_id,
+            &server_michi_id,
+            &client_michi_id,
+            challenge_id,
+            "OTHER_NONCE_12345678901",
+        )
+        .unwrap());
+
+        // Different server_michi_id must fail verification (prevents relay)
+        assert!(!verify_home_enrollment_pop(
+            &client_pk,
+            &sig,
+            &home_id,
+            &home_id,
+            &client_michi_id,
+            challenge_id,
+            challenge_nonce,
+        )
+        .unwrap());
+
+        // Mismatched client_michi_id vs client_public_key fails with IdentityMismatch
+        match verify_home_enrollment_pop(
+            &client_pk,
+            &sig,
+            &home_id,
+            &server_michi_id,
+            &server_michi_id,
+            challenge_id,
+            challenge_nonce,
         ) {
             Err(HomeAuthError::IdentityMismatch) => (),
             other => panic!("expected IdentityMismatch, got {:?}", other),

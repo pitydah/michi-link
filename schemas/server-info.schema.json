@@ -48,11 +48,24 @@
     },
     "version": {
       "type": "string",
-      "description": "Application version (internal, not contract version). Semver. For receivers this is the firmware version.",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Application version (internal, not contract version). Semver (with optional prerelease tag). For receivers this is the firmware version.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$",
       "examples": [
-        "0.1.0"
+        "0.1.0",
+        "1.0.0-rc.4"
       ]
+    },
+    "deployment_platform": {
+      "type": "string",
+      "description": "Optional runtime deployment platform label for full servers (for example docker, zimaos, casaos, baremetal). Forbidden for michi-stream-*.",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "commit": {
+      "type": "string",
+      "description": "Optional build commit identifier for full servers. Forbidden for michi-stream-*.",
+      "minLength": 1,
+      "maxLength": 64
     },
     "api_version": {
       "type": "string",
@@ -256,6 +269,12 @@
         "audio": {
           "$ref": "#/properties/audio"
         },
+        "deployment_platform": {
+          "not": {}
+        },
+        "commit": {
+          "not": {}
+        },
         "roles": {
           "type": "array",
           "description": "Exactly one role: audio_receiver.",
@@ -356,6 +375,12 @@
         },
         "audio": {
           "$ref": "#/properties/audio"
+        },
+        "deployment_platform": {
+          "not": {}
+        },
+        "commit": {
+          "not": {}
         },
         "roles": {
           "type": "array",
