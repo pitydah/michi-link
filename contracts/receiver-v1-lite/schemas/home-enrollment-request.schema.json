@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/home-enrollment-request.schema.json",
+  "title": "HomeEnrollmentRequest",
+  "description": "PoP-signed client request to enroll a device into a Michi Home. Requires explicit administrator approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "home_id",
+    "challenge_id",
+    "client_michi_id",
+    "client_public_key",
+    "device_name",
+    "device_type",
+    "requested_roles",
+    "client_signature"
+  ],
+  "properties": {
+    "home_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "challenge_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "client_michi_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "client_public_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "device_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "device_type": {
+      "type": "string",
+      "enum": ["mobile", "desktop", "server", "stream"]
+    },
+    "requested_roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "desktop_player",
+          "library_master",
+          "sync_host",
+          "music_server",
+          "library_host",
+          "playback_host",
+          "mobile_player",
+          "remote_controller",
+          "sync_client",
+          "audio_receiver"
+        ]
+      }
+    },
+    "client_signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{86}$"
+    }
+  }
+}

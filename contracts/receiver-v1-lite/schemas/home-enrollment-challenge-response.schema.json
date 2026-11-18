@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/home-enrollment-challenge-response.schema.json",
+  "title": "HomeEnrollmentChallengeResponse",
+  "description": "Server challenge issued for Ed25519 proof-of-possession prior to admin-approved Home enrollment.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "challenge_id",
+    "challenge_nonce",
+    "home_id",
+    "server_michi_id",
+    "server_public_key",
+    "expires_in"
+  ],
+  "properties": {
+    "challenge_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "challenge_nonce": {
+      "type": "string",
+      "minLength": 22,
+      "maxLength": 86,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "home_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "server_michi_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "server_public_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "expires_in": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 600
+    }
+  }
+}

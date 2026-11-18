@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/home-enrollment-challenge-request.schema.json",
+  "title": "HomeEnrollmentChallengeRequest",
+  "description": "Request to obtain a short-lived Ed25519 proof-of-possession challenge for authorized Home membership enrollment.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["purpose", "home_id", "client_michi_id", "client_public_key"],
+  "properties": {
+    "purpose": {
+      "type": "string",
+      "const": "home_enrollment"
+    },
+    "home_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "client_michi_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "client_public_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    }
+  }
+}

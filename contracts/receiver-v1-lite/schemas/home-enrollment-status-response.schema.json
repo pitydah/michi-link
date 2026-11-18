@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/home-enrollment-status-response.schema.json",
+  "title": "HomeEnrollmentStatusResponse",
+  "description": "Status response for an authorized Home membership enrollment request.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "status", "home_id"],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected", "expired"]
+    },
+    "home_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "home_root_public_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    },
+    "membership": {
+      "$ref": "michi-membership.schema.json"
+    }
+  }
+}

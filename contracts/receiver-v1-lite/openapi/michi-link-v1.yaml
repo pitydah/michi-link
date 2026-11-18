@@ -3214,6 +3214,204 @@ paths:
           description: TLS or Home authority unavailable
 
   # ============================================================================
+  # HOME MEMBERSHIP ENROLLMENT BOOTSTRAP (ADMIN-APPROVED, ED25519 POP)
+  # ============================================================================
+  /home/enrollment/challenge:
+    post:
+      tags:
+        - Authentication
+      summary: Request Ed25519 proof-of-possession challenge for Home enrollment
+      description: |
+        Issues a short-lived single-use challenge nonce for a client device requesting
+        enrollment into a Michi Home. Does NOT grant membership.
+      operationId: requestHomeEnrollmentChallenge
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HomeEnrollmentChallengeRequest"
+      responses:
+        "200":
+          description: Enrollment challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeEnrollmentChallengeResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /home/enrollment/request:
+    post:
+      tags:
+        - Authentication
+      summary: Submit PoP-signed Home membership enrollment request
+      description: |
+        Verifies Ed25519 proof of possession over the enrollment challenge and places
+        the device in the pending administrator approval queue. Never self-enrolls.
+      operationId: submitHomeEnrollmentRequest
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HomeEnrollmentRequest"
+      responses:
+        "202":
+          description: Pending enrollment request accepted for administrator approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeEnrollmentRequestResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /home/enrollment/pending:
+    get:
+      tags:
+        - Authentication
+      summary: List pending Home enrollment requests (admin only)
+      operationId: listPendingHomeEnrollments
+      responses:
+        "200":
+          description: Pending enrollment requests awaiting administrator decision
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - requests
+                  - total
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HomeEnrollmentPendingEntry"
+                  total:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /home/enrollment/{requestId}/approve:
+    post:
+      tags:
+        - Authentication
+      summary: Approve pending Home enrollment and issue signed MichiMembership (admin only)
+      operationId: approveHomeEnrollment
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HomeEnrollmentApproveRequest"
+      responses:
+        "200":
+          description: Enrollment approved and signed membership issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeEnrollmentApproveResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /home/enrollment/{requestId}/reject:
+    post:
+      tags:
+        - Authentication
+      summary: Reject pending Home enrollment request (admin only)
+      operationId: rejectHomeEnrollment
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Enrollment rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - request_id
+                  - status
+                properties:
+                  request_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum:
+                      - rejected
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /home/enrollment/{requestId}/status:
+    get:
+      tags:
+        - Authentication
+      summary: Poll Home enrollment status and claim approved MichiMembership
+      description: |
+        Requires X-Michi-Enrollment-Claim header returned by POST /home/enrollment/request.
+        Returns the signed DeviceMembershipDto only after explicit administrator approval.
+      operationId: getHomeEnrollmentStatus
+      security: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Michi-Enrollment-Claim
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Enrollment request status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeEnrollmentStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ============================================================================
   # ROOMS
   # ============================================================================
   /rooms:
@@ -6835,6 +7033,188 @@ components:
         expiresAtMillis:
           type: integer
           example: 1731680000000
+
+    HomeEnrollmentChallengeRequest:
+      type: object
+      required:
+        - purpose
+        - home_id
+        - client_michi_id
+        - client_public_key
+      properties:
+        purpose:
+          type: string
+          enum: [home_enrollment]
+        home_id:
+          type: string
+        client_michi_id:
+          type: string
+        client_public_key:
+          type: string
+
+    HomeEnrollmentChallengeResponse:
+      type: object
+      required:
+        - challenge_id
+        - challenge_nonce
+        - home_id
+        - server_michi_id
+        - server_public_key
+        - expires_in
+      properties:
+        challenge_id:
+          type: string
+          format: uuid
+        challenge_nonce:
+          type: string
+        home_id:
+          type: string
+        server_michi_id:
+          type: string
+        server_public_key:
+          type: string
+        expires_in:
+          type: integer
+
+    HomeEnrollmentRequest:
+      type: object
+      required:
+        - home_id
+        - challenge_id
+        - client_michi_id
+        - client_public_key
+        - device_name
+        - device_type
+        - requested_roles
+        - client_signature
+      properties:
+        home_id:
+          type: string
+        challenge_id:
+          type: string
+          format: uuid
+        client_michi_id:
+          type: string
+        client_public_key:
+          type: string
+        device_name:
+          type: string
+        device_type:
+          type: string
+          enum: [mobile, desktop, server, stream]
+        requested_roles:
+          type: array
+          items:
+            type: string
+        client_signature:
+          type: string
+
+    HomeEnrollmentRequestResponse:
+      type: object
+      required:
+        - request_id
+        - status
+        - home_id
+        - client_michi_id
+        - expires_at
+        - claim_token
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, approved, rejected, expired]
+        home_id:
+          type: string
+        client_michi_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        claim_token:
+          type: string
+
+    HomeEnrollmentPendingEntry:
+      type: object
+      required:
+        - request_id
+        - home_id
+        - client_michi_id
+        - client_public_key
+        - device_name
+        - device_type
+        - requested_roles
+        - created_at
+        - expires_at
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        home_id:
+          type: string
+        client_michi_id:
+          type: string
+        client_public_key:
+          type: string
+        device_name:
+          type: string
+        device_type:
+          type: string
+        requested_roles:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    HomeEnrollmentApproveRequest:
+      type: object
+      properties:
+        roles:
+          type: array
+          items:
+            type: string
+
+    HomeEnrollmentApproveResponse:
+      type: object
+      required:
+        - request_id
+        - status
+        - membership
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [approved]
+        membership:
+          $ref: "#/components/schemas/MichiMembership"
+
+    HomeEnrollmentStatusResponse:
+      type: object
+      required:
+        - request_id
+        - status
+        - home_id
+      properties:
+        request_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, approved, rejected, expired]
+        home_id:
+          type: string
+        home_root_public_key:
+          type: string
+        membership:
+          $ref: "#/components/schemas/MichiMembership"
 
 security:
   - BearerAuth: []

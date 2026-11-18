@@ -1,10 +1,10 @@
 {
   "version": "1.0.0-alpha.5",
-  "upstream_commit": "c3fed23ea7669aab9eda7f64a9c2a813dee9712c",
+  "upstream_commit": "c070429bebccbcbc57ec9d594c5d7206d1bd494b",
   "files": [
     {
       "path": "UPSTREAM_COMMIT",
-      "sha256": "6b53f24b7a50ba24900bf2860361cede0f3764698fea1f05cb3f130636c030e5"
+      "sha256": "e73ec1e493cb1a7d3e965b1efc0b11ecfa191d644d6a17ceff50a174862d1975"
     },
     {
       "path": "VERSION",
@@ -76,7 +76,7 @@
     },
     {
       "path": "openapi/michi-link-v1.yaml",
-      "sha256": "03593ba5cb0b5807d497d2b7e7e11c63418b8f0cba5a2a8c06cd6ee96ca956cb"
+      "sha256": "e9ef5c27633db5d0358512e6f4f2294da76c6eb4c9ec600e58070924d0562ff8"
     },
     {
       "path": "schemas/aircat-enrollment-qr.schema.json",
@@ -161,6 +161,22 @@
     {
       "path": "schemas/home-device-roster.schema.json",
       "sha256": "2d8ab5cf01d0feea06c2bb0fc3642678286a1220a0b16d714d7d942413dd83f9"
+    },
+    {
+      "path": "schemas/home-enrollment-challenge-request.schema.json",
+      "sha256": "041f20fdb5d87578535ec210aabdfb21d72e61db7951245a3f7da53ed2f25741"
+    },
+    {
+      "path": "schemas/home-enrollment-challenge-response.schema.json",
+      "sha256": "f09864d9bd86dfe44086e34e99ff29cbb9e0db0f4b448cb7486e507843c15ffb"
+    },
+    {
+      "path": "schemas/home-enrollment-request.schema.json",
+      "sha256": "5c3e885e8ef56b7031004664444d4047391f2029414b82d7a9f68e068d415ca8"
+    },
+    {
+      "path": "schemas/home-enrollment-status-response.schema.json",
+      "sha256": "3e30c2e3020dad9e74cb7d092b2528b7b7fa7deccc1536d2550db1f0548cbfcb"
     },
     {
       "path": "schemas/import-commit-result.schema.json",
@@ -304,7 +320,7 @@
     },
     {
       "path": "schemas/server-info.schema.json",
-      "sha256": "bd02a612889fc07fab6ee3813c69f75ae9c07869c01b98ca474c5a8fb9a153b9"
+      "sha256": "d8c409838d3174f1567678e608eb01658772fcb75166212bbd74f3285f15f1a9"
     },
     {
       "path": "schemas/sync-delta.schema.json",
