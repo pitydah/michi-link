@@ -164,7 +164,7 @@
     },
     {
       "path": "schemas/home-device-roster.schema.json",
-      "sha256": "2d8ab5cf01d0feea06c2bb0fc3642678286a1220a0b16d714d7d942413dd83f9"
+      "sha256": "1b34a71ef60696d06f229d65d2527a07eb485ccc095193be8b31fad5bccd656b"
     },
     {
       "path": "schemas/home-enrollment-challenge-request.schema.json",
@@ -252,7 +252,7 @@
     },
     {
       "path": "schemas/playback-control.schema.json",
-      "sha256": "4e7bec36f18199c1fa8919cd616d1853dfd469b1402f5c433bb44278b6ddf452"
+      "sha256": "4ccf75140a4c572d5baf4fa3ff71b454f312000c7ab513f6bc10902183974cfc"
     },
     {
       "path": "schemas/playback-state.schema.json",

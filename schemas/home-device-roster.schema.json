@@ -88,6 +88,28 @@
               "unreachable"
             ]
           },
+          "membership_status": {
+            "type": "string",
+            "description": "Home membership state, strictly separate from live presence.",
+            "enum": [
+              "enrolled",
+              "revoked"
+            ]
+          },
+          "authenticated": {
+            "type": "boolean",
+            "description": "True only when the device holds an active, non-expired authenticated session or live verified receiver auth."
+          },
+          "presence_state": {
+            "type": "string",
+            "description": "Bounded live presence projection derived from recent verifiable evidence (never membership alone).",
+            "enum": [
+              "online",
+              "offline",
+              "revoked",
+              "unknown"
+            ]
+          },
           "last_seen_at": {
             "type": "string",
             "format": "date-time"

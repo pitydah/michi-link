@@ -27,13 +27,43 @@
       "examples": [70]
     },
     "value": {
-      "description": "Legacy fallback parameter. New implementations MUST use position_ms or volume instead.",
+      "description": "Legacy fallback parameter. New implementations MUST use position_ms or volume instead. For set_volume, accepts integer 0-100 or strict unsigned ASCII decimal string '0'-'100'.",
       "oneOf": [
         { "type": "integer", "minimum": 0 },
         { "type": "string", "enum": ["off", "one", "all"] },
+        { "type": "string", "pattern": "^(0|[1-9][0-9]?|100)$" },
         { "type": "boolean" },
         { "type": "null" }
       ]
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "command": { "const": "set_volume" } },
+        "required": ["command"]
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": ["volume"],
+            "properties": {
+              "volume": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          },
+          {
+            "required": ["value"],
+            "properties": {
+              "value": {
+                "oneOf": [
+                  { "type": "integer", "minimum": 0, "maximum": 100 },
+                  { "type": "string", "pattern": "^(0|[1-9][0-9]?|100)$" }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
 }

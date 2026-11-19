@@ -1,8 +1,15 @@
-# Michi Link — Canonical Interoperability Contract (R1 / R1.1 / R1.2)
+# Michi Link — Canonical Interoperability Contract (R1 / R1.1 / R1.2 / R1.3)
 
 Normative cross-repository contract governing secure, persistent, and verifiable
 communications between `michi-micro-server`, `michi-mobile`, `michi-music-player`,
 `michi-stream-standard`, and `michi-stream-hifi`.
+
+> **Revision R1.3 (Additive Functional & Presence Convergence)**: Formalizes
+> strict `set_volume` parsing (zero silent fallback to 80), active-queue item
+> deletion and duplicate-safe semantics, separation of Home membership,
+> authentication, and bounded live presence, and canonical QR pairing origin
+> validation. Signed Home Membership, Device Auth, Server Confirmation, and
+> AirCat Grant v1 canonical bytes remain **unchanged** (100% backward compatible).
 
 > **Revision R1.2 (Additive Security Hardening)**: Tightens trusted reverse-proxy
 > HTTPS header verification (`X-Forwarded-Proto` + RFC 7239 `Forwarded`) and
@@ -277,3 +284,82 @@ Supported client PKI deployment modes:
   quoted `ETag`, `Accept-Ranges: bytes`, HTTP 206 partial content / 416 / 304,
   receipt header `X-Michi-AirCat-Authorized-Grant-SHA256`, symlink refusal
   (`O_NOFOLLOW`), and TOCTOU file revision re-verification on every chunk.
+
+## 6. Michi Control: Playback Volume & Queue Semantics (R1.3)
+
+### 6.1 `set_volume` Normalization (`POST /api/v1/playback/control`)
+- **Canonical field**: `volume` (JSON integer in `[0, 100]`). Volume `0` means
+  real mute/silence; `100` is the contract maximum.
+- **Legacy compatibility field**: `value` accepts either a JSON integer in
+  `[0, 100]` or a strict unsigned ASCII decimal string (`"0"`..=`"100"`).
+- **Strict rejection rules (HTTP `400`, `error.code = "INVALID_REQUEST"`)**:
+  - Missing or `null` volume (NEVER silently apply a fallback default such as `80`).
+  - Negative numbers, values `> 100`, integer overflow beyond `u8`/`u32`, floats
+    (`75.5`, `0.0`), booleans (`true`/`false`), objects/arrays.
+  - Ambiguous text (`"75%"`, `"75.5"`, `"-1"`, `"+50"`, `"1000"`, `"eighty"`, `""`).
+  - Contradictory `volume` and `value` fields when both are non-null (when both
+    are valid and equal, e.g. `volume: 20` and `value: "20"`, the command succeeds).
+- **State preservation invariant**: A rejected `set_volume` request MUST NEVER
+  mutate the effective `PlaybackEngine` volume.
+
+### 6.2 Active Queue Item Deletion & Sequence Continuity
+- **Canonical identifier**: Individual deletion (`DELETE /api/v1/queue/items/{item_id}`)
+  operates on `queue_item_id`. Legacy fallback matching `track_id` MUST delete
+  **at most one** entry (preferring the active slot if matched) and MUST NEVER
+  bulk-delete duplicate occurrences of the same track.
+- **Deleting the currently active item**:
+  - Advances to the **next valid track in logical play order** (respecting active
+    `shuffle` permutation and `repeat` policy) without jumping backward to index `0`.
+  - If actively playing, transitions cleanly to that next track; if `paused`,
+    `stopped`, or `idle`, selects the next track while preserving the non-playing
+    state (NEVER auto-starts playback).
+  - Under `repeat: "one"`, MUST NEVER replay a deleted item.
+  - If the deleted active item was the last item in play order (or the only item):
+    under `repeat: "all"` (with remaining items), wraps to the start of a new
+    cycle; otherwise stops playback cleanly with no active track.
+- **Deleting a non-active item**: Preserves the currently playing track, its
+  playback position, its `playing`/`paused` state, and the upcoming logical
+  sequence (`next` and `EOF`).
+- **Durable / runtime coherence**: SQLite queue mutations and `PlaybackEngine`
+  updates are serialized per queue without holding SQLite write locks across
+  audio operations; engine failure triggers compensating rollback so storage and
+  runtime never silently diverge.
+
+## 7. Home Presence & Roster Semantics (R1.3)
+
+`GET /api/v1/home/roster` MUST separate four independent properties:
+1. **Membership (`membership_status`)**: `"enrolled"` or `"revoked"`. A durable
+   membership record proves authorization to belong to Home, NOT live presence.
+2. **Authentication (`authenticated`)**: `true` ONLY when the device currently
+   holds an active, non-expired Home session or live authenticated receiver state
+   (and is not revoked).
+3. **Presence (`online`, `presence_state`)**: `"online"` / `"offline"` /
+   `"revoked"` / `"unknown"`. `online: true` requires recent, verifiable live
+   evidence within a bounded TTL (`180s` for authenticated Home session activity,
+   live signed Whisker/Scent `verified_online` presence, or active receiver
+   streaming session). Persisted SQLite rows alone, pending enrollments, stale
+   historical `last_seen`, or post-restart state MUST NEVER report `online: true`.
+4. **Revocation (`revoked`)**: Revoked devices MUST always report `revoked: true`,
+   `authenticated: false`, `online: false`, `presence_state: "revoked"`. If the
+   durable revocation store is unreadable, the endpoint MUST fail closed with
+   HTTP `503 REVOCATION_STORE_UNAVAILABLE`.
+
+## 8. QR Pairing Origin Policy & Protocol Separation (R1.3)
+
+- **Origin policy (`POST /api/v1/pair/qr`)**:
+  - Precedence: (1) validated explicit `server_url` (must comply with configured
+    public URL/allowlist when set), (2) operator-configured canonical public URL
+    (`MICHI_PUBLIC_URL` / `MICHI_PUBLIC_HTTPS_URL`), (3) verified trusted-proxy
+    host/proto or direct listener host/scheme.
+  - Rejects non-`http`/`https` schemes (`javascript:`, `file:`, `data:`),
+    userinfo (`user@host`), paths/queries/fragments, control characters/CRLF,
+    multiple host values, contradictory/malformed proxy forwarding headers, and
+    arbitrary external hosts not explicitly authorized.
+  - Permits legitimate local-first Michi targets (`localhost`, RFC 1918 LAN IPs,
+    mDNS `*.local`, Tailscale `100.64.0.0/10` and `*.ts.net`, IPv6 ULA/link-local)
+    and operator-allowlisted public domains (`MICHI_ALLOWED_QR_HOSTS`).
+- **Strict protocol separation**:
+  - Legacy `SERVER_CODE` QR (`qr_protocol: "legacy_server_code_v1"`) and Home
+    Enrollment QR (`michi.aircat.home.enrollment.v1`) are separate protocols.
+  - Legacy pairing QRs MUST NEVER carry Home Root public keys, SPKI pins, or be
+    promoted to a Home cryptographic trust anchor.

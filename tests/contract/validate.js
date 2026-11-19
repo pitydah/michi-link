@@ -666,6 +666,26 @@ function main() {
     check("aircat-tls-status.schema.json compiled", false, null);
   }
 
+  // --- R1.3 playback-control set_volume schema invariants ---
+  const validatePlaybackCtrl = ajv.getSchema(SCHEMA_BASE + "playback-control.schema.json");
+  if (typeof validatePlaybackCtrl === "function") {
+    check("positive: set_volume accepts canonical integer volume 0", validatePlaybackCtrl({ command: "set_volume", volume: 0 }), validatePlaybackCtrl);
+    check("positive: set_volume accepts legacy string value '0'", validatePlaybackCtrl({ command: "set_volume", value: "0" }), validatePlaybackCtrl);
+    check("positive: set_volume accepts legacy string value '100'", validatePlaybackCtrl({ command: "set_volume", value: "100" }), validatePlaybackCtrl);
+    check("negative: set_volume rejects missing volume and value", !validatePlaybackCtrl({ command: "set_volume" }), null);
+    check("negative: set_volume rejects null value without volume", !validatePlaybackCtrl({ command: "set_volume", value: null }), null);
+    check("negative: set_volume rejects boolean value", !validatePlaybackCtrl({ command: "set_volume", value: true }), null);
+    check("negative: set_volume rejects volume 101", !validatePlaybackCtrl({ command: "set_volume", volume: 101 }), null);
+    check("negative: set_volume rejects legacy integer value 101", !validatePlaybackCtrl({ command: "set_volume", value: 101 }), null);
+    check("negative: set_volume rejects ambiguous string '75%'", !validatePlaybackCtrl({ command: "set_volume", value: "75%" }), null);
+    check("negative: set_volume rejects decimal string '75.5'", !validatePlaybackCtrl({ command: "set_volume", value: "75.5" }), null);
+    check("negative: set_volume rejects negative string '-1'", !validatePlaybackCtrl({ command: "set_volume", value: "-1" }), null);
+    check("negative: set_volume rejects text 'eighty'", !validatePlaybackCtrl({ command: "set_volume", value: "eighty" }), null);
+    check("negative: set_volume rejects empty string ''", !validatePlaybackCtrl({ command: "set_volume", value: "" }), null);
+  } else {
+    check("playback-control.schema.json compiled", false, null);
+  }
+
   const total = passed + failed;
   console.log(`\n${total} checks: ${passed} passed, ${failed} failed`);
   process.exit(failed > 0 ? 1 : 0);
