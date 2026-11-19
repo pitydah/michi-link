@@ -1,10 +1,10 @@
 {
   "version": "1.0.0-alpha.5",
-  "upstream_commit": "bddd097211f25cebdce56993935e963db3752b07",
+  "upstream_commit": "fde4ff14706caf16837036c8bb827b5f48312384",
   "files": [
     {
       "path": "UPSTREAM_COMMIT",
-      "sha256": "09e9186e8612f60039f02fc1fb1c2387d15b607bd694fdf03392e3bc0e547c1a"
+      "sha256": "c2d841d50555c0a57f02e3d69ab22df2b0cc1cb02e764fa6f5205cf18ad06e11"
     },
     {
       "path": "VERSION",
@@ -164,7 +164,7 @@
     },
     {
       "path": "schemas/home-device-roster.schema.json",
-      "sha256": "1b34a71ef60696d06f229d65d2527a07eb485ccc095193be8b31fad5bccd656b"
+      "sha256": "02549cc979813de313f6a3f07dffc9d08e6d231cd8532d55f796c286097a6de6"
     },
     {
       "path": "schemas/home-enrollment-challenge-request.schema.json",
