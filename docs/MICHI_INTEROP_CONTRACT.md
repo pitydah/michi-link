@@ -145,17 +145,53 @@ Bootstrap sequence:
     `destinationMichiId` MUST equal the verified `client_michi_id`
     (otherwise `403 WRONG_AUDIENCE`).
 
-## 5. `AIRCAT_STRICT` Transport & Original-File Invariants
+## 5. Mandatory HTTPS/TLS Policy for Home Authority & `AIRCAT_STRICT` (R1.1)
 
-- All AirCat transfer endpoints (`/api/v1/aircat/manifest`,
-  `/api/v1/aircat/authorize`, `/api/v1/aircat/download/{remoteId}`) enforce
-  **fail-closed HTTPS/TLS**:
-  - If TLS is unconfigured or listener is not ready -> `503 TLS_NOT_CONFIGURED`.
-  - If request arrives over cleartext HTTP -> `403 TLS_REQUIRED`.
-  - Zero cleartext fallback.
-- Certificate MUST carry valid X.509 v3 SAN matching the `pinnedBaseUrl`
-  host/IP (so Android `X509TrustManager` + hostname verification succeed in
-  addition to RFC 7469 SPKI SHA-256 pinning).
+### 5.1 Covered Endpoints (Fail-Closed HTTPS Required)
+ALL Home enrollment, Home authentication, Home admin approval, and AirCat
+original-file endpoints MUST enforce verified HTTPS/TLS transport (zero
+cleartext HTTP fallback):
+- `POST /api/v1/auth/challenge`, `POST /api/v1/auth/session`
+- `POST /api/v1/home/enrollment/challenge`, `POST /api/v1/home/enrollment/request`,
+  `GET /api/v1/home/enrollment/{requestId}/status`
+- `GET /api/v1/home/enrollment/pending`, `POST /api/v1/home/enrollment/{requestId}/approve`,
+  `POST /api/v1/home/enrollment/{requestId}/reject`, `POST /api/v1/home/members/enroll`
+- `GET /api/v1/aircat/enrollment-qr`
+- `GET /api/v1/aircat/manifest`, `POST /api/v1/aircat/authorize`,
+  `GET /api/v1/aircat/download/{remoteId}`
+- **Any `/api/v1/*` request presenting `Authorization: Bearer michi_home_*`**
+  (Home sessions MUST NEVER travel over cleartext HTTP, even on library,
+  playback, queue, or sync routes).
+
+Normative transport refusals:
+- TLS listener unconfigured or not bound -> `503 TLS_NOT_CONFIGURED`.
+- Cleartext HTTP connection (or spoofed `X-Forwarded-Proto: https` from an
+  untrusted peer) -> `403 TLS_REQUIRED`.
+
+### 5.2 X.509 Certificate Trust + SPKI Pinning Architecture for Android
+Two independent security properties are REQUIRED:
+1. **Verified X.509 chain, validity window, and SAN**: certificate MUST NOT be
+   expired, private key MUST match certificate, SubjectAltName MUST cover the
+   `pinnedBaseUrl` host/IP, and the certificate chain MUST terminate in a CA
+   explicitly trusted by the client (`Mode A`: publicly trusted CA such as
+   Let's Encrypt DNS-01 or Tailscale HTTPS — immediately compatible with
+   Android's default `X509TrustManager` + OkHttp `CertificatePinner`; or
+   `Mode B`: scoped Home Private CA explicitly installed into a dedicated
+   Home-only `TrustManagerFactory`, never trust-all and never disabling
+   `HostnameVerifier`). Self-signed leaf certificates are NOT accepted by
+   Android's default `X509TrustManager`.
+2. **RFC 7469 SPKI SHA-256 Pinning**: exact match against `tlsSpkiSha256` from
+   the authorized enrollment anchor.
+
+### 5.3 Fail-Closed Revocation & Single Home Session Authority
+- Home sessions (`michi_home_*`) MUST be managed by a dedicated Home session
+  authority and MUST NOT be duplicated into legacy `SERVER_CODE` device token
+  stores.
+- Revocation checks MUST distinguish `Active`, `Revoked` (`403 MEMBER_REVOKED`),
+  and `Indeterminate` (SQLite/storage error -> `503 REVOCATION_STORE_UNAVAILABLE`).
+  Errors reading durable revocation state MUST NEVER fail open.
+
+### 5.4 AirCat Original-File Invariants
 - Protocol header `X-Michi-AirCat-Protocol: michi.aircat.original.v1` and
   `Cache-Control: no-store` (plus `no-transform` on downloads) are mandatory.
 - Downloads serve exact original library bytes without transcoding, with strong

@@ -75,6 +75,29 @@ pub const CANONICAL_SERVER_CAPABILITIES: &[&str] = &[
     CAP_AIRCAT_ORIGINAL_DOWNLOAD_V1,
 ];
 
+/// Named runtime capability inputs used to construct a single authoritative
+/// `CanonicalServerCapabilities` snapshot without positional-argument ambiguity.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RuntimeCapabilityState {
+    pub library: bool,
+    pub search: bool,
+    pub streaming: bool,
+    pub download: bool,
+    pub sync: bool,
+    pub sync_manifest: bool,
+    pub artwork: bool,
+    pub playlists: bool,
+    pub playback: bool,
+    pub queue: bool,
+    pub events: bool,
+    pub receivers: bool,
+    pub multiroom: bool,
+    /// True ONLY when the HTTPS/TLS listener is actively bound with a valid cert/SAN/key.
+    pub aircat_tls_listener_ready: bool,
+    /// True ONLY when the AirCat original-file producer (e.g. library module) is active.
+    pub aircat_producer_ready: bool,
+}
+
 /// Canonical capability state used to project consistent feature flags across
 /// `/api/v1/server/info`, `/api/v1/capabilities`, and Whisker discovery.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,11 +123,35 @@ pub struct CanonicalServerCapabilities {
 }
 
 impl CanonicalServerCapabilities {
-    /// Constructs a canonical server capability snapshot.
+    /// Constructs a canonical server capability snapshot from named runtime inputs.
     ///
-    /// When `aircat_tls_listener_ready` is `false`, all five AirCat original-file
-    /// flags are forced to `false` so a server never advertises AirCat readiness
-    /// unless HTTPS/TLS with SPKI pinning is genuinely active.
+    /// All five AirCat original-file flags are `true` ONLY when BOTH
+    /// `aircat_tls_listener_ready` and `aircat_producer_ready` are `true`.
+    pub fn from_runtime_state(input: &RuntimeCapabilityState) -> Self {
+        let aircat_ready = input.aircat_tls_listener_ready && input.aircat_producer_ready;
+        Self {
+            library: input.library,
+            search: input.search,
+            streaming: input.streaming,
+            download: input.download,
+            sync: input.sync,
+            sync_manifest: input.sync_manifest,
+            artwork: input.artwork,
+            playlists: input.playlists,
+            playback: input.playback,
+            queue: input.queue,
+            events: input.events,
+            receivers: input.receivers,
+            multiroom: input.multiroom,
+            aircat_original_v1: aircat_ready,
+            home_tls_spki_pinned: input.aircat_tls_listener_ready,
+            aircat_manifest_v1: aircat_ready,
+            aircat_authorize_v1: aircat_ready,
+            aircat_original_download_v1: aircat_ready,
+        }
+    }
+
+    /// Backwards-compatible positional constructor delegating to `from_runtime_state`.
     #[allow(clippy::too_many_arguments)]
     pub fn from_runtime(
         library: bool,
@@ -121,7 +168,7 @@ impl CanonicalServerCapabilities {
         multiroom: bool,
         aircat_tls_listener_ready: bool,
     ) -> Self {
-        Self {
+        Self::from_runtime_state(&RuntimeCapabilityState {
             library,
             search,
             streaming,
@@ -135,12 +182,9 @@ impl CanonicalServerCapabilities {
             events,
             receivers,
             multiroom,
-            aircat_original_v1: aircat_tls_listener_ready,
-            home_tls_spki_pinned: aircat_tls_listener_ready,
-            aircat_manifest_v1: aircat_tls_listener_ready,
-            aircat_authorize_v1: aircat_tls_listener_ready,
-            aircat_original_download_v1: aircat_tls_listener_ready,
-        }
+            aircat_tls_listener_ready,
+            aircat_producer_ready: library && aircat_tls_listener_ready,
+        })
     }
 
     /// Deterministic map representation for `/api/v1/server/info` (`features`)
@@ -257,5 +301,34 @@ mod tests {
         partial.insert(CAP_AIRCAT_ORIGINAL_V1.into(), true);
         partial.insert(CAP_HOME_TLS_SPKI_PINNED.into(), true);
         assert!(!is_aircat_original_v1_ready(&partial));
+    }
+
+    #[test]
+    fn test_from_runtime_state_requires_both_tls_and_producer_for_aircat() {
+        let caps = CanonicalServerCapabilities::from_runtime_state(&RuntimeCapabilityState {
+            library: false,
+            search: true,
+            streaming: true,
+            download: true,
+            sync: true,
+            sync_manifest: false,
+            artwork: true,
+            playlists: true,
+            playback: true,
+            queue: true,
+            events: true,
+            receivers: true,
+            multiroom: false,
+            aircat_tls_listener_ready: true,
+            aircat_producer_ready: false,
+        });
+        assert!(caps.home_tls_spki_pinned);
+        assert!(!caps.aircat_original_v1);
+        assert!(!caps.aircat_manifest_v1);
+        assert!(!caps.aircat_authorize_v1);
+        assert!(!caps.aircat_original_download_v1);
+        assert!(!is_aircat_original_v1_ready(&caps.to_features_map()));
+        assert!(!caps.sync_manifest);
+        assert!(!caps.multiroom);
     }
 }
