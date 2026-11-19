@@ -1,10 +1,10 @@
 {
   "version": "1.0.0-alpha.5",
-  "upstream_commit": "c070429bebccbcbc57ec9d594c5d7206d1bd494b",
+  "upstream_commit": "5a732c8c760c63c0378bd2aaef23fac093e5b37e",
   "files": [
     {
       "path": "UPSTREAM_COMMIT",
-      "sha256": "e73ec1e493cb1a7d3e965b1efc0b11ecfa191d644d6a17ceff50a174862d1975"
+      "sha256": "4632c420655cb616d6a3c4c264a0d8818d3c370567f78c5bed5368fb59a7c52c"
     },
     {
       "path": "VERSION",
@@ -93,6 +93,10 @@
     {
       "path": "schemas/aircat-signed-grant.schema.json",
       "sha256": "494049ec0d778ffac49b4ac7a30a27fa3069d1cdbece306d365150e2309e269e"
+    },
+    {
+      "path": "schemas/aircat-tls-status.schema.json",
+      "sha256": "0c2597414ab55fad5f1ceaf2cd7271439f8df3eea29348605b9c094fe62c964d"
     },
     {
       "path": "schemas/album.schema.json",

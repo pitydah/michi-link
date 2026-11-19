@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://michi.link/schemas/aircat-tls-status.schema.json",
+  "title": "AirCatTlsStatusV1",
+  "description": "Diagnostic TLS/X.509/SPKI readiness and trust status returned by GET /api/v1/aircat/status (R1.2 additive schema; separates TLS readiness, X.509 chain structure, SPKI pin, and Android trust verification).",
+  "type": "object",
+  "required": [
+    "protocol",
+    "tls_configured",
+    "tls_listener_ready",
+    "certificate_profile",
+    "chain_cryptographically_verified",
+    "android_trust_verification_status",
+    "android_default_trust_compatible",
+    "cert_chain_len"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "protocol": {
+      "type": "string",
+      "const": "michi.aircat.original.v1"
+    },
+    "tls_configured": {
+      "type": "boolean"
+    },
+    "tls_listener_ready": {
+      "type": "boolean"
+    },
+    "tls_port": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "pinned_base_url": {
+      "type": ["string", "null"]
+    },
+    "tls_spki_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256/[A-Za-z0-9+/=]{43,44}$"
+    },
+    "tls_trust_mode": {
+      "type": ["string", "null"],
+      "enum": ["ca_chained", "self_signed", "incomplete_chain", null],
+      "description": "Legacy coarse structural indicator; MUST NOT be interpreted as Android default trust acceptance."
+    },
+    "certificate_profile": {
+      "type": "string",
+      "enum": [
+        "self_signed_verified",
+        "self_issued_unverified",
+        "ca_issued_chain_present",
+        "incomplete_chain",
+        "unknown"
+      ]
+    },
+    "chain_cryptographically_verified": {
+      "type": "boolean",
+      "description": "True only when presented X.509 chain order, validity windows, BasicConstraints, and cryptographic signatures verified cleanly."
+    },
+    "android_trust_verification_status": {
+      "type": "string",
+      "enum": [
+        "not_verified",
+        "verified_with_explicit_trust_roots",
+        "verification_failed"
+      ]
+    },
+    "android_default_trust_compatible": {
+      "type": "boolean",
+      "description": "Legacy boolean compatibility indicator. MUST be false whenever android_trust_verification_status is not_verified or verification_failed (zero false positives)."
+    },
+    "cert_chain_len": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cert_not_before": {
+      "type": ["string", "null"]
+    },
+    "cert_not_after": {
+      "type": ["string", "null"]
+    },
+    "pending_enrollments": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "android_trust_verification_status": {
+            "enum": ["not_verified", "verification_failed"]
+          }
+        },
+        "required": ["android_trust_verification_status"]
+      },
+      "then": {
+        "properties": {
+          "android_default_trust_compatible": {
+            "const": false
+          }
+        }
+      }
+    }
+  ]
+}
