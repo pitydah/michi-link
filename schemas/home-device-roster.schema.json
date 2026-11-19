@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://michi.link/schemas/home-device-roster.schema.json",
   "title": "HomeDeviceRoster",
-  "description": "Roster of all registered devices in a Michi Home.",
+  "description": "Canonical roster of registered devices in a Michi Home, strictly separating Membership, Authentication, bounded Live Presence, and Revocation (R1.4).",
   "type": "object",
   "required": [
     "version",
@@ -24,9 +24,19 @@
       "description": "Michi Home ID (43 chars base64url).",
       "pattern": "^[A-Za-z0-9_-]{43}$"
     },
+    "total": {
+      "type": "integer",
+      "description": "Total number of devices in the roster array.",
+      "minimum": 0
+    },
+    "presence_ttl_seconds": {
+      "type": "integer",
+      "description": "Bounded live presence freshness TTL in seconds (e.g. 180).",
+      "minimum": 1
+    },
     "devices": {
       "type": "array",
-      "description": "List of devices active or known in the home.",
+      "description": "List of devices enrolled in or known to the Home.",
       "items": {
         "type": "object",
         "required": [
@@ -34,18 +44,33 @@
           "device_name",
           "device_type",
           "roles",
-          "membership",
           "status",
+          "membership_status",
+          "authenticated",
+          "revoked",
+          "online",
+          "presence_state",
           "last_seen_at"
         ],
         "additionalProperties": false,
         "properties": {
           "device_michi_id": {
             "type": "string",
+            "description": "Canonical 43-character base64url cryptographic Michi ID.",
             "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "receiver_id": {
+            "type": ["string", "null"],
+            "description": "Optional receiver registry identifier (distinct domain from device_michi_id)."
           },
           "device_name": {
             "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "name": {
+            "type": "string",
+            "description": "Legacy alias equal to device_name for backward compatibility.",
             "minLength": 1,
             "maxLength": 128
           },
@@ -55,8 +80,13 @@
               "player",
               "server",
               "stream",
-              "mobile"
+              "mobile",
+              "desktop"
             ]
+          },
+          "base_url": {
+            "type": ["string", "null"],
+            "description": "Optional reachable base URL for audio receiver endpoints."
           },
           "roles": {
             "type": "array",
@@ -78,14 +108,9 @@
             "minItems": 1
           },
           "membership": {
-            "$ref": "michi-membership.schema.json"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "online",
-              "offline",
-              "unreachable"
+            "oneOf": [
+              { "$ref": "michi-membership.schema.json" },
+              { "type": "null" }
             ]
           },
           "membership_status": {
@@ -100,9 +125,17 @@
             "type": "boolean",
             "description": "True only when the device holds an active, non-expired authenticated session or live verified receiver auth."
           },
+          "revoked": {
+            "type": "boolean",
+            "description": "True if the device identity has been revoked from the Home."
+          },
+          "online": {
+            "type": "boolean",
+            "description": "True only when bounded recent live evidence confirms connectivity (never inferred from SQLite membership alone)."
+          },
           "presence_state": {
             "type": "string",
-            "description": "Bounded live presence projection derived from recent verifiable evidence (never membership alone).",
+            "description": "Bounded live presence projection derived from recent verifiable evidence.",
             "enum": [
               "online",
               "offline",
@@ -110,11 +143,65 @@
               "unknown"
             ]
           },
-          "last_seen_at": {
+          "status": {
             "type": "string",
+            "description": "Summary operational status aligned with presence_state.",
+            "enum": [
+              "online",
+              "offline",
+              "unreachable",
+              "revoked"
+            ]
+          },
+          "last_seen_at": {
+            "type": ["string", "null"],
             "format": "date-time"
+          },
+          "last_seen": {
+            "type": ["string", "null"],
+            "description": "Legacy alias equal to last_seen_at.",
+            "format": "date-time"
+          },
+          "outbox_status": {
+            "type": ["string", "null"]
+          },
+          "last_revocation_ack": {
+            "type": ["string", "null"]
+          },
+          "last_revocation_error": {
+            "type": ["string", "null"]
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "revoked": { "const": true } },
+              "required": ["revoked"]
+            },
+            "then": {
+              "properties": {
+                "online": { "const": false },
+                "authenticated": { "const": false },
+                "membership_status": { "const": "revoked" },
+                "presence_state": { "const": "revoked" },
+                "status": { "const": "revoked" }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": { "online": { "const": true } },
+              "required": ["online"]
+            },
+            "then": {
+              "properties": {
+                "revoked": { "const": false },
+                "presence_state": { "const": "online" },
+                "status": { "const": "online" }
+              }
+            }
+          }
+        ]
       }
     },
     "updated_at": {

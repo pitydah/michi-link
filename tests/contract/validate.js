@@ -682,8 +682,55 @@ function main() {
     check("negative: set_volume rejects negative string '-1'", !validatePlaybackCtrl({ command: "set_volume", value: "-1" }), null);
     check("negative: set_volume rejects text 'eighty'", !validatePlaybackCtrl({ command: "set_volume", value: "eighty" }), null);
     check("negative: set_volume rejects empty string ''", !validatePlaybackCtrl({ command: "set_volume", value: "" }), null);
+    check("negative: set_volume rejects leading-zero string '00'", !validatePlaybackCtrl({ command: "set_volume", value: "00" }), null);
+    check("negative: set_volume rejects leading-zero string '075'", !validatePlaybackCtrl({ command: "set_volume", value: "075" }), null);
+    check("negative: set_volume rejects leading-zero string '01'", !validatePlaybackCtrl({ command: "set_volume", value: "01" }), null);
   } else {
     check("playback-control.schema.json compiled", false, null);
+  }
+
+  // --- R1.4 home-device-roster schema invariants ---
+  const validateHomeRoster = ajv.getSchema(SCHEMA_BASE + "home-device-roster.schema.json");
+  if (typeof validateHomeRoster === "function") {
+    const baseRosterDevice = {
+      device_michi_id: "rz2gnw8LRcZPMln7OHAknoEL5Dg8TFyJ7utfFKJyPlE",
+      device_name: "Michi Mobile",
+      device_type: "mobile",
+      roles: ["mobile_player"],
+      membership_status: "enrolled",
+      authenticated: false,
+      revoked: false,
+      online: false,
+      presence_state: "offline",
+      status: "offline",
+      last_seen_at: "2026-11-19T12:00:00Z",
+    };
+    const wrapRoster = (dev) => ({
+      version: 1,
+      home_id: "vLzV3iL3x7eJ8qZ0a1b2c3d4e5f6g7h8i9j0k1l2m3n",
+      total: 1,
+      presence_ttl_seconds: 180,
+      devices: [dev],
+      updated_at: "2026-11-19T12:00:00Z",
+    });
+    check("positive: home-device-roster accepts enrolled offline device", validateHomeRoster(wrapRoster(baseRosterDevice)), validateHomeRoster);
+    check(
+      "negative: home-device-roster rejects revoked device reporting online=true",
+      !validateHomeRoster(wrapRoster({ ...baseRosterDevice, revoked: true, online: true, membership_status: "revoked", presence_state: "revoked", status: "revoked" })),
+      null
+    );
+    check(
+      "negative: home-device-roster rejects revoked device reporting authenticated=true",
+      !validateHomeRoster(wrapRoster({ ...baseRosterDevice, revoked: true, authenticated: true, membership_status: "revoked", presence_state: "revoked", status: "revoked" })),
+      null
+    );
+    check(
+      "negative: home-device-roster rejects online=true with presence_state='offline'",
+      !validateHomeRoster(wrapRoster({ ...baseRosterDevice, online: true, presence_state: "offline", status: "offline" })),
+      null
+    );
+  } else {
+    check("home-device-roster.schema.json compiled", false, null);
   }
 
   const total = passed + failed;

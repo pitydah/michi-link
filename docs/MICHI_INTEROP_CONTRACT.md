@@ -1,8 +1,19 @@
-# Michi Link — Canonical Interoperability Contract (R1 / R1.1 / R1.2 / R1.3)
+# Michi Link — Canonical Interoperability Contract (R1 / R1.1 / R1.2 / R1.3 / R1.4)
 
 Normative cross-repository contract governing secure, persistent, and verifiable
 communications between `michi-micro-server`, `michi-mobile`, `michi-music-player`,
 `michi-stream-standard`, and `michi-stream-hifi`.
+
+> **Revision R1.4 (Server-First Mobile Readiness Freeze)**: Aligns
+> `GET /api/v1/home/roster` directly with `home-device-roster.schema.json`
+> (`version`, `home_id`, `devices`, `updated_at`), enforces exact no-leading-zero
+> volume grammar parity (`^(0|[1-9][0-9]?|100)$`) between Rust and JSON Schema,
+> separates `receiver_id` from `device_michi_id`, binds QR origin authorization
+> to verified local server interfaces / advertised hostnames / operator config
+> (never blanket RFC 1918 or `*.local`/`*.ts.net`), formalizes unified active
+> queue coordination & degraded recovery (`503 QUEUE_DEGRADED`), and specifies
+> forward/backward compatibility rules. Signed Home Membership, Device Auth,
+> Server Confirmation, and AirCat Grant v1 canonical bytes remain **unchanged**.
 
 > **Revision R1.3 (Additive Functional & Presence Convergence)**: Formalizes
 > strict `set_volume` parsing (zero silent fallback to 80), active-queue item
@@ -291,18 +302,30 @@ Supported client PKI deployment modes:
 - **Canonical field**: `volume` (JSON integer in `[0, 100]`). Volume `0` means
   real mute/silence; `100` is the contract maximum.
 - **Legacy compatibility field**: `value` accepts either a JSON integer in
-  `[0, 100]` or a strict unsigned ASCII decimal string (`"0"`..=`"100"`).
+  `[0, 100]` or a strict canonical unsigned ASCII decimal string matching
+  `^(0|[1-9][0-9]?|100)$` (`"0"`, `"1"`..`"100"` — leading zeros such as `"00"`,
+  `"01"`, `"075"` are REJECTED identically by both JSON Schema and Rust).
 - **Strict rejection rules (HTTP `400`, `error.code = "INVALID_REQUEST"`)**:
   - Missing or `null` volume (NEVER silently apply a fallback default such as `80`).
   - Negative numbers, values `> 100`, integer overflow beyond `u8`/`u32`, floats
-    (`75.5`, `0.0`), booleans (`true`/`false`), objects/arrays.
-  - Ambiguous text (`"75%"`, `"75.5"`, `"-1"`, `"+50"`, `"1000"`, `"eighty"`, `""`).
+    (`75.5`, `0.0`), booleans (`true`/`false`), objects/arrays (`422` at JSON decode).
+  - Non-canonical or ambiguous text (`"00"`, `"075"`, `"75%"`, `"75.5"`, `"-1"`,
+    `"+50"`, `"1000"`, `"eighty"`, `""`).
   - Contradictory `volume` and `value` fields when both are non-null (when both
     are valid and equal, e.g. `volume: 20` and `value: "20"`, the command succeeds).
 - **State preservation invariant**: A rejected `set_volume` request MUST NEVER
   mutate the effective `PlaybackEngine` volume.
 
-### 6.2 Active Queue Item Deletion & Sequence Continuity
+### 6.2 Active Queue Coordination, Deletion & Sequence Continuity
+- **Single Coordinator**: All active queue mutations (`create`, `add/append`,
+  `jump`, `transfer/replace`, `reorder`, `delete item`, `clear`, `delete queue`,
+  `save/restore`) share one serialized coordinator with a monotonic `queue_version`
+  and `BEGIN IMMEDIATE` SQLite transactions (committed before audio engine ops).
+- **Explicit Degraded Recovery**: If a `PlaybackEngine` sync fails and the
+  compensating SQLite rollback also fails, the coordinator MUST enter an explicit
+  `degraded` state (`queue_degraded: true`) and reject new mutations fail-closed
+  with HTTP `503 QUEUE_DEGRADED` until reconciliation restores SQLite ↔ engine
+  coherence. Silent divergence is prohibited.
 - **Canonical identifier**: Individual deletion (`DELETE /api/v1/queue/items/{item_id}`)
   operates on `queue_item_id`. Legacy fallback matching `track_id` MUST delete
   **at most one** entry (preferring the active slot if matched) and MUST NEVER
@@ -320,46 +343,80 @@ Supported client PKI deployment modes:
 - **Deleting a non-active item**: Preserves the currently playing track, its
   playback position, its `playing`/`paused` state, and the upcoming logical
   sequence (`next` and `EOF`).
-- **Durable / runtime coherence**: SQLite queue mutations and `PlaybackEngine`
-  updates are serialized per queue without holding SQLite write locks across
-  audio operations; engine failure triggers compensating rollback so storage and
-  runtime never silently diverge.
 
-## 7. Home Presence & Roster Semantics (R1.3)
+## 7. Home Presence & Canonical Roster Contract (R1.3 / R1.4)
 
-`GET /api/v1/home/roster` MUST separate four independent properties:
-1. **Membership (`membership_status`)**: `"enrolled"` or `"revoked"`. A durable
+`GET /api/v1/home/roster` MUST conform directly to `schemas/home-device-roster.schema.json`
+(`version: 1`, `home_id`, `devices`, `updated_at`, plus optional `total` and
+`presence_ttl_seconds`) and strictly separate four independent properties plus
+identifier domains:
+1. **Identifier domain separation**: `device_michi_id` (43-char base64url Ed25519
+   BLAKE3 identity) and `receiver_id` (receiver registry key) are distinct domains
+   and MUST NEVER be implicitly equated when resolving live streaming sessions.
+2. **Membership (`membership_status`)**: `"enrolled"` or `"revoked"`. A durable
    membership record proves authorization to belong to Home, NOT live presence.
-2. **Authentication (`authenticated`)**: `true` ONLY when the device currently
+3. **Authentication (`authenticated`)**: `true` ONLY when the device currently
    holds an active, non-expired Home session or live authenticated receiver state
    (and is not revoked).
-3. **Presence (`online`, `presence_state`)**: `"online"` / `"offline"` /
+4. **Presence (`online`, `presence_state`, `status`)**: `"online"` / `"offline"` /
    `"revoked"` / `"unknown"`. `online: true` requires recent, verifiable live
    evidence within a bounded TTL (`180s` for authenticated Home session activity,
    live signed Whisker/Scent `verified_online` presence, or active receiver
-   streaming session). Persisted SQLite rows alone, pending enrollments, stale
-   historical `last_seen`, or post-restart state MUST NEVER report `online: true`.
-4. **Revocation (`revoked`)**: Revoked devices MUST always report `revoked: true`,
-   `authenticated: false`, `online: false`, `presence_state: "revoked"`. If the
-   durable revocation store is unreadable, the endpoint MUST fail closed with
-   HTTP `503 REVOCATION_STORE_UNAVAILABLE`.
+   streaming session resolved by `receiver_id`). Persisted SQLite rows alone,
+   pending enrollments, stale historical `last_seen_at`, or post-restart state
+   MUST NEVER report `online: true`.
+5. **Revocation (`revoked`)**: Revoked devices MUST always report `revoked: true`,
+   `authenticated: false`, `online: false`, `membership_status: "revoked"`,
+   `presence_state: "revoked"`, `status: "revoked"`. If the durable revocation
+   store is unreadable, the endpoint MUST fail closed with HTTP `503 REVOCATION_STORE_UNAVAILABLE`.
 
-## 8. QR Pairing Origin Policy & Protocol Separation (R1.3)
+## 8. QR Pairing Origin Policy & Protocol Separation (R1.3 / R1.4)
 
 - **Origin policy (`POST /api/v1/pair/qr`)**:
   - Precedence: (1) validated explicit `server_url` (must comply with configured
     public URL/allowlist when set), (2) operator-configured canonical public URL
     (`MICHI_PUBLIC_URL` / `MICHI_PUBLIC_HTTPS_URL`), (3) verified trusted-proxy
     host/proto or direct listener host/scheme.
+  - **Server-owned destination requirement (R1.4)**: Being an RFC 1918 IP,
+    `*.local`, or `*.ts.net` is NOT sufficient by itself. The host MUST belong
+    to THIS server via one of: (a) operator-configured public URL /
+    `MICHI_ALLOWED_QR_HOSTS` / `MICHI_ADVERTISE_HOST` / `MICHI_TAILSCALE_HOST` /
+    `MICHI_CORS_ORIGIN` / active TLS SAN, (b) an IP actually assigned to a local
+    network interface of this host (`if_addrs` + loopback), or (c) an mDNS
+    hostname actually advertised by this server. Another host on the same LAN
+    (e.g. `192.168.1.30` when the server is `192.168.1.20`) MUST be rejected
+    (`400 INVALID_REQUEST`).
   - Rejects non-`http`/`https` schemes (`javascript:`, `file:`, `data:`),
     userinfo (`user@host`), paths/queries/fragments, control characters/CRLF,
     multiple host values, contradictory/malformed proxy forwarding headers, and
-    arbitrary external hosts not explicitly authorized.
-  - Permits legitimate local-first Michi targets (`localhost`, RFC 1918 LAN IPs,
-    mDNS `*.local`, Tailscale `100.64.0.0/10` and `*.ts.net`, IPv6 ULA/link-local)
-    and operator-allowlisted public domains (`MICHI_ALLOWED_QR_HOSTS`).
+    arbitrary external hosts.
 - **Strict protocol separation**:
   - Legacy `SERVER_CODE` QR (`qr_protocol: "legacy_server_code_v1"`) and Home
     Enrollment QR (`michi.aircat.home.enrollment.v1`) are separate protocols.
   - Legacy pairing QRs MUST NEVER carry Home Root public keys, SPKI pins, or be
     promoted to a Home cryptographic trust anchor.
+
+## 9. Protocol Versioning, Evolution & Compatibility Rules (R1.4)
+
+- **Wire format naming**: All Michi Link v1 HTTP/JSON contracts use `snake_case`
+  except AirCat Grant/Manifest v1 (`camelCase` frozen by golden vectors in
+  `tests/vectors/interop/micro-mobile-interop-vectors.json`). Cryptographic IDs
+  and keys are 43-char Base64URL without padding; Ed25519 signatures are 86-char
+  Base64URL without padding; administrative IDs (`server_id`, `track_id`,
+  `queue_item_id`, `request_id`, `challenge_id`) are RFC 4122 UUIDs; timestamps
+  are RFC 3339 UTC strings (or explicit `*_ms` epoch milliseconds where named).
+- **Forward compatibility (Newer Server ↔ Older Client)**:
+  - Additive optional fields on response DTOs are non-breaking; clients MUST
+    ignore unknown JSON fields (`ignoreUnknownKeys = true`).
+  - Existing required fields and signed canonical byte layouts MUST NOT change
+    within v1.
+- **Backward compatibility (Older Server ↔ Newer Client)**:
+  - Clients MUST inspect `GET /api/v1/server/info` and `GET /api/v1/capabilities`
+    and MUST NOT assume a flow is supported simply because an endpoint exists or
+    a field is absent. A disabled capability (`false`) or missing flag MUST
+    disable the corresponding client UI/flow gracefully.
+- **Degraded security / protocol mismatch**:
+  - Incompatible `identity_scheme` (anything other than `"ed25519-blake3-v1"`),
+    `BLAKE3(public_key) != michi_id`, `android_trust_verification_status == "verification_failed"`,
+    `403 TLS_REQUIRED`, `503 TLS_NOT_CONFIGURED`, or `503 REVOCATION_STORE_UNAVAILABLE`
+    MUST fail closed without silent downgrade to cleartext HTTP or legacy `SERVER_CODE`.
