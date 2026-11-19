@@ -1,0 +1,17 @@
+{
+  "protocol": "michi.aircat.original.v1",
+  "tls_configured": true,
+  "tls_listener_ready": true,
+  "tls_port": 9443,
+  "pinned_base_url": "https://music.home.example.com:9443",
+  "tls_spki_sha256": "sha256/0XfFqrWnhmw5t0Ci/oIfJF42y74I6icarU/VKKCkzj4=",
+  "tls_trust_mode": "ca_chained",
+  "certificate_profile": "ca_issued_chain_present",
+  "chain_cryptographically_verified": true,
+  "android_trust_verification_status": "not_verified",
+  "android_default_trust_compatible": false,
+  "cert_chain_len": 2,
+  "cert_not_before": "2026-01-01T00:00:00Z",
+  "cert_not_after": "2027-01-01T00:00:00Z",
+  "pending_enrollments": 0
+}

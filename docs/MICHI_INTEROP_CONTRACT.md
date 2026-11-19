@@ -1,8 +1,15 @@
-# Michi Link — Canonical Interoperability Contract (R1)
+# Michi Link — Canonical Interoperability Contract (R1 / R1.1 / R1.2)
 
 Normative cross-repository contract governing secure, persistent, and verifiable
 communications between `michi-micro-server`, `michi-mobile`, `michi-music-player`,
 `michi-stream-standard`, and `michi-stream-hifi`.
+
+> **Revision R1.2 (Additive Security Hardening)**: Tightens trusted reverse-proxy
+> HTTPS header verification (`X-Forwarded-Proto` + RFC 7239 `Forwarded`) and
+> strictly separates TLS listener readiness, X.509 certificate chain structure,
+> SPKI pinning, and Android client trust verification. Signed Home Membership,
+> mutual auth, and AirCat Grant v1 canonical bytes are **unchanged** (100%
+> backward compatible).
 
 ## 1. Canonical Cryptographic Identity
 
@@ -145,7 +152,7 @@ Bootstrap sequence:
     `destinationMichiId` MUST equal the verified `client_michi_id`
     (otherwise `403 WRONG_AUDIENCE`).
 
-## 5. Mandatory HTTPS/TLS Policy for Home Authority & `AIRCAT_STRICT` (R1.1)
+## 5. Mandatory HTTPS/TLS Policy for Home Authority & `AIRCAT_STRICT` (R1.1 / R1.2)
 
 ### 5.1 Covered Endpoints (Fail-Closed HTTPS Required)
 ALL Home enrollment, Home authentication, Home admin approval, and AirCat
@@ -165,23 +172,95 @@ cleartext HTTP fallback):
 
 Normative transport refusals:
 - TLS listener unconfigured or not bound -> `503 TLS_NOT_CONFIGURED`.
-- Cleartext HTTP connection (or spoofed `X-Forwarded-Proto: https` from an
-  untrusted peer) -> `403 TLS_REQUIRED`.
+- Cleartext HTTP connection (or untrusted/contradictory/malformed proxy headers)
+  -> `403 TLS_REQUIRED`.
 
-### 5.2 X.509 Certificate Trust + SPKI Pinning Architecture for Android
-Two independent security properties are REQUIRED:
-1. **Verified X.509 chain, validity window, and SAN**: certificate MUST NOT be
-   expired, private key MUST match certificate, SubjectAltName MUST cover the
-   `pinnedBaseUrl` host/IP, and the certificate chain MUST terminate in a CA
-   explicitly trusted by the client (`Mode A`: publicly trusted CA such as
-   Let's Encrypt DNS-01 or Tailscale HTTPS — immediately compatible with
-   Android's default `X509TrustManager` + OkHttp `CertificatePinner`; or
-   `Mode B`: scoped Home Private CA explicitly installed into a dedicated
-   Home-only `TrustManagerFactory`, never trust-all and never disabling
-   `HostnameVerifier`). Self-signed leaf certificates are NOT accepted by
-   Android's default `X509TrustManager`.
-2. **RFC 7469 SPKI SHA-256 Pinning**: exact match against `tlsSpkiSha256` from
-   the authorized enrollment anchor.
+### 5.1.1 Strict Trusted Reverse-Proxy HTTPS Policy & Precedence (R1.2)
+An HTTP connection MUST NEVER gain HTTPS authority from client-controllable
+headers. Transport verification follows a strict three-tier precedence:
+1. **Direct verified TLS** (`AirCatTlsVerifiedConnection` inserted exclusively by
+   the server's own TLS accept loop after a real handshake). Direct TLS is
+   authoritative and ignores HTTP forwarding headers.
+2. **Explicitly trusted reverse proxy HTTPS termination**, which requires ALL of:
+   - `trust_proxy == true` in server configuration,
+   - Peer socket identity present (`ConnectInfo<SocketAddr>`) and IP listed in
+     explicit `trusted_proxies`,
+   - Complete, strict parsing of **both** `X-Forwarded-Proto` and RFC 7239
+     `Forwarded` whenever present — **silent preference for one header over the
+     other is FORBIDDEN**.
+3. **Fail-closed refusal** (`403 TLS_REQUIRED`).
+
+Mandatory header validation rules when evaluating trusted reverse-proxy headers:
+- Non-UTF-8 header values MUST cause immediate rejection (never silently dropped).
+- Empty values, malformed RFC 7239 syntax (unclosed quotes, dangling escapes,
+  missing `=`, missing `proto`, duplicate `proto` within an element), or any
+  protocol value other than `https` (case-insensitive) — including `http`, `ws`,
+  `wss`, or unknown tokens — MUST be rejected.
+- Multi-hop chains containing any non-`https` hop MUST be rejected.
+- When **both** `X-Forwarded-Proto` and `Forwarded` are present, BOTH MUST parse
+  cleanly, ALL hops in BOTH headers MUST equal `https`, and both headers MUST
+  report an identical hop count. Any contradiction (e.g.
+  `X-Forwarded-Proto: https` with `Forwarded: proto=http`, or incompatible hop
+  counts) MUST be rejected.
+
+Edge proxy deployment boundary (Nginx, Caddy, Traefik):
+- The reverse proxy MUST strip/overwrite client-supplied `X-Forwarded-Proto` and
+  `Forwarded` headers and emit them strictly from the real inbound TLS socket.
+- The backend HTTP listener MUST be firewalled/isolated from untrusted LAN/WAN
+  clients so attackers cannot reach it directly or spoof trusted proxy IPs.
+
+### 5.2 Strict Separation of TLS Readiness, X.509 Structure, SPKI Pinning & Android Trust (R1.2)
+Implementations and diagnostic APIs (`GET /api/v1/aircat/status`) MUST separate
+four independent properties and NEVER conflate them:
+1. **TLS server readiness / leaf validity**: PEM parses cleanly, private key
+   matches leaf certificate (`rustls`), leaf satisfies `notBefore <= now <= notAfter`,
+   `SubjectAltName` (`DNS` or `IP`) matches `pinnedBaseUrl`, leaf ExtendedKeyUsage
+   (when present) permits `serverAuth`, and the TLS listener is actively bound.
+2. **X.509 certificate profile & chain verification** (`certificate_profile`,
+   `chain_cryptographically_verified`):
+   - `self_signed_verified`: single self-issued leaf whose cryptographic
+     signature verifies against its own SubjectPublicKeyInfo.
+   - `self_issued_unverified`: `issuer == subject`, but cryptographic
+     self-signature verification did NOT succeed (equality of issuer and subject
+     indicates *self-issued*, NOT *self-signed*).
+   - `ca_issued_chain_present`: CA-issued leaf (`issuer != subject`) accompanied
+     by ordered issuer/intermediate certificate(s) whose validity windows,
+     `BasicConstraints (CA:TRUE)`, and cryptographic signatures verify against
+     the presented chain tip.
+   - `incomplete_chain`: CA-issued leaf without issuer/intermediate certs, OR
+     unordered chain, OR expired/non-CA intermediate, OR failed signature check.
+   - `unknown`: classification could not be determined.
+3. **Client / Android trust verification** (`android_trust_verification_status`):
+   - `not_verified`: server has NOT verified trust against Android's platform
+     `X509TrustManager` trust store (default for CA-issued chains observed
+     server-side — **a presented X.509 chain NEVER proves Android trust**).
+   - `verified_with_explicit_trust_roots`: chain verified cryptographically
+     against an explicit trust root bundle (still distinct from live Android
+     device trust store unless that bundle is verified on Android).
+   - `verification_failed`: known incompatible with default Android trust
+     (e.g., `self_signed_verified`, `self_issued_unverified`, broken/expired
+     intermediate chain, or failed explicit root check).
+   - Legacy boolean `android_default_trust_compatible` MUST be `false` whenever
+     `android_trust_verification_status` is `not_verified` or
+     `verification_failed` (zero false positives). Note that `false` alongside
+     `not_verified` indicates trust is unverified, not proven incompatible.
+4. **RFC 7469 SPKI SHA-256 Pinning** (`tlsSpkiSha256`):
+   - Exact match against the authorized enrollment anchor's SPKI hash.
+   - Orthogonal to X.509 CA trust; never replaces X.509 verification.
+   - `home_tls_spki_pinned` in `CanonicalServerCapabilities` reflects server TLS
+     listener + valid leaf/SAN/SPKI readiness and MUST NOT be disabled solely
+     because `android_trust_verification_status == "not_verified"` (clients that
+     explicitly trust a private CA may still operate while Android fails closed
+     when its trust store rejects the chain).
+
+Supported client PKI deployment modes:
+- **Mode A (Public CA — primary path for default Android `X509TrustManager` +
+  OkHttp `CertificatePinner`)**: Let's Encrypt DNS-01 or Tailscale HTTPS
+  (`fullchain.pem` + matching SAN + SPKI pin).
+- **Mode B (Scoped Home Private CA — `NOT_IMPLEMENTED_IN_MOBILE`)**: optional
+  future LAN mode pinning a Home-only `TrustManagerFactory` strictly to the Home
+  origin. Installing trust-all `X509TrustManager` or disabling `HostnameVerifier`
+  is STRICTLY FORBIDDEN.
 
 ### 5.3 Fail-Closed Revocation & Single Home Session Authority
 - Home sessions (`michi_home_*`) MUST be managed by a dedicated Home session

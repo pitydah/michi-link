@@ -30,6 +30,7 @@ const EXAMPLE_MAP = {
   "aircat-grant-request.json": "aircat-grant-request",
   "aircat-manifest.json": "aircat-manifest",
   "aircat-signed-grant.json": "aircat-signed-grant",
+  "aircat-tls-status.json": "aircat-tls-status",
   "audio-chain.json": "audio-chain",
   "commit-mapping-result.json": "import-commit-result",
   "continue-on-server-request.json": "continue-on-server",
@@ -628,6 +629,41 @@ function main() {
   // OpenAPI must not reintroduce legacy pairing fields.
   for (const legacy of ["pairing_code", "pin_proof", "pin_proof_signature", "signedChallenge", "pairingId"]) {
     check(`openapi: legacy field "${legacy}" absent`, !openapiText.includes(legacy), null);
+  }
+
+  // --- R1.2 P0-B schema invariant: not_verified / verification_failed MUST NOT claim android_default_trust_compatible=true ---
+  const validateTlsStatus = ajv.getSchema(SCHEMA_BASE + "aircat-tls-status.schema.json");
+  if (typeof validateTlsStatus === "function") {
+    const falsePositive = {
+      protocol: "michi.aircat.original.v1",
+      tls_configured: true,
+      tls_listener_ready: true,
+      tls_trust_mode: "ca_chained",
+      certificate_profile: "ca_issued_chain_present",
+      chain_cryptographically_verified: true,
+      android_trust_verification_status: "not_verified",
+      android_default_trust_compatible: true,
+      cert_chain_len: 2,
+    };
+    check(
+      "negative: aircat-tls-status rejects android_default_trust_compatible=true when not_verified",
+      !validateTlsStatus(falsePositive),
+      null
+    );
+    const failedButTrue = {
+      ...falsePositive,
+      certificate_profile: "self_signed_verified",
+      chain_cryptographically_verified: false,
+      android_trust_verification_status: "verification_failed",
+      android_default_trust_compatible: true,
+    };
+    check(
+      "negative: aircat-tls-status rejects android_default_trust_compatible=true when verification_failed",
+      !validateTlsStatus(failedButTrue),
+      null
+    );
+  } else {
+    check("aircat-tls-status.schema.json compiled", false, null);
   }
 
   const total = passed + failed;
